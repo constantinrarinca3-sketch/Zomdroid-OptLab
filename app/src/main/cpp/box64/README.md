@@ -1,0 +1,1 @@
+This repository is a fork of [box64](https://github.com/ptitSeb/box64) library, modified for use in [Zomdroid](https://github.com/liamelui/zomdroid) project.

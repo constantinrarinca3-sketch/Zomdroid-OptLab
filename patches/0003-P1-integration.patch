@@ -1,0 +1,253 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index d57f500e2ec97ba5ec776e2ef4acd9cc9969b63c..3ea9e9b8560ac1a0452e43b90df5ad725f8257b0 100755
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -35,11 +35,12 @@ android {
+     }
+ 
+     defaultConfig {
+-        applicationId = "com.zomdroid"
++        // Dedicated identity: installs beside stock ZomDroid and immutable AB3.
++        applicationId = "com.zomdroid.mglpz1"
+         minSdk = 30
+         targetSdk = 35
+-        versionCode = 147
+-        versionName = "1.4.7v4"
++        versionCode = 14731
++        versionName = "1.4.7v4-ab3-mobilegl-pzcompat-p1"
+ 
+         // JavaSteam + protobuf + kotlin stack push past the 64K method limit.
+         multiDexEnabled = true
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 263ba1ba69c243121b609f9427f161bd5b26739f..fc88b7f761ffd6a59f7e03d17a7d3213ed64a255 100755
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -51,7 +51,7 @@
+         </service>
+         <provider
+             android:name=".AppStorageProvider"
+-            android:authorities="com.zomdroid.STORAGE_PROVIDER_AUTHORITY"
++            android:authorities="${applicationId}.STORAGE_PROVIDER_AUTHORITY"
+             android:exported="true"
+             android:grantUriPermissions="true"
+             android:permission="android.permission.MANAGE_DOCUMENTS">
+@@ -62,7 +62,7 @@
+         <!-- Exposes the cache-dir bug-report zip as a content:// Uri for the email ACTION_SEND. -->
+         <provider
+             android:name="androidx.core.content.FileProvider"
+-            android:authorities="com.zomdroid.fileprovider"
++            android:authorities="${applicationId}.fileprovider"
+             android:exported="false"
+             android:grantUriPermissions="true">
+             <meta-data
+diff --git a/app/src/main/cpp/zomdroid.c b/app/src/main/cpp/zomdroid.c
+index f4226a1a2c0d7a6f4aeeb078780f398fe4ed66a7..631f3ba113532ff1f34a4c1b3e4446ca3e573221 100755
+--- a/app/src/main/cpp/zomdroid.c
++++ b/app/src/main/cpp/zomdroid.c
+@@ -507,6 +507,8 @@ int zomdroid_init() {
+         g_zomdroid_renderer = GL4ES;
+     } else if (strcmp(renderer_name, "NG_GL4ES") == 0) {
+         g_zomdroid_renderer = NG_GL4ES;
++    } else if (strcmp(renderer_name, "MOBILEGL_PZCOMPAT") == 0) {
++        g_zomdroid_renderer = MOBILEGL_PZCOMPAT;
+     } else {
+         LOGE("Unrecognized renderer %s", renderer_name);
+         exit(1);
+diff --git a/app/src/main/cpp/zomdroid_globals.h b/app/src/main/cpp/zomdroid_globals.h
+index 58d4f047702b4bb48895ae1c7ea34d5182cd6b2d..b27d24e9dfaad68199571a8805281bf0357b09cf 100755
+--- a/app/src/main/cpp/zomdroid_globals.h
++++ b/app/src/main/cpp/zomdroid_globals.h
+@@ -23,7 +23,8 @@ typedef enum {
+     GL4ES,
+     ZINK_OSMESA,
+     ZINK_ZFA,
+-    NG_GL4ES
++    NG_GL4ES,
++    MOBILEGL_PZCOMPAT
+ } Renderer;
+ 
+ typedef struct {
+diff --git a/app/src/main/java/com/zomdroid/C.java b/app/src/main/java/com/zomdroid/C.java
+index c7e76b7892b7d269da5ca835d22842e45161836f..f042b2eb3cf6fbefad8fe93327e5f2801d596261 100644
+--- a/app/src/main/java/com/zomdroid/C.java
++++ b/app/src/main/java/com/zomdroid/C.java
+@@ -1,7 +1,8 @@
+ package com.zomdroid;
+ 
+ public class C {
+-    public static final String STORAGE_PROVIDER_AUTHORITY = "com.zomdroid.STORAGE_PROVIDER_AUTHORITY";
++    public static final String STORAGE_PROVIDER_AUTHORITY =
++            BuildConfig.APPLICATION_ID + ".STORAGE_PROVIDER_AUTHORITY";
+ 
+     public static class deps {
+         public static final String ROOT = "dependencies";
+@@ -46,7 +47,7 @@ public class C {
+     }
+ 
+     public static class shprefs {
+-        public static final String NAME = "com.zomdroid.PREFS";
++        public static final String NAME = BuildConfig.APPLICATION_ID + ".PREFS";
+ 
+         public static class keys {
+             public static final String LAUNCHER_VERSION = "launcherVersion";
+@@ -58,4 +59,4 @@ public class C {
+             public static final String IS_LEGAL_NOTICE_ACCEPTED = "isLegalNoticeAccepted";
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/app/src/main/java/com/zomdroid/GameLauncher.java b/app/src/main/java/com/zomdroid/GameLauncher.java
+index 63ad00fd3c27c3360825bd412f0499693bb51c52..2b1d6ea49e23aaa4feaad72298475b1dccbdab99 100755
+--- a/app/src/main/java/com/zomdroid/GameLauncher.java
++++ b/app/src/main/java/com/zomdroid/GameLauncher.java
+@@ -126,6 +126,21 @@ public class GameLauncher {
+                 //Os.setenv("ZOMDROID_DEBUG_RED_CLEAR", "1", false);
+                 break;
+             }
++            case MOBILEGL_PZCOMPAT: {
++                // P1 compatibility candidate: MobileGL owns both EGL and desktop-GL entry
++                // points while its DirectGLES backend talks to the system Adreno GLES driver.
++                // Keep performance knobs at their defaults until this path passes world load;
++                // otherwise a failed launch would test several hypotheses at once.
++                Os.setenv("MOBILEGL_BACKEND_TYPE", "DirectGLES", false);
++                Os.setenv("MOBILEGL_RELAXED_SEMANTICS", "1", false);
++                Os.setenv("MOBILEGL_LOG_FILE_PATH",
++                        AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log",
++                        false);
++                Os.setenv("ZOMDROID_GLES_MAJOR", "3", false);
++                Os.setenv("ZOMDROID_GLES_MINOR", "2", false);
++                Log.i("MGLPZ_GATE", "P1 renderer selected: DirectGLES, requested GLES 3.2");
++                break;
++            }
+             default: {
+                 Os.setenv("ZOMDROID_GLES_MAJOR", "2", false);
+                 Os.setenv("ZOMDROID_GLES_MINOR", "1", false);
+diff --git a/app/src/main/java/com/zomdroid/InstallerService.java b/app/src/main/java/com/zomdroid/InstallerService.java
+index c5bf8611958d39605215e215a61fb86e46e66880..de14161e8d1d988a1f78bba27ba12073dd6a9ec0 100755
+--- a/app/src/main/java/com/zomdroid/InstallerService.java
++++ b/app/src/main/java/com/zomdroid/InstallerService.java
+@@ -886,7 +886,8 @@ public class InstallerService extends Service implements TaskProgressListener {
+         File consoleFile = new File(gi.getHomePath() + "/Zomboid/console.txt");
+         File launcherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LOG_FILE_NAME);
+         File lastLauncherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LAST_LOG_FILE_NAME);
+-        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists();
++        File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
++        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists() || mobileGlLog.exists();
+     }
+ 
+     // Builds the same diagnostic zip (report.txt + crash/native/shader/console/launcher logs) used
+@@ -907,6 +908,9 @@ public class InstallerService extends Service implements TaskProgressListener {
+         // compile/link (up to 10 programs) + GL trace. Written by libng_gl4es into files/.
+         File failedShaders = new File(AppStorage.requireSingleton().getHomePath() + "/failed_shaders.txt");
+         File glTrace = new File(AppStorage.requireSingleton().getHomePath() + "/gl_trace.txt");
++        // MobileGL-PZCompat writes its backend/context/shader decisions here.  Keeping it in
++        // the standard report makes the first failed device run diagnosable without ADB.
++        File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
+         // PZ's own per-session debug log. It is the ONLY place Java-side link/load failures are
+         // recorded — an UnsatisfiedLinkError for a native game method never reaches console.txt,
+         // which is why a broken game lib could go unnoticed across every report we ever received.
+@@ -951,6 +955,7 @@ public class InstallerService extends Service implements TaskProgressListener {
+             addFileToZip(zos, nativeLog, "native.log");
+             addFileToZip(zos, failedShaders, "failed_shaders.txt");
+             addFileToZip(zos, glTrace, "gl_trace.txt");
++            addFileToZip(zos, mobileGlLog, "mobilegl-pzcompat.log");
+             addFileToZip(zos, consoleFile, "console.txt");
+             addFileToZip(zos, launcherLog, "log.txt");
+             addFileToZip(zos, lastLauncherLog, "lastlog.txt");
+diff --git a/app/src/main/java/com/zomdroid/LauncherActivity.java b/app/src/main/java/com/zomdroid/LauncherActivity.java
+index 0a011a8afd3ab4153c58850814e961151a240977..1770e99874f5c65710efd953922a1d7108df083c 100755
+--- a/app/src/main/java/com/zomdroid/LauncherActivity.java
++++ b/app/src/main/java/com/zomdroid/LauncherActivity.java
+@@ -323,7 +323,7 @@ public class LauncherActivity extends AppCompatActivity {
+                     }
+                     if (zip.length() > 0)
+                         attach = androidx.core.content.FileProvider.getUriForFile(
+-                                this, "com.zomdroid.fileprovider", zip);
++                                this, BuildConfig.APPLICATION_ID + ".fileprovider", zip);
+                 }
+             } catch (Throwable t) { attach = null; } // no logs → still send the text report
+             final Uri fAttach = attach;
+diff --git a/app/src/main/java/com/zomdroid/LauncherPreferences.java b/app/src/main/java/com/zomdroid/LauncherPreferences.java
+index 24dd0da509fde4a5e8a3ad20884808183d46c2de..90c42bae18d46f47a8cb5bbb6d71f7dd53e605b6 100644
+--- a/app/src/main/java/com/zomdroid/LauncherPreferences.java
++++ b/app/src/main/java/com/zomdroid/LauncherPreferences.java
+@@ -86,7 +86,10 @@ public class LauncherPreferences {
+     }
+ 
+     private float renderScale = 0.65f;
+-    private Renderer renderer = Renderer.GL4ES;
++    // This side-by-side research build exists to exercise MobileGL-PZCompat.  Keep the
++    // other renderers selectable as controls, but make the experiment the clean-install
++    // default so a tester cannot accidentally report a GL4ES run as MobileGL.
++    private Renderer renderer = Renderer.MOBILEGL_PZCOMPAT;
+     private VulkanDriver vulkanDriver = VulkanDriver.SYSTEM_DEFAULT;
+     private boolean isDebug = false;
+     // Memory saver (Settings → Advanced): when on, the launcher exports LIBGL_TEXBUDGET=800 for
+@@ -262,6 +265,7 @@ public class LauncherPreferences {
+     }
+ 
+     public enum Renderer {
++        MOBILEGL_PZCOMPAT("libMobileGLPZ.so"),
+         ZINK_ZFA("libzfa.so"),
+         ZINK_OSMESA("libOSMesa.so"),
+         NG_GL4ES("libng_gl4es.so"),
+diff --git a/app/src/main/res/values-in/strings.xml b/app/src/main/res/values-in/strings.xml
+index d30ac92e5be9972cf42d39ab28b2463fcb7da496..2b7416e7f100dce4e70fe04f6175a7642ea5d725 100644
+--- a/app/src/main/res/values-in/strings.xml
++++ b/app/src/main/res/values-in/strings.xml
+@@ -1,5 +1,5 @@
+ <resources>
+-    <string name="app_name" translatable="false">Zomdroid</string>
++    <string name="app_name" translatable="false">ZomDroid MGL PZ</string>
+ 
+     <string name="percentage_format" translatable="false">%d%%</string>
+ 
+diff --git a/app/src/main/res/values-pt-rBR/strings.xml b/app/src/main/res/values-pt-rBR/strings.xml
+index 5dfac236a45f9694fdcb9a723d1f2da686d36402..d83c154247df9fae9a799bba4793228e29222593 100644
+--- a/app/src/main/res/values-pt-rBR/strings.xml
++++ b/app/src/main/res/values-pt-rBR/strings.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="app_name" translatable="false">Zomdroid</string>
++    <string name="app_name" translatable="false">ZomDroid MGL PZ</string>
+ 
+     <string name="percentage_format" translatable="false">%d%%</string>
+ 
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index 8faf5cd32a0432506295e855b5811378ada42c9f..3efde22afe28403d1805a574c762192b65125c44 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="app_name" translatable="false">Zomdroid</string>
++    <string name="app_name" translatable="false">ZomDroid MGL PZ</string>
+ 
+     <string name="percentage_format" translatable="false">%d%%</string>
+ 
+diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
+index 36602758aac462bb5c6884962e09fdab44ca6abd..b9e24c70992aeb4ea18958d404b089619f4cd944 100644
+--- a/app/src/main/res/values-zh-rCN/strings.xml
++++ b/app/src/main/res/values-zh-rCN/strings.xml
+@@ -1,6 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="app_name" translatable="false">Zomdroid</string>
++    <string name="app_name" translatable="false">ZomDroid MGL PZ</string>
+ 
+     <string name="percentage_format" translatable="false">%d%%</string>
+ 
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 3ef2e86effba4918580904d548da34655d8f625d..0e18c61c5215502ae2c83cfc3d42392111356562 100755
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -1,5 +1,5 @@
+ <resources>
+-    <string name="app_name" translatable="false">Zomdroid</string>
++    <string name="app_name" translatable="false">ZomDroid MGL PZ</string>
+ 
+     <string name="percentage_format" translatable="false">%d%%</string>
+ 
+

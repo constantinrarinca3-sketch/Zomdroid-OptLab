@@ -1,0 +1,1 @@
+This repository is a fork of [GLFW](https://github.com/LWJGL-CI/glfw) library (from LWJGL), modified for use in [Zomdroid](https://github.com/liamelui/zomdroid) project.

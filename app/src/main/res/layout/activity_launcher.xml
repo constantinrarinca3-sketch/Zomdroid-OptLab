@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".LauncherActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:liftOnScroll="false"
+        android:elevation="0dp"
+        app:elevation="0dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/appbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@drawable/toolbar_gradient"
+            app:theme="@style/AppTheme.Toolbar"/>
+
+        <fragment
+            android:id="@+id/nav_host_fragment"
+            android:name="androidx.navigation.fragment.NavHostFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:defaultNavHost="true"
+            app:navGraph="@navigation/nav_graph" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:id="@+id/drawer_container"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:orientation="vertical"
+        android:background="?attr/colorSurface">
+
+        <com.google.android.material.navigation.NavigationView
+            android:id="@+id/launcher_nv"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            app:dividerColor="@color/pz_orange"
+            app:menu="@menu/menu_nav"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/pz_orange"/>
+
+        <!-- Bottom icon row: Wiki / Donate / Reddit / Version (icons only, centered, 7dp apart) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <ImageButton
+                android:id="@+id/nav_bottom_wiki"
+                style="@style/AppTheme.ImageButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/mt_icon_menu_book"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/fragment_label_wiki"/>
+
+            <ImageButton
+                android:id="@+id/nav_bottom_donate"
+                style="@style/AppTheme.ImageButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="7dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/mt_icon_heart"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/nav_menu_donate"/>
+
+            <ImageButton
+                android:id="@+id/nav_bottom_reddit"
+                style="@style/AppTheme.ImageButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="7dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_reddit"
+                android:tint="?attr/colorOnSurfaceVariant"
+                android:contentDescription="@string/nav_menu_reddit"/>
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="7dp">
+
+                <ImageButton
+                    android:id="@+id/nav_bottom_version"
+                    style="@style/AppTheme.ImageButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_github"
+                    android:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@string/nav_menu_version"/>
+
+                <!-- "update available" dot; shown by refreshUpdateBadge() when GitHub has a newer release -->
+                <View
+                    android:id="@+id/update_badge"
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/update_badge_dot"
+                    android:visibility="gone"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/pz_orange"/>
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>
