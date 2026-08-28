@@ -1,0 +1,112 @@
+name: R6 CP1 QA MobileGL12 Build
+
+on:
+  push:
+    branches: [ r6-cp1-qa-mgl12-build-20260828 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout base source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35 NDK r27d CMake
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.3.13750724" \
+            "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> "$GITHUB_ENV"
+
+      - name: Download verified R6 payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r6payload
+          curl --fail --location --retry 3 \
+            'https://drive.usercontent.google.com/download?id=1KpxN8Oe-rPOyvNY5ZLYV9UjpPVsL1BMv&export=download&confirm=t' \
+            -o /tmp/r6payload/overlay-r6.tar.xz
+          curl --fail --location --retry 3 \
+            'https://drive.usercontent.google.com/download?id=1dqbzHDo41wa-BdW5aFc2IY5Gh0-9XYUJ&export=download&confirm=t' \
+            -o /tmp/r6payload/libMobileGLPZDefault.so.xz
+          curl --fail --location --retry 3 \
+            'https://drive.usercontent.google.com/download?id=11Mfu01NvT6Xt4tfGuVykQomDJ1qIn30r&export=download&confirm=t' \
+            -o /tmp/r6payload/libPZPathFindB4220.so.xz
+          cd /tmp/r6payload
+          echo '547d506869b214158adb5c41684d84177ed348b5e8a5c3d9ecee573a84418586  overlay-r6.tar.xz' | sha256sum -c -
+          echo '2acd8b5694779762263adfeb33efff9e8529203fbf7c38b991878fb6d373c622  libMobileGLPZDefault.so.xz' | sha256sum -c -
+          echo '983f4eba4a1c5bd964981858c223b743177b71dbeadf9cc3ef804b09f44e44d6  libPZPathFindB4220.so.xz' | sha256sum -c -
+
+      - name: Apply exact R6 compile overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app/src/main/java/com/zomdroid
+          rm -rf app/src/main/res/values app/src/main/res/values-in
+          rm -rf tools
+          rm -rf optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent
+          tar -xJf /tmp/r6payload/overlay-r6.tar.xz -C .
+          xz -dc /tmp/r6payload/libMobileGLPZDefault.so.xz > app/src/main/jniLibs/arm64-v8a/libMobileGLPZDefault.so
+          xz -dc /tmp/r6payload/libPZPathFindB4220.so.xz > app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so
+          chmod 0644 app/src/main/jniLibs/arm64-v8a/libMobileGLPZDefault.so
+          chmod 0644 app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so
+          chmod +x gradlew tools/*.sh
+          grep -F 'versionCode = 14747' app/build.gradle.kts
+          grep -F '1.4.7v4-optlab-r6-cp1-qa-mgl12-side' app/build.gradle.kts
+          echo 'f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a  app/src/main/jniLibs/arm64-v8a/libMobileGLPZDefault.so' | sha256sum -c -
+          echo 'a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc  app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so' | sha256sum -c -
+
+      - name: Prepare agent and run R6 QA gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./tools/build-optlab-agent.sh
+          ./tools/test-optlab-agent-source.sh
+          ./tools/test-pathfinding-native-payload.sh
+          ./tools/test-native-modules-source.sh
+          ./tools/test-native-modules-preferences.sh
+          ./tools/test-native-modules-ui-source.sh
+          ./tools/test-mobilegl-default-payload.sh
+          ./tools/test-cp1-proof-validator.sh
+
+      - name: Build R6 SideBySide debug APK
+        shell: bash
+        run: ./gradlew :app:assembleSideBySideDebug --stacktrace --no-daemon
+
+      - name: Show APK and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app/build/outputs/apk -type f -name '*.apk' -print
+          find app/build/outputs/apk -type f -name '*.apk' -exec sha256sum {} \;
+
+      - name: Upload R6 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZomDroid-R6-CP1-QA-MobileGL12-SideBySide-Debug
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
