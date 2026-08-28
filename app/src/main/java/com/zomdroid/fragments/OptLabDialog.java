@@ -5,6 +5,7 @@ import android.graphics.Typeface;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -14,10 +15,18 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
 
 import com.zomdroid.OptLabPreferences;
+import com.zomdroid.NativeModulesPreferences;
 import com.zomdroid.R;
 
 /** Compact runtime-built UI so every lab switch lives in one restart-scoped panel. */
 public final class OptLabDialog {
+    private static final OptLabPreferences.Profile[] GENERAL_PROFILES = {
+            OptLabPreferences.Profile.BASELINE,
+            OptLabPreferences.Profile.RUNTIME_SAFE,
+            OptLabPreferences.Profile.ALL_TEST_ON,
+            OptLabPreferences.Profile.CUSTOM
+    };
+
     private OptLabDialog() {}
 
     public static void show(Context context, Runnable onClosed) {
@@ -34,49 +43,40 @@ public final class OptLabDialog {
         content.addView(intro);
 
         addLabel(content, context, context.getString(R.string.opt_lab_profile));
-        Spinner profile = spinner(context, OptLabPreferences.Profile.values(), prefs.getProfile());
+        Spinner profile = spinner(context, GENERAL_PROFILES, generalProfile(prefs.getProfile()));
         content.addView(profile);
 
         SwitchCompat master = toggle(context, context.getString(R.string.opt_lab_master),
                 prefs.isMasterEnabled());
         content.addView(master);
 
+        addSection(content, context, context.getString(R.string.native_modules_section));
+        Button nativeModulesButton = new Button(context);
+        nativeModulesButton.setText(R.string.native_modules_open);
+        content.addView(nativeModulesButton);
+        TextView nativeModulesSummary = text(context,
+                NativeModulesPreferences.from(context).summary(), false);
+        nativeModulesSummary.setPadding(0, dp(context, 2), 0, dp(context, 8));
+        content.addView(nativeModulesSummary);
+
+        addSection(content, context, context.getString(R.string.opt_lab_build42_section));
+        Button build42Button = new Button(context);
+        build42Button.setText(R.string.opt_lab_build42_open);
+        content.addView(build42Button);
+        TextView build42Summary = text(context, prefs.build42Summary(), false);
+        build42Summary.setPadding(0, dp(context, 2), 0, dp(context, 8));
+        content.addView(build42Summary);
+
         addSection(content, context, context.getString(R.string.opt_lab_runtime_section));
         SwitchCompat quiet = toggle(context, context.getString(R.string.opt_lab_quiet),
                 prefs.isQuietRuntime());
         SwitchCompat buffered = toggle(context, context.getString(R.string.opt_lab_buffered_stdio),
                 prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
-        SwitchCompat pacing = toggle(context, context.getString(R.string.opt_lab_pacing),
-                prefs.isMainloopPacing());
         SwitchCompat sqlite = toggle(context, context.getString(R.string.opt_lab_sqlite),
                 prefs.isSqliteAndroidNative());
         content.addView(quiet);
         content.addView(buffered);
-        content.addView(pacing);
         content.addView(sqlite);
-
-        addSection(content, context, context.getString(R.string.opt_lab_stream_section));
-        SwitchCompat streamWake = toggle(context, context.getString(R.string.opt_lab_stream_wake),
-                prefs.isStreamWake());
-        SwitchCompat streamQueue = toggle(context, context.getString(R.string.opt_lab_stream_queue),
-                prefs.isStreamQueueFast());
-        SwitchCompat streamEta = toggle(context, context.getString(R.string.opt_lab_stream_eta),
-                prefs.isStreamVelocityEta());
-        content.addView(streamWake);
-        content.addView(streamQueue);
-        content.addView(streamEta);
-
-        addSection(content, context, context.getString(R.string.opt_lab_fbo_section));
-        SwitchCompat fboDedup = toggle(context, context.getString(R.string.opt_lab_fbo_dedup),
-                prefs.isFboDirtyDedup());
-        SwitchCompat fboBudget = toggle(context, context.getString(R.string.opt_lab_fbo_budget),
-                prefs.isFboFrameBudget());
-        SwitchCompat coordinator = toggle(context,
-                context.getString(R.string.opt_lab_stream_fbo_coordinator),
-                prefs.isStreamFboCoordinator());
-        content.addView(fboDedup);
-        content.addView(fboBudget);
-        content.addView(coordinator);
 
         addLabel(content, context, context.getString(R.string.opt_lab_box64));
         Spinner box64 = spinner(context, OptLabPreferences.Box64Policy.values(),
@@ -111,7 +111,7 @@ public final class OptLabDialog {
         final boolean[] suppressProfileCallback = {false};
         Runnable sync = () -> {
             OptLabPreferences now = OptLabPreferences.from(context);
-            int effectiveProfile = now.getProfile().ordinal();
+            int effectiveProfile = indexOf(GENERAL_PROFILES, generalProfile(now.getProfile()));
             if (profile.getSelectedItemPosition() != effectiveProfile) {
                 suppressProfileCallback[0] = true;
                 profile.setSelection(effectiveProfile, false);
@@ -119,14 +119,9 @@ public final class OptLabDialog {
             master.setChecked(now.isMasterEnabled());
             quiet.setChecked(now.isQuietRuntime());
             buffered.setChecked(now.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
-            pacing.setChecked(now.isMainloopPacing());
             sqlite.setChecked(now.isSqliteAndroidNative());
-            streamWake.setChecked(now.isStreamWake());
-            streamQueue.setChecked(now.isStreamQueueFast());
-            streamEta.setChecked(now.isStreamVelocityEta());
-            fboDedup.setChecked(now.isFboDirtyDedup());
-            fboBudget.setChecked(now.isFboFrameBudget());
-            coordinator.setChecked(now.isStreamFboCoordinator());
+            nativeModulesSummary.setText(NativeModulesPreferences.from(context).summary());
+            build42Summary.setText(now.build42Summary());
             box64.setSelection(now.getBox64Policy().ordinal());
             surface.setChecked(now.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
             refresh.setChecked(now.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
@@ -137,14 +132,7 @@ public final class OptLabDialog {
             boolean enabled = now.isMasterEnabled();
             quiet.setEnabled(enabled);
             buffered.setEnabled(enabled);
-            pacing.setEnabled(enabled);
             sqlite.setEnabled(enabled);
-            streamWake.setEnabled(enabled);
-            streamQueue.setEnabled(enabled);
-            streamEta.setEnabled(enabled);
-            fboDedup.setEnabled(enabled);
-            fboBudget.setEnabled(enabled);
-            coordinator.setEnabled(enabled);
             box64.setEnabled(enabled);
             surface.setEnabled(enabled);
             refresh.setEnabled(enabled);
@@ -156,7 +144,7 @@ public final class OptLabDialog {
 
         final boolean[] firstProfileCallback = {true};
         Runnable showCustomProfile = () -> {
-            int custom = OptLabPreferences.Profile.CUSTOM.ordinal();
+            int custom = indexOf(GENERAL_PROFILES, OptLabPreferences.Profile.CUSTOM);
             if (profile.getSelectedItemPosition() != custom) {
                 suppressProfileCallback[0] = true;
                 profile.setSelection(custom, false);
@@ -193,33 +181,16 @@ public final class OptLabDialog {
                 showCustomProfile.run();
             }
         });
-        pacing.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setMainloopPacing(checked); showCustomProfile.run(); }
-        });
         sqlite.setOnCheckedChangeListener((v, checked) -> {
             if (!updating[0]) { prefs.setSqliteAndroidNative(checked); showCustomProfile.run(); }
         });
-        streamWake.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setStreamWake(checked); showCustomProfile.run(); }
-        });
-        streamQueue.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setStreamQueueFast(checked); showCustomProfile.run(); }
-        });
-        streamEta.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setStreamVelocityEta(checked); showCustomProfile.run(); }
-        });
-        fboDedup.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setFboDirtyDedup(checked); showCustomProfile.run(); }
-        });
-        fboBudget.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) { prefs.setFboFrameBudget(checked); showCustomProfile.run(); }
-        });
-        coordinator.setOnCheckedChangeListener((v, checked) -> {
-            if (!updating[0]) {
-                prefs.setStreamFboCoordinator(checked);
-                showCustomProfile.run();
-            }
-        });
+        nativeModulesButton.setOnClickListener(v -> NativeModulesDialog.show(context, () ->
+                nativeModulesSummary.setText(NativeModulesPreferences.from(context).summary())));
+        build42Button.setOnClickListener(v -> Build42OptLabDialog.show(context, () -> {
+            updating[0] = true;
+            sync.run();
+            updating[0] = false;
+        }));
         box64.setOnItemSelectedListener(enumListener(updating,
                 value -> prefs.setBox64Policy((OptLabPreferences.Box64Policy) value),
                 showCustomProfile));
@@ -294,6 +265,24 @@ public final class OptLabDialog {
         spinner.setSelection(adapter.getPosition(selected));
         spinner.setPadding(0, 0, 0, dp(context, 8));
         return spinner;
+    }
+
+    private static OptLabPreferences.Profile generalProfile(OptLabPreferences.Profile profile) {
+        switch (profile) {
+            case STREAM_ALL:
+            case FBO_ALL:
+            case FULL_CANDIDATE:
+                return OptLabPreferences.Profile.CUSTOM;
+            default:
+                return profile;
+        }
+    }
+
+    private static <T> int indexOf(T[] values, T selected) {
+        for (int index = 0; index < values.length; index++) {
+            if (values[index].equals(selected)) return index;
+        }
+        return 0;
     }
 
     private static SwitchCompat toggle(Context context, String label, boolean checked) {

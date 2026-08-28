@@ -482,7 +482,7 @@
     <string name="mod_fix_group_double_path">Double path fix</string>
     <string name="mod_fix_double_path_hint">Fix for Build 41/42 mods with path errors on Android. Known mods: Tsar\'s Common Library (ID: 3402491515), Simple Flashlight on Belt (ID: 3394588830).</string>
     <string name="mod_fix_help_title">What is this fix?</string>
-    <string name="mod_fix_help_message">Some mods expose an Android path conflict while the game loads scripts: an already-absolute mod path can be prefixed again and lowercased.\n\nThe launcher now installs one copy with the original names. At runtime, it repairs only affected absolute paths when the real file can be verified under this instance\'s Zomboid/mods folder. Relative and vanilla paths are left unchanged.\n\nTo use: download the mod and load it here.</string>
+    <string name="mod_fix_help_message">Some mods use a folder structure that causes a path conflict on Android. The game ends up looking for files in a doubled path and cannot find them.\n\nThis fix installs the mod twice — once with the original folder names, and once with all names in lowercase — so the game finds the files regardless of which path it uses.\n\nKnown affected mods:\n• Tsar\'s Common Library — ID: 3402491515\n• [B42] Simple Flashlight on Belt — ID: 3394588830\n\nTo use: download the mod and load it here.</string>
 
     <!-- CPU/GPU autodetect -->
     <string name="preset_dialog_gpu_hint_qualcomm">\u2705 Snapdragon (Adreno) detected. For Build 42, ZINK works best on your device \u2014 it has been selected automatically. For best results, also pick a Freedreno/Turnip driver in Settings. NG_GL4ES is available as an alternative, but it uses noticeably more memory.</string>
@@ -509,7 +509,7 @@
     <string name="install_mod_smart_group">Smart Import</string>
     <string name="install_mod_smart_hint">Automatically finds the mod folder inside the ZIP, even if wrapped in extra folders (e.g. from Skymods). Applies fixes for mods with scripts or models.</string>
     <string name="install_mod_smart_help_title">Smart Import</string>
-    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFiles are installed once with their original names. A narrow runtime resolver handles affected absolute mod-script paths.</string>
+    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFor mods with scripts/ or models_X/ folders, a lowercase copy is also installed automatically to fix Android path issues.</string>
     <string name="install_mod_smart_install">Import</string>
     <string name="install_mod_smart_title">Smart import…</string>
     <string name="install_mod_smart_done">Mod imported successfully</string>
@@ -602,7 +602,26 @@
     <string name="opt_lab_intro" translatable="false">Un singur APK, cu baseline și mecanisme independente. Valorile se aplică la următoarea pornire completă a jocului; linia [ZD-OPT-LAB] confirmă configurația efectivă.</string>
     <string name="opt_lab_profile" translatable="false">Profil</string>
     <string name="opt_lab_master" translatable="false">Master switch OPT-LAB</string>
+    <string name="native_modules_section" translatable="false">Module native ARM64</string>
+    <string name="native_modules_open" translatable="false">Deschide Native Modules</string>
+    <string name="native_modules_title" translatable="false">Native Modules</string>
+    <string name="native_modules_intro" translatable="false">Fiecare modul controlează implementarea folosită la următoarea pornire a jocului. OFF păstrează fallback-ul original.</string>
+    <string name="native_modules_lighting" translatable="false">Lighting64 Native</string>
+    <string name="native_modules_clipper" translatable="false">PZClipper Native</string>
+    <string name="native_modules_pathfinding" translatable="false">Pathfinding Native</string>
+    <string name="native_modules_popman" translatable="false">PopMan Native</string>
+    <string name="native_modules_popman_unavailable" translatable="false">PopMan Native: experimental, numai Build 42.20 / 42.20.3; implicit OFF și cu fallback sigur</string>
+    <string name="native_modules_restart" translatable="false">Restart game required. Pentru test A/B schimbă un singur modul între două porniri complete.</string>
     <string name="opt_lab_runtime_section" translatable="false">Runtime / JVM</string>
+    <string name="opt_lab_build42_section" translatable="false">Build 42</string>
+    <string name="opt_lab_build42_open" translatable="false">Deschide modulele Build 42</string>
+    <string name="opt_lab_build42_title" translatable="false">OPT-LAB · Build 42</string>
+    <string name="opt_lab_build42_intro" translatable="false">Pacing, Stream Core și FBO sunt izolate aici. Fiecare mecanism are verificare proprie; un target incompatibil revine la codul original fără să oprească restul OPT-LAB.</string>
+    <string name="opt_lab_only_build42" translatable="false">Only Build 42 (recomandat: ON)</string>
+    <string name="opt_lab_build42_master_off" translatable="false">Master OPT-LAB este OFF. Activează-l din fereastra principală.</string>
+    <string name="opt_lab_build42_presets" translatable="false">Preseturi Build 42</string>
+    <string name="opt_lab_runtime_b42_section" translatable="false">MAIN LOOP · BUILD 42</string>
+    <string name="opt_lab_build42_restart_warning" translatable="false">Restart game required. VERIFIED = hash cunoscut; PROBE = verificare structurală; COMPATIBLE = proba a trecut; UNSUPPORTED = doar acel mecanism rămâne pe codul original.</string>
     <string name="opt_lab_quiet" translatable="false">O1 · Quiet runtime (fără debug forțat)</string>
     <string name="opt_lab_buffered_stdio" translatable="false">O3 · Logger buffered / bounded</string>
     <string name="opt_lab_pacing" translatable="false">O2 · Main-loop park + spin (experimental)</string>
@@ -623,5 +642,5 @@
     <string name="opt_lab_analog" translatable="false">Input · suprimă axe neschimbate</string>
     <string name="opt_lab_coalesce" translatable="false">Input · coalescing cursor / axe</string>
     <string name="opt_lab_mgl_log" translatable="false">Păstrează fișierul de log MobileGL</string>
-    <string name="opt_lab_restart_warning" translatable="false">Fiecare mecanism nou este independent; preset-urile STREAM ALL, FBO ALL și FULL CANDIDATE le combină fără build-uri separate. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
+    <string name="opt_lab_restart_warning" translatable="false">Preseturile Pacing/Stream/FBO sunt disponibile numai în fereastra Build 42. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
 </resources>

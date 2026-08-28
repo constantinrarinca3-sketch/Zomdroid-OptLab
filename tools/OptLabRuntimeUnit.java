@@ -1,5 +1,5 @@
 import com.zomdroid.agent.optimization.FboRuntime;
-import com.zomdroid.agent.optimization.ModPathRuntime;
+import com.zomdroid.agent.optimization.PathfindingRuntime;
 import com.zomdroid.agent.optimization.StreamCoreRuntime;
 import zombie.characters.IsoPlayer;
 import zombie.iso.IsoChunk;
@@ -7,21 +7,32 @@ import zombie.iso.IsoWorld;
 import zombie.iso.fboRenderChunk.FBORenderChunk;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
+import java.nio.file.Files;
 import java.util.Stack;
 
 /** Host unit checks for the pure/fail-open parts of the optimization runtime. */
 public final class OptLabRuntimeUnit {
     public static void main(String[] args) throws Exception {
         testStableLinearSelection();
+        testQueueFallback();
         testWakeSignal();
         testDirtyDedup();
         testFboBudget();
-        testModPathResolver();
+        testFboFallback();
+        testPathfindingProofAndFallback();
         System.out.println("RUNTIME_UNIT PASS");
+    }
+
+    private static void testQueueFallback() {
+        StreamCoreRuntime.configure(false, true, false);
+        StreamCoreRuntime.disableQueueShape(0);
+        Stack<Integer> values = new Stack<>();
+        values.addAll(Arrays.asList(4, 1, 3, 2));
+        StreamCoreRuntime.sortForStreamer(values,
+                (left, right) -> ((Integer) left).compareTo((Integer) right));
+        require(values.equals(Arrays.asList(1, 2, 3, 4)),
+                "disabled queue patch must execute Collections.sort exactly");
     }
 
     private static void testStableLinearSelection() {
@@ -96,72 +107,37 @@ public final class OptLabRuntimeUnit {
         require(decide(manager, deferred, far), "max two deferrals must force admission");
     }
 
-    private static void testModPathResolver() throws Exception {
-        Path temp = Files.createTempDirectory("zomdroid-modpath-unit-");
-        try {
-            Path modsRoot = temp.resolve("Project Zomboid 40.20.3/Zomboid/mods");
-            Path real = modsRoot.resolve(
-                    "AutoTsarTrailers/42.17/media/scripts/vehicles/templates/"
-                            + "template_Earthing.txt");
-            Files.createDirectories(real.getParent());
-            Files.write(real, "unit-ok".getBytes(StandardCharsets.UTF_8));
-
-            // A stale shadow entry must not win over the one authoritative live mod.
-            Path shadow = modsRoot.resolve(
-                    "data/user/0/com.zomdroid.mglpz2/files/instances/"
-                            + "project zomboid 40.20.3/zomboid/mods/autotsartrailers/42.17/"
-                            + "media/scripts/vehicles/templates/template_earthing.txt");
-            Files.createDirectories(shadow.getParent());
-            Files.write(shadow, "stale-shadow".getBytes(StandardCharsets.UTF_8));
-
-            System.setProperty("zomdroid.modpath.fix", "1");
-            System.setProperty("zomdroid.modpath.root", modsRoot.toString());
-            ModPathRuntime.configureFromProperties();
-
-            String repaired = ModPathRuntime.normalize(shadow.toString());
-            require(new File(repaired).getCanonicalFile().equals(real.toFile().getCanonicalFile()),
-                    "duplicated lowercase Android path must resolve to the real cased mod file");
-            require(ModPathRuntime.normalize(real.toString()).equals(real.toString()),
-                    "existing real mod path must remain unchanged");
-            String lowercasedAbsolute = modsRoot.toString().toLowerCase(java.util.Locale.ROOT)
-                    + "/autotsartrailers/42.17/media/scripts/vehicles/templates/"
-                    + "template_earthing.txt";
-            require(new File(ModPathRuntime.normalize(lowercasedAbsolute)).getCanonicalFile()
-                            .equals(real.toFile().getCanonicalFile()),
-                    "lowercased absolute path must restore casing from the live filesystem");
-            require(ModPathRuntime.normalize("media/scripts/relative.txt")
-                            .equals("media/scripts/relative.txt"),
-                    "relative paths must remain unchanged");
-            String traversal = modsRoot.resolve("../outside.txt").toString();
-            require(ModPathRuntime.normalize(traversal).equals(traversal),
-                    "paths that escape the mods root must remain unchanged");
-
-            Path customRoot = temp.resolve("Instanta Mea B42 Experimental/Zomboid/mods");
-            Path customReal = customRoot.resolve(
-                    "73Winnebago/42/media/scripts/vehicles/73Winnebago.txt");
-            Files.createDirectories(customReal.getParent());
-            Files.write(customReal, "custom-instance-ok".getBytes(StandardCharsets.UTF_8));
-            String customBroken = customRoot + "/data/user/0/com.zomdroid.mglpz2/files/"
-                    + "instances/orice alt nume/zomboid/mods/73winnebago/42/media/scripts/"
-                    + "vehicles/73winnebago.txt";
-            System.setProperty("zomdroid.modpath.root", customRoot.toString());
-            ModPathRuntime.configureFromProperties();
-            require(new File(ModPathRuntime.normalize(customBroken)).getCanonicalFile()
-                            .equals(customReal.toFile().getCanonicalFile()),
-                    "resolver must not depend on a fixed game-instance name");
-        } finally {
-            ModPathRuntime.disable();
-            deleteTree(temp.toFile());
-        }
+    private static void testFboFallback() {
+        FboRuntime.configure(true, true, true);
+        FboRuntime.disableBudgetShape(0);
+        require(FboRuntime.allowDirty(true, new Object(), new Object(), 0, 1.0f),
+                "disabled FBO governor must preserve the original dirty=true result");
+        FboRuntime.disableDirtyDedup();
+        require(!FboRuntime.shouldSkipSetDirty(new Object(), 1L),
+                "disabled dirty dedup must execute the original method");
     }
 
-    private static void deleteTree(File file) {
-        if (file == null || !file.exists()) return;
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteTree(child);
-        }
-        if (!file.delete()) file.deleteOnExit();
+    private static void testPathfindingProofAndFallback() throws Exception {
+        File proof = File.createTempFile("zomdroid-pathfinding-proof", ".log");
+        File home = Files.createTempDirectory("zomdroid-pathfinding-home").toFile();
+        System.setProperty("zomdroid.optlab.proof.path", proof.getAbsolutePath());
+        System.setProperty("zomdroid.optlab.session", "pathfinding-unit");
+        System.setProperty("zomdroid.native.pathfinding.requested", "1");
+        System.setProperty("zomdroid.native.pathfinding.active", "1");
+        System.setProperty("user.home", home.getAbsolutePath());
+        com.zomdroid.agent.optimization.ProofRuntime.configureFromProperties();
+        PathfindingRuntime.configureFromProperties();
+        PathfindingRuntime.exercised();
+        Throwable suppressed = PathfindingRuntime.fallback(new UnsatisfiedLinkError("unit"));
+        require(suppressed == null, "native request failure must fail open");
+        require(new File(home, PathfindingRuntime.FALLBACK_MARKER).isFile(),
+                "runtime failure must leave a restart marker");
+        String log = new String(Files.readAllBytes(proof.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+        require(log.contains("mechanism=pathfinding_native_exercised state=exercised"),
+                "successful request must produce EXERCISED proof");
+        require(log.contains("mechanism=pathfinding_native_fallback state=fallback"),
+                "failed request must produce FALLBACK proof");
     }
 
     private static boolean decide(MockManager manager, FBORenderChunk renderChunk,

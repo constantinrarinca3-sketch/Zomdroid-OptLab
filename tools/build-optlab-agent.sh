@@ -17,9 +17,11 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
   -cp "$WORK_DIR/zomdroid-agent.jar" \
   -d "$WORK_DIR/classes" \
   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/Main.java" \
+  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PacingRuntime.java" \
+  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PathfindingRuntime.java" \
+  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PopManRuntime.java" \
   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java" \
-  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ModPathRuntime.java" \
   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java" \
   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java"
 
@@ -45,4 +47,8 @@ mv "$WORK_DIR/jars.tar" "$BUNDLE_PATH"
 unzip -tq "$WORK_DIR/zomdroid-agent.jar"
 unzip -p "$WORK_DIR/zomdroid-agent.jar" META-INF/MANIFEST.MF \
   | grep -q '^Premain-Class: com.zomdroid.agent.Main'
+unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
+  | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
+unzip -p "$WORK_DIR/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
+  | grep -aFq '[ZD-OPT-LAB-AGENT] version=8 schema=7 loaded'
 sha256sum "$WORK_DIR/zomdroid-agent.jar" "$BUNDLE_PATH"

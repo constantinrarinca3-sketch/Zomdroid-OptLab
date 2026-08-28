@@ -1,12 +1,15 @@
-name: Build ZomDroid OptLab APK
+name: ZomDroid R8 Native Build
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+
+  push:
+    branches:
+      - r8-native-final-cp2-02
 
 jobs:
   build:
+    name: Build ARM64 APK
     runs-on: ubuntu-latest
 
     steps:
@@ -19,33 +22,58 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
           cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK 35 and NDK r27d
+      - name: Install SDK NDK and CMake
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
+          yes | sdkmanager --licenses || true
+
           sdkmanager \
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "ndk;27.3.13750724" \
             "cmake;3.22.1"
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+      - name: Permissions
+        run: |
+          chmod +x gradlew
+          find tools -type f -name "*.sh" -exec chmod +x {} \;
 
-      - name: Build side-by-side debug APK
-        run: ./gradlew :app:assembleSideBySideDebug --stacktrace
+      - name: Gradle info
+        run: |
+          ./gradlew --version
 
-      - name: Show produced APKs
-        run: find app/build/outputs -type f -name '*.apk' -print
+      - name: Prepare OPT LAB
+        run: |
+          ./tools/build-optlab-agent.sh
 
-      - name: Upload APK artifact
+      - name: Test OPT LAB sources
+        run: |
+          ./tools/test-optlab-agent-source.sh
+          ./tools/test-pathfinding-native-payload.sh
+          ./tools/test-popman-native-source.sh
+          ./tools/test-native-modules-source.sh
+          ./tools/test-native-modules-preferences.sh
+          ./tools/test-native-modules-ui-source.sh
+          ./tools/test-mobilegl-default-payload.sh
+          ./tools/test-cp1-proof-validator.sh
+
+      - name: Build ZomDroid APK
+        run: |
+          ./gradlew :app:assembleSideBySideDebug --stacktrace --no-daemon
+
+      - name: Show generated APK
+        if: always()
+        run: |
+          find app/build/outputs -type f -name "*.apk" -print || true
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ZomDroid-OptLab-MGLPZ2-APK
-          path: app/build/outputs/apk/**/*.apk
+          name: ZomDroid-R8-Native-ARM64
+          path: app/build/outputs/**/*.apk
           if-no-files-found: error

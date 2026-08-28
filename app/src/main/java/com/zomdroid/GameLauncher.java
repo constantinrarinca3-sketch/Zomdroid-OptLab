@@ -23,12 +23,13 @@ public class GameLauncher {
     public static void launch(GameInstance gameInstance, Context context) throws ErrnoException {
 
         OptLabPreferences optLab = OptLabPreferences.from(context);
+        NativeModulesPreferences nativeModules = NativeModulesPreferences.from(context);
         String home = AppStorage.requireSingleton().getHomePath();
         LauncherPreferences.Renderer selectedRenderer =
                 LauncherPreferences.requireSingleton().getRenderer();
 
         // Preserve a real custom renderer, otherwise install/upgrade to the audited MobileGL
-        // OPT-LAB V3 022 binary packaged in this APK.
+        // PZCompat V1.2 present-fastpath ThinLTO binary packaged in this APK.
         com.zomdroid.patch.MobileGlDefaultRendererManager.Result mobileGlRenderer =
                 com.zomdroid.patch.MobileGlDefaultRendererManager.ensureAvailable(
                         selectedRenderer == LauncherPreferences.Renderer.MOBILEGL_PZCOMPAT);
@@ -52,18 +53,24 @@ public class GameLauncher {
         // disabled Lighting below. Restore the exact audited payloads before the generic native
         // workarounds run. MobileGL on the target device requires this path.
         com.zomdroid.patch.LightingArm64AbManager.InstallResult arm64Native =
-                com.zomdroid.patch.LightingArm64AbManager.installRequired(gameInstance);
+                com.zomdroid.patch.LightingArm64AbManager.installRequired(
+                        gameInstance, nativeModules);
+        com.zomdroid.patch.PathfindingNativeManager.Result pathfindingNative =
+                com.zomdroid.patch.PathfindingNativeManager.apply(gameInstance, nativeModules);
         // Select safe native implementations after the class-level patches are known to be ready.
         com.zomdroid.patch.NativeLibraryWorkarounds.disableIncompleteNativeLibraries(gameInstance);
+        com.zomdroid.patch.PopManNativeManager.Result popManNative =
+                com.zomdroid.patch.PopManNativeManager.apply(gameInstance, nativeModules);
         if (selectedRenderer == LauncherPreferences.Renderer.MOBILEGL_PZCOMPAT
                 && (!mobileGlRenderer.ready || !arm64Native.isComplete())) {
             throw new IllegalStateException("MOBILEGL_PZCOMPAT preflight failed; "
                     + mobileGlRenderer.machineReadable() + " " + arm64Native.machineReadable());
         }
-        // Build 42.12+'s ARM64 PathFind implementation is under test after reports of characters
-        // choosing incorrect interaction routes. Use PZ's own Java fallback without affecting
-        // Build 41 or the older pre-fat-jar Build 42 releases.
-        com.zomdroid.patch.PathfindingWorkaround.forceJavaPathfinderFor4212Plus(gameInstance);
+        // Re-apply the 42.13 case workaround against where this instance lives right now. The mod
+        // aliases and the doubled path spell out an absolute location, so they go stale when an
+        // instance is renamed or copied; this also reaches mods installed before any of it existed,
+        // and sweeps the instance-level aliases b39a80a briefly shipped.
+        com.zomdroid.patch.LowercasePathAliases.repair(gameInstance);
 
 /*        // for debug
         Os.setenv("MESA_DEBUG", "1", false);
@@ -175,18 +182,32 @@ public class GameLauncher {
             case MOBILEGL_PZCOMPAT: {
                 // Restore the exact working P1 ownership model: MobileGL owns both EGL and GL,
                 // while DirectGLES talks to the system Adreno driver.  Start 022 on its exercised
-                // control set; the user's environment field is applied later and can replace it.
+                // V1.2 recommended control set; the user's environment field is applied later
+                // and can replace every value below.
+                String mobileGlHome = AppStorage.requireSingleton().getHomePath();
                 Os.setenv("MOBILEGL_BACKEND_TYPE", "DirectGLES", false);
                 Os.setenv("MOBILEGL_RELAXED_SEMANTICS", "1", false);
-                Os.setenv("MOBILEGL_PZ_OPT_SET", "019,020,021A,021B,021D", false);
+                Os.setenv("MOBILEGL_PZ_PRESENT_FASTPATH", "1", false);
+                Os.setenv("MOBILEGL_PZ_OPT_SET", "002,003", false);
+                // Override the binary's package-specific fallback paths so both install flavors
+                // use their own sandbox and never try to write into another application package.
+                Os.setenv("MOBILEGL_PZ_FILES_DIR", mobileGlHome, false);
+                Os.setenv("MOBILEGL_PZ_OPT_FILE", mobileGlHome + "/mglpz-opt-set.txt", false);
+                Os.setenv("MOBILEGL_PZ_PROOF_FILE", mobileGlHome + "/mglpz-opt-proof.log", false);
+                Os.setenv("MOBILEGL_PZ_ETC2_CACHE_DIR",
+                        mobileGlHome + "/mglpz-etc2-cache-v1", false);
+                Os.setenv("MOBILEGL_PZ_PROGRAM_CACHE_DIR",
+                        mobileGlHome + "/mglpz-program-cache-v1", false);
+                Os.setenv("MOBILEGL_PZ_SHADER_SOURCE_CACHE_DIR",
+                        mobileGlHome + "/mglpz-essl-cache-v1", false);
                 Os.setenv("MOBILEGL_LOG_FILE_PATH", optLab.isMobileGlFileLogEnabled()
                                 ? AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log"
                                 : "/dev/null",
                         true);
                 Os.setenv("ZOMDROID_GLES_MAJOR", "3", false);
                 Os.setenv("ZOMDROID_GLES_MINOR", "2", false);
-                Log.i("MGLPZ_GATE", "MobileGL 022 selected: DirectGLES, GLES 3.2, "
-                        + "OPT_SET=019,020,021A,021B,021D");
+                Log.i("MGLPZ_GATE", "MobileGL PZCompat V1.2 selected: DirectGLES, "
+                        + "GLES 3.2, PRESENT_FASTPATH=1, OPT_SET=002,003");
                 break;
             }
             default: {
@@ -242,28 +263,19 @@ public class GameLauncher {
         jvmArgs.add("-Dzomdroid.renderer=" + LauncherPreferences.requireSingleton().getRenderer().name());
 
         String pzJarSha = sha256(new File(gameInstance.getGamePath(), "projectzomboid.jar"));
-        boolean pzJarGate = OptLabPreferences.EXPECTED_PZ_JAR_SHA256.equals(pzJarSha);
+        OptLabFeatureRegistry.Snapshot compatibility = OptLabFeatureRegistry.evaluate(
+                gameInstance, optLab, nativeModules, pzJarSha, arm64Native.lightingActive,
+                arm64Native.clipperActive, pathfindingNative.active, popManNative.active);
+        compatibility.log();
         String optLabSession = System.currentTimeMillis() + "-" + android.os.Process.myPid();
         File optProofFile = new File(home, "opt-proof.log");
-        prepareOptProof(optProofFile, optLabSession, optLab.machineReadable());
-        jvmArgs.add("-Dzomdroid.optlab.jar.sha256=" + pzJarSha);
-        jvmArgs.add("-Dzomdroid.optlab.jar.gate=" + (pzJarGate ? "1" : "0"));
+        prepareOptProof(optProofFile, optLabSession, optLab.machineReadable(), compatibility,
+                pathfindingNative, popManNative);
+        compatibility.addAgentIdentityProperties(jvmArgs);
+        pathfindingNative.addAgentProperties(jvmArgs);
+        popManNative.addAgentProperties(jvmArgs);
         jvmArgs.add("-Dzomdroid.optlab.session=" + optLabSession);
         jvmArgs.add("-Dzomdroid.optlab.proof.path=" + optProofFile.getAbsolutePath());
-
-        // Correctness policy, independent from the experimental OPT-LAB master switch. PZ can
-        // feed IndieFileLoader an already-absolute mod-script path after prefixing mods/ again and
-        // lowercasing it. The internal agent receives the one authoritative, casing-preserving
-        // root and only rewrites a path when the real target can be proven to exist below it.
-        File modsRoot = new File(gameInstance.getHomePath(), "Zomboid/mods");
-        jvmArgs.add("-Dzomdroid.modpath.fix=1");
-        jvmArgs.add("-Dzomdroid.modpath.root=" + modsRoot.getAbsolutePath());
-        jvmArgs.add("-Dnet.bytebuddy.experimental=true");
-        if (new File(modsRoot, "data").exists()) {
-            Log.w("ZD-MODPATH", "legacy shadow tree is still present; remove mods/data "
-                    + "before the acceptance test");
-        }
-
         jvmArgs.add("-Dzomdroid.optlab.pacing=" + boolArg(optLab.isMainloopPacing()));
         jvmArgs.add("-Dzomdroid.optlab.stream.wake=" + boolArg(optLab.isStreamWake()));
         jvmArgs.add("-Dzomdroid.optlab.stream.queue.fast="
@@ -283,9 +295,20 @@ public class GameLauncher {
             jvmArgs.add("-Dzomdroid.optlab.pacing.spin.us=150");
             jvmArgs.add("-Dzomdroid.optlab.pacing.max.park.us=500");
         }
-        if (optLab.isAnyAgentOptimizationEnabled() && !pzJarGate) {
-            Log.w("ZD-OPT-LAB", "agent optimizations blocked by PZ JAR identity gate: "
-                    + pzJarSha);
+        boolean agentWorkRequested = optLab.isAnyAgentOptimizationEnabled()
+                || pathfindingNative.active || popManNative.active;
+        if (agentWorkRequested) {
+            jvmArgs.add("-Dnet.bytebuddy.experimental=true");
+        }
+        if (agentWorkRequested && !compatibility.isBuild42()) {
+            if (compatibility.isOnlyBuild42()) {
+                Log.w("ZD-OPT-LAB", "Build 42 agent features blocked for build family "
+                        + gameInstance.getBuildVersion() + " by Only Build 42 policy");
+            } else {
+                Log.w("ZD-OPT-LAB", "Cross-family agent probes requested for build family "
+                        + gameInstance.getBuildVersion()
+                        + "; each mechanism must pass its own structural gate");
+            }
         }
 
         if (optLab.isSqliteAndroidNative()) {
@@ -365,14 +388,16 @@ public class GameLauncher {
         Log.i("ZD-OPT-LAB", "[ZD-OPT-LAB] pkg=" + BuildConfig.APPLICATION_ID
                 + " version=" + BuildConfig.VERSION_NAME
                 + " " + optLab.machineReadable()
-                + " pzJarSha256=" + pzJarSha
-                + " pzJarGate=" + (pzJarGate ? 1 : 0)
+                + " " + nativeModules.machineReadable()
+                + " " + compatibility.identityMachineReadable()
                 + " optProofSession=" + optLabSession
                 + " optProofPath=" + optProofFile.getAbsolutePath()
                 + " rendererPath=" + rendererFile.getAbsolutePath()
                 + " rendererBytes=" + (rendererFile.isFile() ? rendererFile.length() : -1)
                 + " rendererSha256=" + sha256(rendererFile)
                 + " " + arm64Native.machineReadable()
+                + " " + pathfindingNative.machineReadable()
+                + " " + popManNative.machineReadable()
                 + " box64Strongmem=" + envOrUnset("BOX64_DYNAREC_STRONGMEM")
                 + " box64Bigblock=" + envOrUnset("BOX64_DYNAREC_BIGBLOCK"));
         //Log.d("zomdroid-main", ldLibraryPath);
@@ -389,7 +414,12 @@ public class GameLauncher {
         return value ? "1" : "0";
     }
 
-    private static void prepareOptProof(File file, String session, String settings) {
+    private static void prepareOptProof(File file, String session, String settings,
+                                        OptLabFeatureRegistry.Snapshot compatibility,
+                                        com.zomdroid.patch.PathfindingNativeManager.Result
+                                                pathfindingNative,
+                                        com.zomdroid.patch.PopManNativeManager.Result
+                                                popManNative) {
         try {
             File parent = file.getParentFile();
             if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
@@ -400,6 +430,11 @@ public class GameLauncher {
                     + settings.replace(' ', '_') + "\n";
             try (FileOutputStream output = new FileOutputStream(file, false)) {
                 output.write(header.getBytes(StandardCharsets.UTF_8));
+                output.write(compatibility.proofLines(session).getBytes(StandardCharsets.UTF_8));
+                output.write(pathfindingNative.proofLines(session)
+                        .getBytes(StandardCharsets.UTF_8));
+                output.write(popManNative.proofLines(session)
+                        .getBytes(StandardCharsets.UTF_8));
                 output.getFD().sync();
             }
         } catch (Throwable error) {

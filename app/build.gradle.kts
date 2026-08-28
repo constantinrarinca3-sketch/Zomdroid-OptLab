@@ -18,6 +18,24 @@ val hasSigningConfig = listOf(
     "RELEASE_KEY_PASSWORD"
 ).all { localProperties[it] != null }
 
+val prepareOptLabAgentBundle by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Rebuilds and verifies the OPT-LAB Java agent bundled in jars.tar"
+    workingDir = rootProject.projectDir
+    commandLine("bash", rootProject.file("tools/build-optlab-agent.sh").absolutePath)
+
+    inputs.file(rootProject.file("tools/build-optlab-agent.sh"))
+    inputs.files(fileTree(rootProject.file(
+        "optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/" +
+                "zomdroid-agent/src/main/java"
+    )) { include("**/*.java") })
+    outputs.file(file("src/main/assets/bundles/jars.tar"))
+
+    // The committed bundle is an input seed as well as the output. Always rebuilding keeps a
+    // direct Gradle/Android Studio build from packaging a stale agent after source handoff.
+    outputs.upToDateWhen { false }
+}
+
 android {
     namespace = "com.zomdroid"
     compileSdk = 35
@@ -49,9 +67,9 @@ android {
         applicationId = "com.zomdroid.mglpz2"
         minSdk = 30
         targetSdk = 35
-        versionCode = 14745
-        versionName = "1.4.7v5-optlab-r3-stream-fbo-pack-modpath-fix-side"
-        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK"
+        versionCode = 14750
+        versionName = "1.4.7v4-optlab-r8-native-final-side"
+        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R8 Native Final"
 
         // JavaSteam + protobuf + kotlin stack push past the 64K method limit.
         multiDexEnabled = true
@@ -76,16 +94,16 @@ android {
         create("sideBySide") {
             dimension = "installMode"
             applicationId = "com.zomdroid.mglpz2"
-            versionCode = 14745
-            versionName = "1.4.7v5-optlab-r3-stream-fbo-pack-modpath-fix-side"
-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK"
+            versionCode = 14750
+            versionName = "1.4.7v4-optlab-r8-native-final-side"
+            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R8 Native Final"
         }
         create("replaceR1") {
             dimension = "installMode"
             applicationId = "com.zomdroid.mglpz1"
-            versionCode = 14745
-            versionName = "1.4.7v5-optlab-r3-stream-fbo-pack-modpath-fix-replace"
-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK Replace"
+            versionCode = 14750
+            versionName = "1.4.7v4-optlab-r8-native-final-replace"
+            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R8 Native Final Replace"
         }
     }
 
@@ -135,6 +153,9 @@ android {
             keepDebugSymbols += setOf(
                 "**/libLightingLegacy64.so",
                 "**/libPZClipperLegacy64.so",
+                "**/libPZPathFindB4220.so",
+                "**/libPZPopManB4220.so",
+                "**/libPZPopManSaveCellBridge.so",
                 "**/libMobileGLPZDefault.so"
             )
         }
@@ -177,4 +198,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+}
+
+tasks.named("preBuild") {
+    dependsOn(prepareOptLabAgentBundle)
 }

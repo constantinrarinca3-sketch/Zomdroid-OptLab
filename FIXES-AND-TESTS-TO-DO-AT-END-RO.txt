@@ -1,0 +1,52 @@
+ZOMDROID OPT-LAB — FIXES ȘI TESTE OBLIGATORII LA FINAL
+Data: 2026-08-28
+
+Acest fișier este lista de închidere. Niciun element de mai jos nu este declarat
+DONE înainte de implementare și verificare.
+
+FIXURI MICI PĂSTRATE PENTRU FINAL
+================================
+
+[x] CP1 Final Fix: al doilea gate din Main.java permite acum explicit
+    pathfindingProofRequested și popManProofRequested.
+
+[x] UI: secțiunea Build 42 este imediat sub Native Modules și înainte de
+    Runtime / JVM în dialogul OPT-LAB.
+
+[x] Testele și sumarul curent descriu PopMan ca toggle real, implicit OFF.
+    Fișierele checkpoint istorice CP1/CP2-01 rămân neschimbate intenționat.
+
+[x] CP2-02 source/static: reconstruiește complet n_saveCell și elimină bridge-ul
+    incomplet din staging. Device test rămâne separat și nebifat mai jos.
+
+TESTE PATHFINDING LA FINAL
+=========================
+
+[x] Premain regression host: Pathfinding ON, Stream/FBO/Pacing/PopMan toate OFF;
+    transformerul este înregistrat exact o dată.
+[ ] Device: zombi urmăresc jucătorul, ocolesc obstacole, folosesc uși/scări,
+    interior/exterior și hoardă.
+[ ] Proof: AVAILABLE + ACTIVE + EXERCISED, fără FALLBACK.
+
+TESTE POPMAN LA FINAL
+=====================
+
+[x] Preflight source/static 42.20: clasă Java + payload ARM64 auditate.
+[x] Preflight source/static 42.20.3: clasă Java + payload ARM64 auditate.
+[ ] PopMan OFF: fallback x86_64 funcțional.
+[ ] PopMan ON: payload ARM64 și bridge încărcate.
+[ ] Spawn / despawn / migrare / virtualizare.
+[ ] Celule noi și revenire în celule vechi.
+[ ] Salvare, ieșire completă și reîncărcare repetată.
+[ ] Fără zombi lipsă, duplicați sau populație resetată.
+[ ] Zonă densă și gameplay lung.
+[ ] Proof: AVAILABLE + ACTIVE + EXERCISED; test separat pentru FALLBACK.
+[ ] Benchmark OFF vs ON, cu același save și același traseu.
+
+DOCUMENTAȚIE ȘI LIVRARE
+=======================
+
+[x] Actualizează master summary cu rezultatul source/static real CP2-02.
+[x] Marchează separat SOURCE/HOST TEST și DEVICE TEST.
+[x] Toate testele host/statice au fost rulate după reconstruirea agentului v8.
+[x] Livrează arhiva sursă finală și SHA-256.

@@ -458,7 +458,7 @@
     <string name="install_mod_smart_group">Impor Cerdas</string>
     <string name="install_mod_smart_hint">Secara otomatis menemukan folder mod di dalam ZIP, bahkan jika dibungkus dalam folder tambahan (misalnya dari Skymods). Menerapkan perbaikan untuk mod dengan skrip atau model.</string>
     <string name="install_mod_smart_help_title">Impor Cerdas</string>
-    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFiles are installed once with their original names. A narrow runtime resolver handles affected absolute mod-script paths.</string>
+    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFor mods with scripts/ or models_X/ folders, a lowercase copy is also installed automatically to fix Android path issues.</string>
     <string name="install_mod_smart_install">Impor</string>
     <string name="install_mod_smart_title">Impor cerdas…</string>
     <string name="install_mod_smart_done">Mod berhasil diimpor</string>

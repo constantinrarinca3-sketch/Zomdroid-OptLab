@@ -1,14 +1,43 @@
-## [1.4.7v5] - 2026-08-27
+## [1.4.7v4-optlab-r8] - 2026-08-28
 
-### Fixed
+### Native final source QA
 
-- Added a fail-open runtime resolver for duplicated/lowercased absolute mod-script paths.
-- Preserved real on-disk casing and supported arbitrary game-instance names.
-- Removed automatic lowercase `mods/data/...` shadow-tree generation from mod imports.
-- Rebuilt the bundled ZomDroid javaagent and added host unit plus javaagent smoke tests.
-- Kept relative/vanilla paths unchanged and retained the exact Project Zomboid JAR identity gate.
+- Fixed the second agent gate so Pathfinding-only and PopMan-only configurations install
+  their transformers even when every Pacing/Stream/FBO feature is disabled.
+- Added a real `premain` Pathfinding-only regression using an Instrumentation proxy.
+- Moved the Build 42 section directly below Native Modules in the OPT-LAB dialog.
+- Rebuilt the bundled agent as version 8 / proof schema 7 with PopManRuntime included.
+- Updated stale Native Modules tests for the real opt-in PopMan toggle and added strict
+  PopMan payload/bridge/JAR source gates.
+- Re-ran the complete host/static suite, including both real 42.20 and 42.20.3 JARs.
+- Kept all Android/device gameplay, save/reload and benchmark validation explicitly pending.
 
----
+## [1.4.7v4-optlab-r6] - 2026-08-28
+
+### CP1 Final QA + MobileGL PZCompat V1.2
+
+- Replaced the packaged MobileGL default with the exact V1.2 present-fastpath ThinLTO
+  ARM64 payload and added SHA/ELF/SONAME/Build-ID/export/security gates.
+- Added automatic upgrade from both known older packaged defaults while preserving unknown
+  custom renderers and invalid renderer backups.
+- Applied V1.2's recommended `PRESENT_FASTPATH=1` and `OPT_SET=002,003`; proof and cache paths
+  now resolve inside the current application sandbox for both install flavors.
+- Added host compilation/tests for Native Modules preferences, UI wiring, feature registry,
+  MobileGL installation, distinct backup preservation and CP1 device-proof validation.
+- Aligned CI with NDK r27d and made all CP1/MobileGL gates mandatory before Gradle.
+
+## [1.4.7v4-optlab-r5] - 2026-08-28
+
+### CP1 — Pathfinding Native + Native Modules
+
+- Added a separate Native Modules window with persistent Lighting64, PZClipper and
+  Pathfinding switches; PopMan is visible but unavailable until CP2.
+- Added the official Build 42 ARM64 Pathfinding payload with exact SHA-256, ELF,
+  JNI-export and three-class ABI gates for Project Zomboid 42.20 and 42.20.3.
+- Pathfinding remains opt-in and falls open to the original Java PolygonalMap2 route.
+- OptLab agent version 6 / proof schema 5 records native Pathfinding EXERCISED and
+  runtime FALLBACK evidence.
+- Kept CP4's automatic agent rebuild and Build 42 per-feature compatibility delivery fixes.
 
 ## [1.4.3] - 2026-07-05
 

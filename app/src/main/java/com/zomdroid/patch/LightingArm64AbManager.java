@@ -5,6 +5,7 @@ import android.system.OsConstants;
 import android.util.Log;
 
 import com.zomdroid.AppStorage;
+import com.zomdroid.NativeModulesPreferences;
 import com.zomdroid.game.GameInstance;
 
 import java.io.File;
@@ -57,14 +58,19 @@ public final class LightingArm64AbManager {
 
     public static final class InstallResult {
         public final boolean applicable;
+        public final boolean lightingRequested;
+        public final boolean clipperRequested;
         public final boolean lightingActive;
         public final boolean clipperActive;
         public final String lightingSha256;
         public final String clipperSha256;
 
-        private InstallResult(boolean applicable, boolean lightingActive, boolean clipperActive,
+        private InstallResult(boolean applicable, boolean lightingRequested,
+                              boolean clipperRequested, boolean lightingActive, boolean clipperActive,
                               String lightingSha256, String clipperSha256) {
             this.applicable = applicable;
+            this.lightingRequested = lightingRequested;
+            this.clipperRequested = clipperRequested;
             this.lightingActive = lightingActive;
             this.clipperActive = clipperActive;
             this.lightingSha256 = lightingSha256;
@@ -72,38 +78,67 @@ public final class LightingArm64AbManager {
         }
 
         public boolean isComplete() {
-            return !applicable || (lightingActive && clipperActive);
+            return !applicable
+                    || ((!lightingRequested || lightingActive)
+                    && (!clipperRequested || clipperActive));
         }
 
         public String machineReadable() {
             return "arm64NativeApplicable=" + bit(applicable)
+                    + " arm64LightingRequested=" + bit(lightingRequested)
                     + " arm64Lighting=" + bit(lightingActive)
                     + " arm64LightingSha256=" + lightingSha256
+                    + " arm64PzClipperRequested=" + bit(clipperRequested)
                     + " arm64PzClipper=" + bit(clipperActive)
                     + " arm64PzClipperSha256=" + clipperSha256;
         }
     }
 
     /** Installs the exact AB3 Lighting and PZClipper path for Build 42. */
-    public static InstallResult installRequired(GameInstance gameInstance) {
+    public static InstallResult installRequired(GameInstance gameInstance,
+                                                NativeModulesPreferences preferences) {
         if (!"42".equals(gameInstance.getBuildVersion())) {
-            return new InstallResult(false, false, false, "NOT_APPLICABLE", "NOT_APPLICABLE");
+            return new InstallResult(false, false, false, false, false,
+                    "NOT_APPLICABLE", "NOT_APPLICABLE");
         }
 
         File nativeDirectory = nativeDirectory(gameInstance);
-        boolean lightingActive = installLighting(nativeDirectory);
-        boolean clipperActive = installClipper(nativeDirectory);
+        boolean lightingRequested = preferences.isLighting64Enabled();
+        boolean clipperRequested = preferences.isPzClipperEnabled();
+        boolean lightingActive = lightingRequested
+                ? installLighting(nativeDirectory)
+                : disableForUser(nativeDirectory, LIGHTING_ACTIVE_NAME,
+                        LIGHTING_MARKER_NAME, LIGHT_LOG_TAG);
+        boolean clipperActive = clipperRequested
+                ? installClipper(nativeDirectory)
+                : disableForUser(nativeDirectory, CLIPPER_ACTIVE_NAME,
+                        CLIPPER_MARKER_NAME, CLIPPER_LOG_TAG);
         File lighting = new File(nativeDirectory, LIGHTING_ACTIVE_NAME);
         File clipper = new File(nativeDirectory, CLIPPER_ACTIVE_NAME);
         String lightingHash = hashOrState(lighting);
         String clipperHash = hashOrState(clipper);
 
-        InstallResult result = new InstallResult(true, lightingActive, clipperActive,
-                lightingHash, clipperHash);
+        InstallResult result = new InstallResult(true, lightingRequested, clipperRequested,
+                lightingActive, clipperActive, lightingHash, clipperHash);
         Log.i("ZD-ARM64-NATIVE", result.machineReadable()
                 + " lightingPath=" + lighting.getAbsolutePath()
                 + " clipperPath=" + clipper.getAbsolutePath());
         return result;
+    }
+
+    private static boolean disableForUser(File nativeDirectory, String activeName,
+                                          String markerName, String logTag) {
+        File active = new File(nativeDirectory, activeName);
+        File marker = new File(nativeDirectory, markerName);
+        try {
+            File disabled = DistinctFileBackup.preserve(active, ".zomdroid-user-disabled");
+            deleteMarker(marker, logTag);
+            Log.i(logTag, "INACTIVE: disabled by Native Modules setting; fallback selected; "
+                    + "backup=" + (disabled == null ? "NONE" : disabled.getName()));
+        } catch (IOException error) {
+            Log.e(logTag, "Could not disable native module", error);
+        }
+        return false;
     }
 
     /** True only when the active Lighting library is the packaged R2 shim. */
@@ -240,14 +275,10 @@ public final class LightingArm64AbManager {
     }
 
     private static void preserveForeignActive(File active) throws IOException {
-        File backup = new File(active.getParentFile(), active.getName() + ".zomdroid-arm64-original");
-        if (backup.isFile()) {
-            if (!active.delete()) throw new IOException("cannot remove foreign " + active);
-            return;
-        }
-        moveReplacing(active, backup);
-        Log.w("ZD-ARM64-NATIVE", "Preserved foreign " + active.getName()
-                + " as " + backup.getName());
+        String activeName = active.getName();
+        File backup = DistinctFileBackup.preserve(active, ".zomdroid-arm64-original");
+        Log.w("ZD-ARM64-NATIVE", "Preserved foreign " + activeName
+                + " as " + (backup == null ? "NONE" : backup.getName()));
     }
 
     private static void copyVerified(File source, File target, String expectedSha256)
