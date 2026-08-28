@@ -13,7 +13,7 @@ import androidx.annotation.NonNull;
  * launcher settings.
  */
 public final class OptLabPreferences {
-    public static final int SCHEMA = 3;
+    public static final int SCHEMA = 4;
     public static final String EXPECTED_PZ_JAR_SHA256 =
             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
     public static final String EXPECTED_MAIN_THREAD_SHA256 =
@@ -42,6 +42,7 @@ public final class OptLabPreferences {
     private static final String K_FBO_DIRTY_DEDUP = "fbo_dirty_dedup";
     private static final String K_FBO_FRAME_BUDGET = "fbo_frame_budget";
     private static final String K_STREAM_FBO_COORDINATOR = "stream_fbo_coordinator";
+    private static final String K_ONLY_BUILD42 = "only_build_42";
 
     public enum Profile {
         BASELINE("ALL OFF / legacy"),
@@ -153,6 +154,9 @@ public final class OptLabPreferences {
     }
     public boolean isStreamFboCoordinator() {
         return isMasterEnabled() && prefs.getBoolean(K_STREAM_FBO_COORDINATOR, false);
+    }
+    public boolean isOnlyBuild42() {
+        return prefs.getBoolean(K_ONLY_BUILD42, true);
     }
     public boolean isAnyAgentOptimizationEnabled() {
         return isMainloopPacing() || isStreamWake() || isStreamQueueFast()
@@ -289,6 +293,18 @@ public final class OptLabPreferences {
     public void setStreamFboCoordinator(boolean value) {
         editCustom(K_STREAM_FBO_COORDINATOR, value);
     }
+    public void setOnlyBuild42(boolean value) {
+        commit(prefs.edit().putBoolean(K_ONLY_BUILD42, value));
+    }
+
+    public String build42Summary() {
+        return "Only Build 42=" + (isOnlyBuild42() ? "ON" : "OFF")
+                + " · pacing=" + bool(isMainloopPacing())
+                + " stream=" + bool(isStreamWake() || isStreamQueueFast()
+                        || isStreamVelocityEta())
+                + " fbo=" + bool(isFboDirtyDedup() || isFboFrameBudget())
+                + " coordinator=" + bool(isStreamFboCoordinator());
+    }
 
     public String summary() {
         if (!isMasterEnabled()) return "ALL OFF / legacy";
@@ -322,7 +338,8 @@ public final class OptLabPreferences {
                 + " streamVelocityEta=" + bool(isStreamVelocityEta())
                 + " fboDirtyDedup=" + bool(isFboDirtyDedup())
                 + " fboFrameBudget=" + bool(isFboFrameBudget())
-                + " streamFboCoordinator=" + bool(isStreamFboCoordinator());
+                + " streamFboCoordinator=" + bool(isStreamFboCoordinator())
+                + " onlyBuild42=" + bool(isOnlyBuild42());
     }
 
     private static void setIsolatedPack(SharedPreferences.Editor editor,

@@ -54,7 +54,22 @@ public final class FboRuntime {
     public static void disableBudgetShape(int replacements) {
         frameBudgetEnabled = false;
         coordinatorEnabled = false;
-        ProofRuntime.state("FBO_FRAME_BUDGET", "BLOCKED_SHAPE", "dirty_gate_replacements=" + replacements);
+        FeatureCompatibility.fallback("FBO_FRAME_BUDGET",
+                "dirty_gate_replacements=" + replacements);
+        FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR",
+                "dirty_gate_replacements=" + replacements);
+    }
+
+    public static void disableDirtyDedup() {
+        dirtyDedupEnabled = false;
+    }
+
+    public static void disableFrameBudget() {
+        frameBudgetEnabled = false;
+    }
+
+    public static void disableCoordinator() {
+        coordinatorEnabled = false;
     }
 
     public static boolean allowDirty(boolean dirty, Object manager, Object chunk, int level, float zoom) {
@@ -105,7 +120,10 @@ public final class FboRuntime {
         } catch (Throwable error) {
             frameBudgetEnabled = false;
             coordinatorEnabled = false;
-            ProofRuntime.state("FBO_FRAME_BUDGET", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
+            FeatureCompatibility.fallback("FBO_FRAME_BUDGET",
+                    "runtime=" + error.getClass().getSimpleName());
+            FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR",
+                    "runtime=" + error.getClass().getSimpleName());
             return dirty;
         }
     }
@@ -126,7 +144,8 @@ public final class FboRuntime {
             return true;
         } catch (Throwable error) {
             dirtyDedupEnabled = false;
-            ProofRuntime.state("FBO_DIRTY_DEDUP", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
+            FeatureCompatibility.fallback("FBO_DIRTY_DEDUP",
+                    "runtime=" + error.getClass().getSimpleName());
             return false;
         }
     }

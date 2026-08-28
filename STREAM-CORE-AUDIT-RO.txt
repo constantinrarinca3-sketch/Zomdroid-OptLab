@@ -1,0 +1,84 @@
+ZomDroid R3 — AUDIT STREAM CORE
+Data UTC: 2026-08-28
+Scop: audit static pentru Checkpoint 4; fără benchmark inventat și fără test pe dispozitiv.
+
+CONCLUZIE SCURTĂ
+Stream Core este fail-open și mecanismele sunt separate corect, dar nu este o soluție completă
+pentru stutter-ul simțit în mersul pe jos. El optimizează trezirea workerului, alegerea următorului
+job și prioritatea de streaming. Nu bugetează direct commit-urile Java de chunk/grid executate pe
+main thread. Din acest motiv poate reduce unele spike-uri, dar nu poate garanta frame pacing plat.
+
+S1 — STREAM_WAKE
+Verdict static: BUN / RECOMANDABIL PENTRU A/B.
+
+- înlocuiește cele patru Thread.sleep(J)V auditate cu un park ce poate fi trezit prin unpark;
+- păstrează semantica InterruptedException;
+- dacă forma metodei nu mai are exact patru sleep-uri, S1 se dezactivează singur;
+- după dezactivare, wrapperul cheamă Thread.sleep original;
+- o eroare S1 nu dezactivează S2, S3, FBO sau restul OPT-LAB.
+
+Limită:
+- parkNanos poate reveni spurios, deci workerul poate face o iterație mai devreme; aceasta nu
+  corupe date și nu blochează jocul, dar trebuie confirmată energetic/termic pe dispozitiv.
+
+S2 — STREAM_QUEUE_FAST
+Verdict static: CORECT PENTRU CONTRACTUL AUDITAT, DAR NECESITĂ A/B PE FIECARE BUILD NOU.
+
+- selectează în O(n) același element maxim pe care sortarea stabilă urmată de pop l-ar alege;
+- egalitățile păstrează regula „ultimul maxim câștigă”;
+- Stack-ul este modificat sub același monitor;
+- dacă nu este Stack, are sub două elemente sau mecanismul este dezactivat, rulează
+  Collections.sort original;
+- proba structurală cere exact două apeluri Collections.sort în threadLoop; alt număr produce
+  fallback numai pentru S2.
+
+Limită importantă:
+- optimizarea nu sortează întreaga coadă rămasă. Este echivalentă numai cât timp rezultatul
+  observabil al locului auditat este alegerea următorului maxim. Hash-ul exact rămâne VERIFIED;
+  pentru un SHA B42 nou starea începe PROBE și trebuie confirmată prin telemetry/A-B.
+
+S3 — STREAM_VELOCITY_ETA
+Verdict static: EXPERIMENTAL; ȚINE-L OFF ÎN BASELINE ȘI TESTEAZĂ-L SEPARAT.
+
+- calculează direcția din poziția curentă și ultima poziție;
+- deplasează centrul de prioritate cu minimum 10 tile-uri inclusiv la mersul pe jos;
+- peste pragul de viteză al vehiculului crește bounded până la 28 tile-uri;
+- reflection failure dezactivează numai S3 și revine la comparatorul original.
+
+Limită importantă:
+- dovada EXERCISED se emite numai când lookahead-ul trece de 10,01, de regulă în vehicul, deși
+  centrul este mutat și la mers. S3 nu explică și nu repară singur agățările la 60/75 FPS pe jos.
+
+COORDONATOR STREAM–FBO
+Verdict static: FAIL-OPEN / CONSERVATOR.
+
+- doar reduce temporar bugetul FBO non-critic când streamingul este urgent;
+- un FBO nou, fără textură sau nesubmis nu este amânat;
+- dirty rămâne adevărat la defer, iar fairness forțează admiterea după maximum două frame-uri;
+- dacă proba FBO sau WorldStreamer eșuează, coordonatorul singur revine OFF.
+
+CE S-A VERIFICAT PE HOST
+- FeatureCompatibilityUnit: exact B42, SHA B42 nou, policy Only Build 42, clasă lipsă,
+  cross-family explicit și izolarea erorilor — PASS;
+- OptLabRuntimeUnit: selecție stabilă, fallback Collections.sort, wake/unpark, dirty dedup,
+  FBO budget/fairness și fallback FBO — PASS;
+- compilare izolată a surselor agentului cu Java 17 — PASS.
+
+CE NU POATE FI DECLARAT ÎNCĂ
+- build Android: NOT RUN — USER WILL COMPILE;
+- comportament pe Project Zomboid real: DEVICE TEST PENDING;
+- benchmark OFF/ON: PENDING;
+- Checkpoint 4 PASS oficial: NU, până la compilare și test.
+
+CONFIGURAȚIE DE TEST RECOMANDATĂ
+1. Baseline: toate S1/S2/S3 OFF.
+2. S1 singur ON.
+3. S2 singur ON.
+4. S1+S2 ON.
+5. S3 separat, nu combinat la prima validare.
+
+Urmărește opt-proof.log:
+- VERIFIED sau PROBE înaintea transformării;
+- ACTIVE numai după trecerea tuturor probelor structurale;
+- EXERCISED când ruta chiar este apelată;
+- UNSUPPORTED + fallback=original_game_code la orice incompatibilitate.

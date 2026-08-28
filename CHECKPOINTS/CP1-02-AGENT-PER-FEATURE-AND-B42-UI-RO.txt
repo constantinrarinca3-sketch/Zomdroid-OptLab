@@ -1,0 +1,35 @@
+ZomDroid OptLab — CHECKPOINT PERSISTENT INTERN CP1-02
+Checkpoint oficial urmărit: CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
+Data UTC: 2026-08-28
+
+SCOP SALVAT
+- eliminarea gate-ului global pe SHA din agent;
+- decizie și fallback independente pentru fiecare mecanism;
+- SHA exact păstrat ca stare VERIFIED;
+- B42 cu SHA diferit intră în PROBE și devine COMPATIBLE numai după probele structurale;
+- lipsă clasă / formă incompatibilă / eroare transformare => doar mecanismul afectat revine la codul original;
+- politica Only Build 42, implicit ON; OFF permite numai probe structurale cross-family;
+- fereastră separată Build 42 pentru Pacing, Stream Core și FBO;
+- profilurile și master switch-ul existente rămân funcționale;
+- schema proof 4: DETECTED / VERIFIED / PROBE / ACTIVE / EXERCISED / UNSUPPORTED.
+
+VERIFICĂRI EXECUTATE
+- sursele agentului compilate izolat cu Java 17: PASS;
+- FeatureCompatibilityUnit: PASS;
+- OptLabRuntimeUnit (queue, wake, dirty dedup, FBO fairness): PASS;
+- patch cumulativ: trebuie verificat separat cu patch --dry-run;
+- compilarea Gradle Android nu a rulat: wrapperul local încearcă să descarce Gradle 8.13,
+  iar accesul de rețea este indisponibil în mediul curent. Utilizatorul va compila sursa.
+
+STARE CHECKPOINT 4 LA ACEST PUNCT
+IMPLEMENTATION: IN PROGRESS
+STATIC REVIEW: IN PROGRESS
+BUILD: NOT RUN — USER WILL COMPILE
+DEVICE TEST: PENDING
+OFFICIAL PASS: NO
+INTERNAL CHECKPOINT STATUS: RECOVERABLE WORK-IN-PROGRESS
+
+RECUPERARE
+Se pornește de la arhiva originală cu SHA256:
+1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
+și se aplică CP1-02-AGENT-PER-FEATURE-AND-B42-UI.patch cu patch -p1.

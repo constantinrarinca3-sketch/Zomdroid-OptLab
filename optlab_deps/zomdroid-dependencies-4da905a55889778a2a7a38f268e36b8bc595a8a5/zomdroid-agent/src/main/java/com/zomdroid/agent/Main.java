@@ -1,9 +1,10 @@
 package com.zomdroid.agent;
 
 import com.zomdroid.agent.decorators.ShaderUnit;
+import com.zomdroid.agent.optimization.FeatureCompatibility;
 import com.zomdroid.agent.optimization.FboRuntime;
-import com.zomdroid.agent.optimization.ModPathRuntime;
 import com.zomdroid.agent.optimization.PacingRuntime;
+import com.zomdroid.agent.optimization.PathfindingRuntime;
 import com.zomdroid.agent.optimization.ProofRuntime;
 import com.zomdroid.agent.optimization.StreamCoreRuntime;
 
@@ -19,18 +20,19 @@ import net.bytebuddy.dynamic.scaffold.TypeValidation;
 import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
+import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.JavaModule;
 
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
 import java.security.MessageDigest;
 
 import static net.bytebuddy.matcher.ElementMatchers.named;
-import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
+import static net.bytebuddy.matcher.ElementMatchers.returns;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 public final class Main {
-    private static final String PZ_JAR_SHA256 =
-            "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
     private static final String MAIN_THREAD_SHA256 =
             "c7ee1d1d3026185ad49cd80edbf9ddb6f59c0cd7faf2ced4ebbe50f2dada9c0f";
     private static final String GAME_WINDOW_SHA256 =
@@ -48,8 +50,9 @@ public final class Main {
 
     public static void premain(String args, Instrumentation instrumentation) {
         ProofRuntime.configureFromProperties();
-        ModPathRuntime.configureFromProperties();
-        System.out.println("[ZD-OPT-LAB-AGENT] version=5 schema=3 loaded");
+        FeatureCompatibility.configureFromProperties();
+        PathfindingRuntime.configureFromProperties();
+        System.out.println("[ZD-OPT-LAB-AGENT] version=6 schema=5 loaded");
 
         String renderer = System.getProperty("zomdroid.renderer", "");
         if ("GL4ES".equals(renderer)) installLegacyShaderPatch(instrumentation);
@@ -61,29 +64,13 @@ public final class Main {
         boolean dirtyDedupRequested = flag("zomdroid.optlab.fbo.dirty.dedup");
         boolean fboBudgetRequested = flag("zomdroid.optlab.fbo.frame.budget");
         boolean coordinatorRequested = flag("zomdroid.optlab.stream.fbo.coordinator");
-        boolean modPathRequested = flag("zomdroid.modpath.fix");
+        boolean pathfindingProofRequested = PathfindingRuntime.isProofEnabled();
         boolean anyRequested = pacingRequested || wakeRequested || queueRequested
                 || lookaheadRequested || dirtyDedupRequested || fboBudgetRequested
-                || coordinatorRequested || modPathRequested;
+                || coordinatorRequested || pathfindingProofRequested;
 
         if (!anyRequested) {
             ProofRuntime.state("PACK", "ALL_OFF", "no_transformers_installed");
-            return;
-        }
-
-        boolean jarGate = flag("zomdroid.optlab.jar.gate")
-                && PZ_JAR_SHA256.equals(
-                        System.getProperty("zomdroid.optlab.jar.sha256", "").trim());
-        if (!jarGate) {
-            blockRequested("PACING", pacingRequested, "jar_hash");
-            blockRequested("STREAM_WAKE", wakeRequested, "jar_hash");
-            blockRequested("STREAM_QUEUE_FAST", queueRequested, "jar_hash");
-            blockRequested("STREAM_VELOCITY_ETA", lookaheadRequested, "jar_hash");
-            blockRequested("FBO_DIRTY_DEDUP", dirtyDedupRequested, "jar_hash");
-            blockRequested("FBO_FRAME_BUDGET", fboBudgetRequested, "jar_hash");
-            blockRequested("STREAM_FBO_COORDINATOR", coordinatorRequested, "jar_hash");
-            blockRequested("MOD_PATH_RESOLVER", modPathRequested, "jar_hash");
-            ModPathRuntime.disable();
             return;
         }
 
@@ -95,131 +82,203 @@ public final class Main {
                 "zombie/iso/fboRenderChunk/FBORenderChunkManager.class");
         String fboNLevelsHash = resourceSha256(
                 "zombie/iso/fboRenderChunk/FBORenderLevels$NLevels.class");
-        String indieFileLoaderHash = resourceSha256("zombie/core/IndieFileLoader.class");
 
-        boolean pacing = pacingRequested
-                && MAIN_THREAD_SHA256.equals(mainThreadHash)
-                && GAME_WINDOW_SHA256.equals(gameWindowHash);
-        boolean worldClassOk = WORLD_STREAMER_SHA256.equals(worldHash);
-        boolean wake = wakeRequested && worldClassOk;
-        boolean queueFast = queueRequested && worldClassOk;
-        boolean lookahead = lookaheadRequested && WORLD_COMPARATOR_SHA256.equals(comparatorHash);
-        boolean dirtyDedup = dirtyDedupRequested && FBO_NLEVELS_SHA256.equals(fboNLevelsHash);
-        boolean fboBudget = fboBudgetRequested && FBO_MANAGER_SHA256.equals(fboManagerHash);
-        boolean coordinator = coordinatorRequested && fboBudget && worldClassOk;
-        boolean modPath = modPathRequested && ModPathRuntime.isReady()
-                && !"MISSING".equals(indieFileLoaderHash)
-                && !"ERROR".equals(indieFileLoaderHash);
+        FeatureCompatibility.Requirement mainThread = requirement(
+                "main_thread", MAIN_THREAD_SHA256, mainThreadHash);
+        FeatureCompatibility.Requirement gameWindow = requirement(
+                "game_window", GAME_WINDOW_SHA256, gameWindowHash);
+        FeatureCompatibility.Requirement worldStreamer = requirement(
+                "world_streamer", WORLD_STREAMER_SHA256, worldHash);
+        FeatureCompatibility.Requirement comparator = requirement(
+                "chunk_comparator", WORLD_COMPARATOR_SHA256, comparatorHash);
+        FeatureCompatibility.Requirement fboManager = requirement(
+                "fbo_manager", FBO_MANAGER_SHA256, fboManagerHash);
+        FeatureCompatibility.Requirement fboNLevels = requirement(
+                "fbo_nlevels", FBO_NLEVELS_SHA256, fboNLevelsHash);
 
-        classGate("PACING", pacingRequested, pacing,
-                "main=" + mainThreadHash + ",window=" + gameWindowHash);
-        classGate("STREAM_WAKE", wakeRequested, wake, "world=" + worldHash);
-        classGate("STREAM_QUEUE_FAST", queueRequested, queueFast, "world=" + worldHash);
-        classGate("STREAM_VELOCITY_ETA", lookaheadRequested, lookahead,
-                "comparator=" + comparatorHash);
-        classGate("FBO_DIRTY_DEDUP", dirtyDedupRequested, dirtyDedup,
-                "nlevels=" + fboNLevelsHash);
-        classGate("FBO_FRAME_BUDGET", fboBudgetRequested, fboBudget,
-                "manager=" + fboManagerHash);
-        if (!coordinatorRequested) {
-            ProofRuntime.state("STREAM_FBO_COORDINATOR", "OFF", "not_requested");
-        } else if (!fboBudgetRequested) {
-            ProofRuntime.state("STREAM_FBO_COORDINATOR", "BLOCKED_DEPENDENCY",
-                    "requires_fbo_frame_budget");
-        } else {
-            classGate("STREAM_FBO_COORDINATOR", true, coordinator,
-                    "world=" + worldHash + ",manager=" + fboManagerHash);
-        }
-        if (!modPathRequested) {
-            ProofRuntime.state("MOD_PATH_RESOLVER", "OFF", "not_requested");
-        } else if (!ModPathRuntime.isReady()) {
-            ProofRuntime.state("MOD_PATH_RESOLVER", "BLOCKED_CONFIG", "missing_mods_root");
-        } else {
-            classGate("MOD_PATH_RESOLVER", true, modPath,
-                    "jar_gate_pass,indie=" + indieFileLoaderHash);
-        }
-        if (!modPath) ModPathRuntime.disable();
+        final FeatureCompatibility.Decision pacing = FeatureCompatibility.evaluate(
+                "PACING", pacingRequested, 2, mainThread, gameWindow);
+        final FeatureCompatibility.Decision wake = FeatureCompatibility.evaluate(
+                "STREAM_WAKE", wakeRequested, 2, worldStreamer);
+        final FeatureCompatibility.Decision queueFast = FeatureCompatibility.evaluate(
+                "STREAM_QUEUE_FAST", queueRequested, 1, worldStreamer);
+        final FeatureCompatibility.Decision lookahead = FeatureCompatibility.evaluate(
+                "STREAM_VELOCITY_ETA", lookaheadRequested, 1, comparator);
+        final FeatureCompatibility.Decision dirtyDedup = FeatureCompatibility.evaluate(
+                "FBO_DIRTY_DEDUP", dirtyDedupRequested, 1, fboNLevels);
+        final FeatureCompatibility.Decision fboBudget = FeatureCompatibility.evaluate(
+                "FBO_FRAME_BUDGET", fboBudgetRequested, 1, fboManager);
+        final FeatureCompatibility.Decision coordinator = fboBudgetRequested
+                ? FeatureCompatibility.evaluate("STREAM_FBO_COORDINATOR",
+                        coordinatorRequested, 2, worldStreamer, fboManager)
+                : FeatureCompatibility.unsupported("STREAM_FBO_COORDINATOR",
+                        coordinatorRequested, "requires_fbo_frame_budget");
 
-        if (!(pacing || wake || queueFast || lookahead || dirtyDedup || fboBudget
-                || coordinator || modPath)) return;
+        if (!(pacing.isCandidate() || wake.isCandidate() || queueFast.isCandidate()
+                || lookahead.isCandidate() || dirtyDedup.isCandidate()
+                || fboBudget.isCandidate() || coordinator.isCandidate())) return;
 
         try {
-            if (pacing) PacingRuntime.configureFromProperties();
-            StreamCoreRuntime.configure(wake, queueFast, lookahead);
-            FboRuntime.configure(dirtyDedup, fboBudget, coordinator);
+            if (pacing.isCandidate()) PacingRuntime.configureFromProperties();
+            StreamCoreRuntime.configure(wake.isCandidate(), queueFast.isCandidate(),
+                    lookahead.isCandidate());
+            FboRuntime.configure(dirtyDedup.isCandidate(), fboBudget.isCandidate(),
+                    coordinator.isCandidate());
 
-            AgentBuilder builder = new AgentBuilder.Default().disableClassFormatChanges();
-            if (pacing) {
+            AgentBuilder builder = new AgentBuilder.Default()
+                    .disableClassFormatChanges()
+                    .with(new TransformFailureListener());
+            if (pacing.isCandidate()) {
                 builder = builder
                         .type(named("zombie.MainThread"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(new AsmVisitorWrapper.ForDeclaredMethods()
-                                        .method(named("mainLoop"), new YieldReplacement()))
-                                .visit(Advice.to(QueueInvokeAdvice.class)
-                                        .on(named("queueInvokeOnMainThread"))))
+                        .transform((target, type, loader, module, domain) -> {
+                            int mainLoops = methodCount(type, "mainLoop", "()V");
+                            int queueMethods = methodCount(type, "queueInvokeOnMainThread", null);
+                            if (mainLoops != 1 || queueMethods < 1) {
+                                PacingRuntime.disable();
+                                pacing.fallback("main_thread_shape mainLoop=" + mainLoops
+                                        + " queueInvoke=" + queueMethods);
+                                return target;
+                            }
+                            return target
+                                    .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
+                                            named("mainLoop").and(takesArguments(0))
+                                                    .and(returns(void.class)),
+                                            new YieldReplacement(pacing)))
+                                    .visit(Advice.to(QueueInvokeAdvice.class)
+                                            .on(named("queueInvokeOnMainThread")));
+                        })
                         .type(named("zombie.GameWindow"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(Advice.to(FrameStepAdvice.class).on(named("frameStep"))));
+                        .transform((target, type, loader, module, domain) -> {
+                            int frameSteps = methodCount(type, "frameStep", null);
+                            if (frameSteps != 1) {
+                                PacingRuntime.disable();
+                                pacing.fallback("game_window_shape frameStep=" + frameSteps);
+                                return target;
+                            }
+                            pacing.passPart("game_window_frame_step");
+                            return target.visit(Advice.to(FrameStepAdvice.class)
+                                    .on(named("frameStep")));
+                        });
             }
-            if (wake || queueFast || coordinator) {
-                final boolean installSignal = wake || coordinator;
+            if (wake.isCandidate() || queueFast.isCandidate() || coordinator.isCandidate()) {
                 builder = builder.type(named("zombie.iso.WorldStreamer"))
                         .transform((target, type, loader, module, domain) -> {
-                            if (wake || queueFast) {
+                            int loops = methodCount(type, "threadLoop", null);
+                            int signals = signalMethodCount(type);
+                            boolean applyWake = wake.isCandidate() && loops == 1 && signals > 0;
+                            boolean applyQueue = queueFast.isCandidate() && loops == 1;
+                            boolean applyCoordinator = coordinator.isCandidate() && signals > 0;
+                            if (wake.isCandidate() && !applyWake) {
+                                StreamCoreRuntime.disableWakeShape(-1);
+                                wake.fallback("world_streamer_shape threadLoop=" + loops
+                                        + " signals=" + signals);
+                            }
+                            if (queueFast.isCandidate() && !applyQueue) {
+                                StreamCoreRuntime.disableQueueShape(-1);
+                                queueFast.fallback("world_streamer_shape threadLoop=" + loops);
+                            }
+                            if (coordinator.isCandidate() && !applyCoordinator) {
+                                FboRuntime.disableCoordinator();
+                                coordinator.fallback("world_streamer_shape signals=" + signals);
+                            }
+                            if (applyWake || applyQueue) {
                                 target = target.visit(new AsmVisitorWrapper.ForDeclaredMethods()
                                         .method(named("threadLoop"),
-                                                new WorldStreamerLoopVisitor(wake, queueFast)));
+                                                new WorldStreamerLoopVisitor(applyWake, applyQueue,
+                                                        wake, queueFast)));
                             }
-                            if (installSignal) {
+                            if (applyWake || applyCoordinator) {
                                 target = target.visit(Advice.to(StreamSignalAdvice.class).on(
-                                        named("addJob").or(named("addJobInstant"))
-                                                .or(named("addJobConvert"))
-                                                .or(named("addJobWipe"))
-                                                .or(named("receiveChunkPart"))
-                                                .or(named("receiveNotRequired"))
-                                                .or(named("requestLargeAreaZip"))
-                                                .or(named("stop")).or(named("quit"))));
+                                        streamSignalMatcher()));
+                                if (applyWake) wake.passPart("world_streamer_signal");
+                                if (applyCoordinator) {
+                                    coordinator.passPart("world_streamer_signal");
+                                }
                             }
                             return target;
                         });
             }
-            if (lookahead) {
+            if (lookahead.isCandidate()) {
                 builder = builder.type(named("zombie.iso.WorldStreamer$ChunkComparator"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(Advice.to(StreamLookaheadAdvice.class).on(named("init"))));
+                        .transform((target, type, loader, module, domain) -> {
+                            int initMethods = methodCount(type, "init", null);
+                            if (initMethods != 1) {
+                                StreamCoreRuntime.disableLookahead();
+                                lookahead.fallback("chunk_comparator_shape init=" + initMethods);
+                                return target;
+                            }
+                            lookahead.passPart("chunk_comparator_init");
+                            return target.visit(Advice.to(StreamLookaheadAdvice.class)
+                                    .on(named("init")));
+                        });
             }
-            if (fboBudget) {
+            if (fboBudget.isCandidate() || coordinator.isCandidate()) {
                 builder = builder
                         .type(named("zombie.iso.fboRenderChunk.FBORenderChunkManager"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
-                                        named("beginRenderChunkLevel"), new FboDirtyGateVisitor())));
+                        .transform((target, type, loader, module, domain) -> {
+                            int beginMethods = methodCount(type, "beginRenderChunkLevel", null);
+                            if (beginMethods != 1) {
+                                FboRuntime.disableBudgetShape(-1);
+                                fboBudget.fallback("fbo_manager_shape beginRenderChunkLevel="
+                                        + beginMethods);
+                                coordinator.fallback("fbo_manager_shape beginRenderChunkLevel="
+                                        + beginMethods);
+                                return target;
+                            }
+                            return target.visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
+                                    named("beginRenderChunkLevel"),
+                                    new FboDirtyGateVisitor(fboBudget, coordinator)));
+                        });
             }
-            if (dirtyDedup) {
+            if (dirtyDedup.isCandidate()) {
                 builder = builder
                         .type(named("zombie.iso.fboRenderChunk.FBORenderLevels$NLevels"))
-                        .transform((target, type, loader, module, domain) -> target
+                        .transform((target, type, loader, module, domain) -> {
+                            int setDirty = methodCount(type, "setDirty", "(J)V");
+                            if (setDirty != 1) {
+                                FboRuntime.disableDirtyDedup();
+                                dirtyDedup.fallback("fbo_nlevels_shape setDirty_long=" + setDirty);
+                                return target;
+                            }
+                            dirtyDedup.passPart("fbo_nlevels_set_dirty");
+                            return target
                                 // Skip only a redundant dirty-bit OR. NLevels.invalidate() also
                                 // clears live cached-square lists, so skipping that outer method
                                 // would be observably unsafe even when the dirty bits match.
                                 .visit(Advice.to(FboSetDirtyAdvice.class)
-                                        .on(named("setDirty"))));
+                                        .on(named("setDirty").and(takesArguments(long.class))
+                                                .and(returns(void.class))));
+                        });
             }
-            if (modPath) {
+            if (pathfindingProofRequested) {
                 builder = builder
-                        .type(named("zombie.scripting.ScriptManager"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(Advice.to(ModPathArgumentAdvice.class).on(
-                                        named("LoadFile")
-                                                .and(takesArgument(0, String.class)))))
-                        .type(named("zombie.core.IndieFileLoader"))
-                        .transform((target, type, loader, module, domain) -> target
-                                .visit(Advice.to(ModPathArgumentAdvice.class).on(
-                                        named("getStreamReader")
-                                                .and(takesArgument(0, String.class))))
-                                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
-                                        named("getStreamReader"),
-                                        new ModPathStreamConstructorVisitor())));
+                        .type(named("zombie.pathfind.nativeCode.PathfindNative"))
+                        .transform((target, type, loader, module, domain) -> {
+                            int wrappers = methodCount(type, "findPath",
+                                    "(Lzombie/pathfind/nativeCode/PathFindRequest;"
+                                            + "Ljava/nio/ByteBuffer;Z)I");
+                            if (wrappers != 1) {
+                                ProofRuntime.state("PATHFINDING_NATIVE_FALLBACK", "FALLBACK",
+                                        "pathfind_wrapper_shape=" + wrappers);
+                                return target;
+                            }
+                            return target.visit(Advice.to(PathfindingRequestAdvice.class).on(
+                                    named("findPath").and(takesArguments(3))
+                                            .and(returns(int.class))));
+                        })
+                        .type(named("zombie.pathfind.nativeCode.PathfindNativeThread"))
+                        .transform((target, type, loader, module, domain) -> {
+                            int loops = methodCount(type, "runInner", "()V");
+                            if (loops != 1) {
+                                ProofRuntime.state("PATHFINDING_NATIVE_FALLBACK", "FALLBACK",
+                                        "pathfind_thread_shape=" + loops);
+                                return target;
+                            }
+                            return target.visit(Advice.to(PathfindingThreadAdvice.class).on(
+                                    named("runInner").and(takesArguments(0))
+                                            .and(returns(void.class))));
+                        });
             }
             builder.installOn(instrumentation);
             ProofRuntime.state("PACK", "ARMED", "transformers_installed");
@@ -227,7 +286,6 @@ public final class Main {
             PacingRuntime.disable();
             StreamCoreRuntime.configure(false, false, false);
             FboRuntime.configure(false, false, false);
-            ModPathRuntime.disable();
             ProofRuntime.state("PACK", "BLOCKED_INSTALL", error.getClass().getSimpleName());
             System.err.println("[ZD-OPT-LAB-AGENT] install failed: " + error);
             error.printStackTrace(System.err);
@@ -238,15 +296,42 @@ public final class Main {
         return "1".equals(System.getProperty(property, "0"));
     }
 
-    private static void classGate(String mechanism, boolean requested, boolean allowed,
-                                  String detail) {
-        if (!requested) ProofRuntime.state(mechanism, "OFF", "not_requested");
-        else if (allowed) ProofRuntime.state(mechanism, "ARMED", "class_gate_pass");
-        else ProofRuntime.state(mechanism, "BLOCKED_CLASS_HASH", detail);
+    private static FeatureCompatibility.Requirement requirement(
+            String label, String expectedSha256, String actualSha256) {
+        return new FeatureCompatibility.Requirement(label, expectedSha256, actualSha256);
     }
 
-    private static void blockRequested(String mechanism, boolean requested, String reason) {
-        if (requested) ProofRuntime.state(mechanism, "BLOCKED", reason);
+    private static int methodCount(TypeDescription type, String name, String descriptor) {
+        int count = 0;
+        for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
+            if (name.equals(method.getName())
+                    && (descriptor == null || descriptor.equals(method.getDescriptor()))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int signalMethodCount(TypeDescription type) {
+        int count = 0;
+        for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
+            String name = method.getName();
+            if ("addJob".equals(name) || "addJobInstant".equals(name)
+                    || "addJobConvert".equals(name) || "addJobWipe".equals(name)
+                    || "receiveChunkPart".equals(name) || "receiveNotRequired".equals(name)
+                    || "requestLargeAreaZip".equals(name) || "stop".equals(name)
+                    || "quit".equals(name)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static ElementMatcher.Junction<MethodDescription> streamSignalMatcher() {
+        return named("addJob").or(named("addJobInstant"))
+                .or(named("addJobConvert")).or(named("addJobWipe"))
+                .or(named("receiveChunkPart")).or(named("receiveNotRequired"))
+                .or(named("requestLargeAreaZip")).or(named("stop")).or(named("quit"));
     }
 
     private static void installLegacyShaderPatch(Instrumentation instrumentation) {
@@ -318,55 +403,34 @@ public final class Main {
         }
     }
 
-    public static final class ModPathArgumentAdvice {
-        @Advice.OnMethodEnter
-        public static void enter(
-                @Advice.Argument(value = 0, readOnly = false) String path) {
-            path = ModPathRuntime.normalize(path);
+    public static final class PathfindingRequestAdvice {
+        @Advice.OnMethodExit(onThrowable = Throwable.class)
+        public static void exit(@Advice.Return(readOnly = false) int result,
+                                @Advice.Thrown(readOnly = false) Throwable error) {
+            if (error == null) {
+                PathfindingRuntime.exercised();
+                return;
+            }
+            result = 0;
+            error = PathfindingRuntime.fallback(error);
         }
     }
 
-    /**
-     * Last-line protection at the actual Java file-open boundary. This covers the case where
-     * getStreamReader receives a valid path but constructs the duplicated path inside its body.
-     */
-    private static final class ModPathStreamConstructorVisitor
-            implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
-        @Override
-        public MethodVisitor wrap(TypeDescription instrumentedType,
-                                  MethodDescription instrumentedMethod,
-                                  MethodVisitor methodVisitor,
-                                  Implementation.Context implementationContext,
-                                  TypePool typePool, int writerFlags, int readerFlags) {
-            return new MethodVisitor(Opcodes.ASM9, methodVisitor) {
-                @Override public void visitMethodInsn(int opcode, String owner, String name,
-                                                      String descriptor, boolean isInterface) {
-                    if (opcode == Opcodes.INVOKESPECIAL && "<init>".equals(name)
-                            && isPathOpeningType(owner)) {
-                        if ("(Ljava/lang/String;)V".equals(descriptor)) {
-                            super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                                    "com/zomdroid/agent/optimization/ModPathRuntime",
-                                    "normalize", "(Ljava/lang/String;)Ljava/lang/String;", false);
-                        } else if ("(Ljava/io/File;)V".equals(descriptor)) {
-                            super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                                    "com/zomdroid/agent/optimization/ModPathRuntime",
-                                    "normalizeFile", "(Ljava/io/File;)Ljava/io/File;", false);
-                        }
-                    }
-                    super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
-                }
-            };
-        }
-
-        private static boolean isPathOpeningType(String owner) {
-            return "java/io/FileInputStream".equals(owner)
-                    || "java/io/FileReader".equals(owner)
-                    || "java/io/File".equals(owner);
+    public static final class PathfindingThreadAdvice {
+        @Advice.OnMethodExit(onThrowable = Throwable.class)
+        public static void exit(@Advice.Thrown Throwable error) {
+            PathfindingRuntime.threadFailure(error);
         }
     }
 
     private static final class YieldReplacement
             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+        private final FeatureCompatibility.Decision pacing;
+
+        YieldReplacement(FeatureCompatibility.Decision pacing) {
+            this.pacing = pacing;
+        }
+
         @Override
         public MethodVisitor wrap(TypeDescription instrumentedType,
                                   MethodDescription instrumentedMethod,
@@ -388,9 +452,8 @@ public final class Main {
                 @Override public void visitEnd() {
                     if (replacements != 1) {
                         PacingRuntime.disable();
-                        ProofRuntime.state("PACING", "BLOCKED_SHAPE",
-                                "yield_replacements=" + replacements);
-                    }
+                        pacing.fallback("main_loop_yield_replacements=" + replacements);
+                    } else pacing.passPart("main_thread_main_loop");
                     super.visitEnd();
                 }
             };
@@ -401,9 +464,16 @@ public final class Main {
             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
         private final boolean wake;
         private final boolean queueFast;
-        WorldStreamerLoopVisitor(boolean wake, boolean queueFast) {
+        private final FeatureCompatibility.Decision wakeDecision;
+        private final FeatureCompatibility.Decision queueDecision;
+
+        WorldStreamerLoopVisitor(boolean wake, boolean queueFast,
+                                 FeatureCompatibility.Decision wakeDecision,
+                                 FeatureCompatibility.Decision queueDecision) {
             this.wake = wake;
             this.queueFast = queueFast;
+            this.wakeDecision = wakeDecision;
+            this.queueDecision = queueDecision;
         }
         @Override
         public MethodVisitor wrap(TypeDescription instrumentedType,
@@ -436,10 +506,12 @@ public final class Main {
                 @Override public void visitEnd() {
                     if (wake && sleepReplacements != 4) {
                         StreamCoreRuntime.disableWakeShape(sleepReplacements);
-                    }
+                        wakeDecision.fallback("sleep_replacements=" + sleepReplacements);
+                    } else if (wake) wakeDecision.passPart("world_streamer_idle_wait");
                     if (queueFast && sortReplacements != 2) {
                         StreamCoreRuntime.disableQueueShape(sortReplacements);
-                    }
+                        queueDecision.fallback("sort_replacements=" + sortReplacements);
+                    } else if (queueFast) queueDecision.passPart("world_streamer_queue_select");
                     super.visitEnd();
                 }
             };
@@ -448,6 +520,15 @@ public final class Main {
 
     private static final class FboDirtyGateVisitor
             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+        private final FeatureCompatibility.Decision budget;
+        private final FeatureCompatibility.Decision coordinator;
+
+        FboDirtyGateVisitor(FeatureCompatibility.Decision budget,
+                            FeatureCompatibility.Decision coordinator) {
+            this.budget = budget;
+            this.coordinator = coordinator;
+        }
+
         @Override
         public MethodVisitor wrap(TypeDescription instrumentedType,
                                   MethodDescription instrumentedMethod,
@@ -473,10 +554,48 @@ public final class Main {
                     }
                 }
                 @Override public void visitEnd() {
-                    if (replacements != 1) FboRuntime.disableBudgetShape(replacements);
+                    if (replacements != 1) {
+                        FboRuntime.disableBudgetShape(replacements);
+                        budget.fallback("dirty_gate_replacements=" + replacements);
+                        coordinator.fallback("dirty_gate_replacements=" + replacements);
+                    } else {
+                        budget.passPart("fbo_manager_dirty_gate");
+                        coordinator.passPart("fbo_manager_dirty_gate");
+                    }
                     super.visitEnd();
                 }
             };
+        }
+    }
+
+    private static final class TransformFailureListener extends AgentBuilder.Listener.Adapter {
+        @Override
+        public void onError(String typeName, ClassLoader classLoader, JavaModule module,
+                            boolean loaded, Throwable throwable) {
+            String reason = "transform_error=" + throwable.getClass().getSimpleName();
+            if ("zombie.MainThread".equals(typeName) || "zombie.GameWindow".equals(typeName)) {
+                PacingRuntime.disable();
+                FeatureCompatibility.fallback("PACING", reason);
+            } else if ("zombie.iso.WorldStreamer".equals(typeName)) {
+                StreamCoreRuntime.disableWake();
+                StreamCoreRuntime.disableQueueFast();
+                FboRuntime.disableCoordinator();
+                FeatureCompatibility.fallback("STREAM_WAKE", reason);
+                FeatureCompatibility.fallback("STREAM_QUEUE_FAST", reason);
+                FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR", reason);
+            } else if ("zombie.iso.WorldStreamer$ChunkComparator".equals(typeName)) {
+                StreamCoreRuntime.disableLookahead();
+                FeatureCompatibility.fallback("STREAM_VELOCITY_ETA", reason);
+            } else if ("zombie.iso.fboRenderChunk.FBORenderChunkManager".equals(typeName)) {
+                FboRuntime.disableFrameBudget();
+                FboRuntime.disableCoordinator();
+                FeatureCompatibility.fallback("FBO_FRAME_BUDGET", reason);
+                FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR", reason);
+            } else if ("zombie.iso.fboRenderChunk.FBORenderLevels$NLevels".equals(typeName)) {
+                FboRuntime.disableDirtyDedup();
+                FeatureCompatibility.fallback("FBO_DIRTY_DEDUP", reason);
+            }
+            System.err.println("[ZD-OPT-LAB-AGENT] " + typeName + " " + reason);
         }
     }
 }

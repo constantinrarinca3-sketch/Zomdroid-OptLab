@@ -5,7 +5,9 @@ public final class OptLabAgentSmoke {
             "zombie.iso.WorldStreamer",
             "zombie.iso.WorldStreamer$ChunkComparator",
             "zombie.iso.fboRenderChunk.FBORenderChunkManager",
-            "zombie.iso.fboRenderChunk.FBORenderLevels$NLevels"
+            "zombie.iso.fboRenderChunk.FBORenderLevels$NLevels",
+            "zombie.pathfind.nativeCode.PathfindNative",
+            "zombie.pathfind.nativeCode.PathfindNativeThread"
     };
 
     public static void main(String[] args) {

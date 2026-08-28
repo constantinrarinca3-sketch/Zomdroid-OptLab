@@ -1,0 +1,136 @@
+ZOMDROID OPTLAB R6 — CP1 FINAL QA / HANDOFF + MOBILEGL PZCOMPAT V1.2
+Data: 2026-08-28
+
+VERDICT
+=======
+
+CP4 DELIVERY REPAIR: COMPLET
+CP1 IMPLEMENTARE ÎN SURSĂ: COMPLETĂ
+CP1 FINAL QA SOURCE/HOST: PASS
+MOBILEGL V1.2 INTEGRARE ÎN SURSĂ: COMPLETĂ
+ANDROID APK BUILD: PENDING
+TEST PE DISPOZITIV: PENDING
+BENCHMARK: PENDING
+CP1 OFFICIAL PASS: NU ÎNCĂ
+
+IDENTITATE APLICAȚIE
+====================
+
+versionCode: 14747
+sideBySide: 1.4.7v4-optlab-r6-cp1-qa-mgl12-side
+replaceR1: 1.4.7v4-optlab-r6-cp1-qa-mgl12-replace
+label: ZomDroid OPT LAB R6 QA
+
+NATIVE MODULES
+==============
+
+- fereastră separată Native Modules, deschisă prin buton;
+- Lighting64: toggle real, persistent, implicit ON;
+- PZClipper: toggle real, persistent, implicit ON;
+- Pathfinding: toggle real, persistent, implicit OFF;
+- PopMan: vizibil, OFF și disabled până la CP2;
+- toate sunt restart-scoped;
+- backupurile byte-distincte nu se mai suprascriu la cicluri OFF/ON repetate.
+
+OPTLAB BUILD 42
+===============
+
+- fereastră separată Build 42, deschisă prin buton;
+- STREAM ALL, FBO ALL și FULL CANDIDATE nu apar în selectorul general;
+- Only Build 42 rămâne implicit ON;
+- agent version 6 / proof schema 5 este reconstruit și testat înainte de Gradle.
+
+PATHFINDING
+===========
+
+- payload oficial Build 42 ARM64, SHA-256
+  a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc;
+- gate exact pe cele trei clase identice în 42.20 și 42.20.3;
+- OFF folosește Pathfind.UseNativeCode=false / PolygonalMap2 Java;
+- ON validează SHA/ELF/JNI, copiază atomic și activează ruta nativă;
+- eroarea cade fail-open pe Java și creează marker one-shot;
+- proof obligatoriu: AVAILABLE + ACTIVE + EXERCISED; fallbackul are motiv.
+
+MOBILEGL V1.2
+=============
+
+ZIP intrare SHA-256:
+a6ecd686763fc30ff86f1e513065f68b698ebaeceb5dad8f2179af0695c38255
+
+Payload inclus ca libMobileGLPZDefault.so:
+- SHA-256 f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a;
+- 14.358.432 bytes;
+- ELF64 little-endian AArch64;
+- SONAME libMobileGLPZ.so;
+- Build ID da5508480c21ecc5a13d60539cd53d90860c46dd;
+- Android API 26 / NDK r27d;
+- 3 segmente LOAD aliniate 0x4000;
+- GNU RELRO, BIND_NOW, stack neexecutabil;
+- dependențe: android, log, vulkan, m, dl și libc;
+- 11.759 exporturi funcționale unice;
+- toate cele 8.607 exporturi ale defaultului anterior sunt păstrate, 0 lipsă.
+
+Comportament instalare:
+- hashul nou prezent: nu recopiază;
+- hashul defaultului anterior 8dc064f0…: upgrade automat;
+- hashul vechi PZF23D4 f5b280fa…: upgrade automat;
+- custom ARM64 valid necunoscut: păstrat, fără înlocuire;
+- fișier invalid: salvat distinct, apoi defaultul este instalat atomic.
+- upgrade cu binarul vechi real 8dc064f0… ca activ: PASS host, rezultat V1.2 exact.
+
+Runtime implicit conform pachetului furnizat:
+- MOBILEGL_BACKEND_TYPE=DirectGLES;
+- MOBILEGL_RELAXED_SEMANTICS=1;
+- MOBILEGL_PZ_PRESENT_FASTPATH=1;
+- MOBILEGL_PZ_OPT_SET=002,003;
+- proof/selector/cache sunt în home-ul pachetului curent;
+- valorile introduse manual de utilizator se aplică ulterior și pot suprascrie defaulturile.
+
+TESTE HOST OBLIGATORII
+======================
+
+tools/build-optlab-agent.sh
+tools/test-optlab-agent-source.sh
+tools/test-pathfinding-native-payload.sh
+tools/test-pathfinding-real-jars.sh <42.20.jar> <42.20.3.jar>
+tools/test-native-modules-source.sh
+tools/test-native-modules-preferences.sh
+tools/test-native-modules-ui-source.sh
+tools/test-mobilegl-default-payload.sh
+tools/test-cp1-proof-validator.sh
+
+VALIDARE PE DISPOZITIV
+======================
+
+Baseline Pathfinding OFF:
+python3 tools/verify-cp1-device-proof.py --expect off opt-proof.log
+
+Candidate Pathfinding ON, după o cerere reală de traseu:
+python3 tools/verify-cp1-device-proof.py --expect on opt-proof.log
+
+Fallback controlat:
+python3 tools/verify-cp1-device-proof.py --expect fallback opt-proof.log
+
+Pentru MobileGL se păstrează:
+- console.txt;
+- mobilegl-pzcompat.log, dacă logging este activat;
+- mglpz-opt-proof.log;
+- SHA-256 al libMobileGLPZ.so instalat.
+
+Se verifică în același save/scenariu: Creating display, încărcarea jocului,
+present, frame-time, stutter, CPU, stabilitate, mișcare zombie, obstacole, uși,
+scări, interior/exterior și densitate mare. Nu se schimbă alte opțiuni între
+baseline și candidate.
+
+LIMITĂ CORECTĂ
+==============
+
+Gradle 8.13 nu este disponibil local și rețeaua către distribuția Gradle este
+inaccesibilă. De aceea nu există APK R6 produs în această sesiune. Nici
+ACTIVE+EXERCISED pe telefon, nici benchmarkul nu sunt inventate.
+
+ROLLBACK
+========
+
+Rollbackul imediat este snapshotul persistent R5 CP1 final, anterior acestui QA.
+Checkpointurile CP4, CP1-01 și CP1-02/03 rămân păstrate separat.

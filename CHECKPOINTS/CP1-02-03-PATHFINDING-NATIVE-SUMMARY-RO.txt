@@ -1,0 +1,105 @@
+ZOMDROID OPTLAB - CHECKPOINT 1 / ETAPELE 02-03
+PATHFINDING NATIV ARM64: INTEGRARE, PROBĂ RUNTIME ȘI FALLBACK
+Data: 2026-08-28
+
+STARE
+=====
+
+CP1-02/03 SOURCE + HOST TESTS: PASS
+CP1 OFFICIAL DEVICE PASS: NU ÎNCĂ
+
+Acest checkpoint este complet și recuperabil ca sursă, dar nu declară testarea pe
+telefon. PASS-ul oficial CP1 rămâne condiționat de build Android, instalare și
+probele OFF/ON pe dispozitiv descrise mai jos.
+
+CE A FOST IMPLEMENTAT
+=====================
+
+1. Payload oficial ARM64
+   - app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so
+   - copiat byte-for-byte din libPZPathFind64 furnizat pentru Build 42.20.3;
+   - identic cu fișierul furnizat separat pentru Build 42.20;
+   - SHA-256: a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+   - mărime: 11995392 bytes;
+   - ELF64 AArch64, SONAME libPZPathFind64.so, 13 exporturi JNI PathfindNative.
+
+2. Gate strict de compatibilitate în PathfindingNativeManager
+   - numai familia Build 42;
+   - verifică exact PathfindNative, PathfindNativeRenderer și PathfindNativeThread;
+   - aceleași trei hash-uri de clasă sunt prezente în 42.20 și 42.20.3;
+   - verifică SHA-256, mărime, AArch64 și toate exporturile JNI ale payload-ului;
+   - copiere atomică în android/arm64-v8a/libPZPathFind64.so;
+   - nu suprascrie o bibliotecă activă străină/neidentificată.
+
+3. Activare reală și fail-open
+   - toggle-ul Pathfinding este implicit OFF;
+   - ON setează opțiunea jocului Pathfind.UseNativeCode=true numai după toate
+     validările;
+   - OFF, ABI necunoscut sau payload invalid păstrează Pathfind.UseNativeCode=false;
+   - un marker de fallback cere o pornire sigură pe Java după o eroare nativă.
+
+4. Agent OptLab version 6 / proof schema 5
+   - instrumentează PathfindNative.findPath și PathfindNativeThread.runInner;
+   - scrie pathfinding_native_exercised la terminarea normală;
+   - la eroare scrie pathfinding_native_fallback, încearcă trecerea imediată la
+     DebugOptions.pathfindUseNativeCode=false și creează fallback-ul pentru restart;
+   - bundle-ul jars.tar este reconstruit automat înainte de Gradle preBuild.
+
+5. Registru per-feature și UI
+   - PATHFINDING_NATIVE reflectă cererea și activarea reală;
+   - POPMAN_NATIVE este vizibil, dar blocat ca indisponibil pentru checkpoint 2;
+   - fereastra separată Native Modules păstrează Lighting ON, PZClipper ON,
+     Pathfinding OFF și PopMan OFF/disabled.
+
+VERIFICĂRI TRECUTE ÎN ACEASTĂ SESIUNE
+====================================
+
+- tools/build-optlab-agent.sh: PASS
+- tools/test-optlab-agent-source.sh: PASS
+- tools/test-pathfinding-native-payload.sh: PASS
+- tools/test-native-modules-source.sh: PASS
+- FeatureCompatibilityUnit: PASS
+- OptLabRuntimeUnit: PASS, inclusiv EXERCISED + FALLBACK Pathfinding
+- toate scripturile shell: bash -n PASS
+- 96 XML Android: parse PASS
+- 3 workflow-uri YAML: parse PASS
+- smoke agent pe projectzomboid 42.20 real: PASS
+- smoke agent pe projectzomboid 42.20.3 real: PASS
+
+Notă ulterioară pentru livrarea finală CP1: testul reproductibil
+tools/test-pathfinding-real-jars.sh aplică Advice offline pe bytecode-ul Java 25 real și
+a trecut pentru PathfindNative + PathfindNativeThread în ambele JAR-uri.
+
+În smoke-test, JDK-ul host Java 17 nu poate executa bytecode-ul Java 25 al jocului,
+dar agentul a analizat și transformat cu succes PathfindNative și
+PathfindNativeThread înainte de UnsupportedClassVersionError. Nu au existat erori
+Byte Buddy, IllegalClassFormat, VerifyError sau transform errors.
+
+IDENTITĂȚI LA CHECKPOINT
+========================
+
+- agent JAR SHA-256:
+  d84e5284fe1087c69470538af980e4ae41ea656ca8aa04931c21c7681cf063d2
+- app/src/main/assets/bundles/jars.tar SHA-256:
+  abeec5bbc1f1e4fac0e2c62075ceb4967c6411c27408307845cfee3607b01203
+- payload ARM64 SHA-256:
+  a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+
+CE MAI LIPSEȘTE PENTRU CP1 OFFICIAL PASS
+========================================
+
+1. Build Android side și replace dintr-un mediu cu Gradle/SDK disponibil.
+2. Instalare pe ARM64 și o pornire cu Pathfinding OFF:
+   - jocul pornește;
+   - proof arată requested=0 și fallback/original Java.
+3. Pornire cu Pathfinding ON pe 42.20 și/sau 42.20.3:
+   - proof arată pathfinding_native active;
+   - după o cerere reală de traseu apare pathfinding_native_exercised.
+4. Test de fallback controlat și confirmarea că următorul restart revine pe Java.
+5. Comparație minimă stabilitate/perf OFF versus ON înainte de declararea PASS.
+
+ROLLBACK
+========
+
+Snapshotul persistent CP1-01 este rollback-ul imediat pentru această etapă.
+Snapshotul persistent CP4 COMPILE-READY rămâne baza completă de rollback pentru CP1.

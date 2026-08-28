@@ -23,7 +23,7 @@ public final class ProofRuntime {
     public static void configureFromProperties() {
         path = System.getProperty("zomdroid.optlab.proof.path", "").trim();
         session = System.getProperty("zomdroid.optlab.session", "unknown").trim();
-        emit("SESSION", "START", "schema=3 path=" + clean(path));
+        emit("SESSION", "START", "schema=5 path=" + clean(path));
     }
 
     public static void state(String mechanism, String state, String detail) {
@@ -34,7 +34,7 @@ public final class ProofRuntime {
         synchronized (LOCK) {
             if (!ONCE.add(mechanism)) return;
         }
-        emit(mechanism, "APPLIED", detail);
+        emit(mechanism, "EXERCISED", detail);
     }
 
     private static void emit(String mechanism, String state, String detail) {
