@@ -1,0 +1,33 @@
+ZomDroid R11 Chunk Optimization - Source Identity
+Data: 2026-08-29
+
+Version code: 14753
+Side version: 1.4.7v4-optlab-r11-chunk-optimization-side
+Replace version: 1.4.7v4-optlab-r11-chunk-optimization-replace
+Agent schema: 8
+Agent marker: 9
+
+zomdroid-agent.jar SHA-256:
+453dd2350ab6b55f00dbabf192fcccc8ee4692b38f6a3579685d1fc7dcaebf5e
+
+jars.tar SHA-256:
+4dd7be8eccf7069fa5047d7f2d37744923e2c59f0094930d9fbaa5b7e1794927
+
+QA HOST / STATIC
+- agent source/unit: PASS
+- premain Pathfinding-only regression: PASS
+- real JAR 42.20 transformer: PASS
+- real JAR 42.20.3 transformer: PASS
+- preferences independence schema 6: PASS
+- launcher / registry / UI source: PASS
+- JAssimp Direct regression: PASS
+- MobileGL default payload: PASS
+- Pathfinding native payload: PASS
+- PopMan native source: PASS
+- second Chunk agent bundled: NO
+
+Android compile: NOT RUN
+Device test: NO
+
+Manifest: CHECKPOINTS/R11-CHUNK-OPTIMIZATION-SOURCE-MANIFEST.sha256
+Device checklist: CHECKPOINTS/CHUNK-OPTIMIZATION/CP4.1-V2-R11-FINAL-QA-RO.txt

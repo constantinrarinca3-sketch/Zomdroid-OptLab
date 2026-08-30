@@ -1,0 +1,1 @@
+package zombie.iso; import zombie.iso.zones.Zone; public class IsoMetaChunk { public boolean doesHaveForaging(){return false;} public boolean doesHaveZone(String s){return false;} public int getZonesSize(){return 0;} public Zone getZone(int i){return null;} }

@@ -1,0 +1,68 @@
+ZOMDROID R13 TABBED UI - EXACT MODIFIED FILES / METHODS
+Baseline commit: 6a73d966791b19f1520aeabc236e4f6edcadffa8
+
+PRODUCTION JAVA
+
+app/src/main/java/com/zomdroid/fragments/OptLabFragment.java [NEW]
+- onCreateView, onResume, onDestroyView
+- buildOverviewPage, buildRuntimePage, buildDisplayPage, buildBuild42Page
+- buildNativePage, buildExperimentalPage
+- bindListeners, syncAll, addToggle, addBuild42Button, bind
+- addTab, showPage, selectTab
+- runtimeCount, displayCount, build42Count, generalProfile, select
+
+app/src/main/java/com/zomdroid/fragments/OptLabUi.java [NEW]
+- page, navCard, toggleCard, spinnerCard, actionButton
+- addCard, section, note, dp
+- card, horizontalRow, icon, title, body, color
+
+app/src/main/java/com/zomdroid/fragments/SettingsFragment.java
+- initViews: OPT-LAB button navigates to opt_lab_fragment
+- onResume: refreshes overview summary after return
+
+app/src/main/java/com/zomdroid/OptLabPreferences.java
+- SCHEMA 7 -> 8; K_SAFE_MODE
+- isSafeModeEnabled, setSafeModeEnabled, enabled
+- all effective optimization getters honor Safe Mode
+- setBuild42ProductionAllOff preserves experimental CP2C
+- summary and machineReadable include Safe Mode
+- general profiles no longer mutate independent Build 42 state
+
+app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+- SCHEMA 2 -> 3
+- effective native getters honor Safe Mode through enabled
+- configured native values remain stored for restoration
+
+LEGACY UI REMOVED
+- Build42OptLabDialog.java
+- ChunkOptimizationDialog.java
+- NativeModulesDialog.java
+- OptLabDialog.java
+- RenderOptimizationDialog.java
+
+ANDROID RESOURCES / IDENTITY
+- app/src/main/res/layout/fragment_opt_lab.xml [NEW]
+- app/src/main/res/navigation/nav_graph.xml
+- app/src/main/res/values/strings.xml
+- app/src/main/res/drawable/optlab_ic_{profile,runtime,display,build42,native,
+  experimental,safe_mode,chevron}.xml [NEW]
+- app/build.gradle.kts: versionCode 14754, R13 UI labels/version names
+
+HOST TESTS / STUBS
+- tools/test-optlab-tabbed-ui-compile.sh [NEW]
+- tools/test-optlab-tabbed-ui-source.sh [NEW]
+- tools/test-native-modules-ui-source.sh
+- tools/test-native-modules-preferences.sh
+- tools/test-cp62-apk-wiring.sh
+- tools/OptLabPreferencesIndependenceUnit.java
+- tools/NativeModulesPreferencesUnit.java
+- tools/ui-stubs/**: Android/AndroidX/Material compile surface for the new fragment
+
+CHECKPOINT METADATA
+- CHECKPOINTS/R13-TABBED-UI/UI-00-BASELINE-ROLLBACK-RO.txt
+- CHECKPOINTS/R13-TABBED-UI/UI-01-FULLSCREEN-TABS-SAFE-MODE-RO.md
+- CHECKPOINTS/R13-TABBED-UI/UI-FINAL-HOST-TEST-RESULTS.txt
+- CHECKPOINTS/R13-TABBED-UI/UI-FINAL-MODIFIED-FILES-AND-METHODS.txt
+- CHECKPOINTS/R13-TABBED-UI/UI-FINAL-HANDOFF-RO.md
+- CHECKPOINTS/R13-TABBED-UI/UI-FINAL-CUMULATIVE.patch
+- CHECKPOINTS/R13-TABBED-UI/UI-FINAL-SOURCE-MANIFEST.sha256

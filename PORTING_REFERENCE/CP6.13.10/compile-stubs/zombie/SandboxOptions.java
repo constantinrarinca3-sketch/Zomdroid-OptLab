@@ -1,0 +1,1 @@
+package zombie; public class SandboxOptions { public static final SandboxOptions instance=null; public final BooleanSandboxOption enableVehicles=null, trafficJam=null; public final EnumSandboxOption carSpawnRate=null; public static class BooleanSandboxOption { public boolean getValue(){return false;} } public static class EnumSandboxOption { public int getValue(){return 0;} } }

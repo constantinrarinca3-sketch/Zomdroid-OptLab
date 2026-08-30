@@ -1,0 +1,18 @@
+ZOMDROID OPT-LAB R8 — NATIVE FINAL SOURCE IDENTITY
+Data: 2026-08-28
+
+Version code: 14750
+Side version: 1.4.7v4-optlab-r8-native-final-side
+Replace version: 1.4.7v4-optlab-r8-native-final-replace
+Agent: version 8 / proof schema 7
+CP1 Final Fix: DONE
+CP2-02 PopMan source integration QA: PASS
+Host/static tests: PASS
+Android build: NO
+Device test: NO
+
+Agent JAR SHA-256:
+3d5be491b0187b8f756a74929d6ad7e0371dcd51b33d29d9435143e053130cf1
+
+jars.tar SHA-256:
+a064a21ccea34a0f4679bdf6d5a20bd5abe844b17aa6eecfaf8b21a0c69882c4

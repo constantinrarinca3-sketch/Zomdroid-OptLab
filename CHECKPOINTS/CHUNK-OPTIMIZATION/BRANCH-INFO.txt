@@ -1,0 +1,8 @@
+BRANCH LOGIC: R11-CHUNK-OPTIMIZATION
+BASE: R10-JASSIMP-DIRECT
+SOURCE TREE: ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE
+CREATED: 2026-08-29
+
+R10 JAssimp Direct must remain intact.
+CP4.1 V2 production mechanisms are merged into the existing ZomDroid agent.
+No second javaagent is shipped or loaded.

@@ -45,6 +45,18 @@ target_link_libraries(lighting_shim PRIVATE dl log)
 target_compile_options(lighting_shim PRIVATE -Wall -Wextra -Werror)
 target_link_options(lighting_shim PRIVATE "-Wl,-soname,libLightingShim64.so")
 
+# Build 42.20/42.20.3 ship the same official ARM64 PopMan payload, but omit the
+# n_saveCell JNI wrapper while retaining all underlying ManagerWorker, ManagerMain,
+# Cell, ArrayList and ObjectPool code. This exact-build bridge reconstructs the
+# complete saveCell lifecycle; payload build-id and launcher identity gates prevent
+# it from running with any other binary.
+add_library(popman_savecell_bridge SHARED popman_savecell_bridge.c)
+set_target_properties(popman_savecell_bridge PROPERTIES OUTPUT_NAME PZPopManSaveCellBridge)
+target_link_libraries(popman_savecell_bridge PRIVATE dl log)
+target_compile_options(popman_savecell_bridge PRIVATE -Wall -Wextra -Werror)
+target_link_options(popman_savecell_bridge PRIVATE
+        "-Wl,-soname,libPZPopManSaveCellBridge.so")
+
 set(NOGIT ON)
 set(ARM_DYNAREC ON)
 add_subdirectory(box64)

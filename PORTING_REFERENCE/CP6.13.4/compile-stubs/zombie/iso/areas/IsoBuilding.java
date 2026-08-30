@@ -1,0 +1,1 @@
+package zombie.iso.areas; import java.util.Vector; import zombie.iso.BuildingDef; public final class IsoBuilding { public BuildingDef def; public final Vector<IsoRoom> rooms=null; }

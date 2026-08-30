@@ -1,0 +1,1 @@
+package zombie.iso; import java.util.Set; import zombie.vehicles.BaseVehicle; public class IsoCell { public final IsoChunkMap[] chunkMap=null; public Set<BaseVehicle> getVehicles(){return null;} public Set<IsoMovingObject> getRemoveList(){return null;} }

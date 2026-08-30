@@ -1,0 +1,45 @@
+ZOMDROID OPTLAB CP1-02/03 IDENTITY
+Date: 2026-08-28
+
+Payload source (42.20.3 supplied):
+SHA256 a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+SIZE 11995392
+ELF ELF64 AArch64
+SONAME libPZPathFind64.so
+JNI_EXPORTS 13
+
+Payload source (42.20 supplied):
+SHA256 a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+RESULT byte-for-byte identical to 42.20.3 payload
+
+Bundled payload:
+app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so
+SHA256 a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+
+Game JAR 42.20:
+SHA256 e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+Game JAR 42.20.3:
+SHA256 bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Stable class identities in both JARs:
+PathfindNative.class 7fbc06c9757083c318dcc136cfcb31c2ad4941d15926c9de6f7792dcef3d6022
+PathfindNativeRenderer.class 070c67fcaa68c63f20a6d7d52967e334f38c5b1bfb9b3f7f09e3fc0383cc8c08
+PathfindNativeThread.class bbf51396746b4047a9f5c3a53d484d61b5a05a6a5eb3c6286dcf90864bc21d20
+
+Agent:
+VERSION 6
+PROOF_SCHEMA 5
+SHA256 d84e5284fe1087c69470538af980e4ae41ea656ca8aa04931c21c7681cf063d2
+
+Bundle:
+app/src/main/assets/bundles/jars.tar
+SHA256 abeec5bbc1f1e4fac0e2c62075ceb4967c6411c27408307845cfee3607b01203
+
+Host verification:
+SOURCE_TESTS PASS
+ELF_JNI_TEST PASS
+AGENT_REAL_JAR_SMOKE_42_20 PASS
+AGENT_REAL_JAR_SMOKE_42_20_3 PASS
+ANDROID_BUILD NOT RUN (Gradle distribution unavailable in this environment)
+DEVICE_TEST NOT RUN

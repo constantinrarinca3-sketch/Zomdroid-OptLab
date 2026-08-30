@@ -1,0 +1,1 @@
+package zombie.Lua; public final class MapObjects {}

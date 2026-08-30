@@ -1,51 +1,44 @@
-name: Build ZomDroid OptLab APK
+name: Android CI
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+  workflow_dispatch: {}
+  
+  pull_request:
+    branches: [ gamepad-support-patch ]
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive  
 
-      - name: Setup Java 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 35 and NDK r27d
+      - name: Prepare and test OPT-LAB agent bundle
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
-            "ndk;27.3.13750724" \
-            "cmake;3.22.1"
+          ./tools/build-optlab-agent.sh
+          ./tools/test-optlab-agent-source.sh
+          ./tools/test-pathfinding-native-payload.sh
+          ./tools/test-popman-native-source.sh
+          ./tools/test-native-modules-source.sh
+          ./tools/test-native-modules-preferences.sh
+          ./tools/test-native-modules-ui-source.sh
+          ./tools/test-optlab-preferences-independence.sh
+          ./tools/test-mobilegl-default-payload.sh
+          ./tools/test-jassimp-direct.sh
+          ./tools/test-cp1-proof-validator.sh
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
-
-      - name: Build side-by-side debug APK
-        run: ./gradlew :app:assembleSideBySideDebug --stacktrace
-
-      - name: Show produced APKs
-        run: find app/build/outputs -type f -name '*.apk' -print
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZomDroid-OptLab-MGLPZ2-APK
-          path: app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk

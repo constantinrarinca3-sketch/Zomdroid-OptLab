@@ -80,7 +80,7 @@ public class FileUtils {
         if (!archiveInStream.canReadEntryData(archiveEntry)) {
             throw new RuntimeException("Failed to read archive entry");
         }
-        File file = new File(destPath + "/" + archiveEntry.getName());
+        File file = ArchivePathGuard.resolve(destPath, archiveEntry.getName());
         if (archiveEntry.isDirectory()) {
             if (!file.isDirectory() && !file.mkdirs()) {
                 throw new IOException("Failed to create directory " + file);

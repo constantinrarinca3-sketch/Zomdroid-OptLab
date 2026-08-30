@@ -1,0 +1,92 @@
+ZOMDROID OPT-LAB — CHECKPOINT CP2-01
+POPMAN NATIVE: SAFE STAGING
+Data: 2026-08-28
+Status: DONE (implementare staging)
+Device test: NO — programat la închiderea CP2
+
+============================================================
+CE ESTE IMPLEMENTAT
+============================================================
+
+1. Payload ARM64 oficial pentru Build 42.20 și 42.20.3:
+   app/src/main/jniLibs/arm64-v8a/libPZPopManB4220.so
+   SHA-256 eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+
+2. Preferință reală PopMan Native:
+   - persistentă;
+   - restart-scoped;
+   - implicit OFF;
+   - inclusă în statusul machine-readable.
+
+3. Native Modules UI:
+   - toggle-ul PopMan nu mai este un placeholder permanent dezactivat;
+   - avertizează că ruta este experimentală și limitată la 42.20/42.20.3.
+
+4. PopManNativeManager:
+   - validează Build 42 și projectzomboid.jar;
+   - acceptă numai cele două hashuri de clasă auditate;
+   - validează dimensiunea, SHA-256, ELF64 AArch64 și cele 27 exporturi JNI;
+   - confirmă explicit că payloadul original nu pretinde că are n_saveCell;
+   - validează bridge-ul și exportul JNI lipsă;
+   - păstrează fallback x86_64 prin Box64;
+   - pregătește markerul de fallback la următorul restart;
+   - emite AVAILABLE / ACTIVE / FALLBACK în opt-proof.log.
+
+5. Bridge n_saveCell compilabil:
+   app/src/main/cpp/popman_savecell_bridge.c
+   - exportă numai JNI n_saveCell lipsă;
+   - acceptă numai Build ID-ul exact al payloadului auditat;
+   - folosește offseturi fixate pentru ManagerWorker::instance,
+     getCellFromCellPos() și Cell::save();
+   - refuză identități necunoscute și celule inexistente;
+   - este construit separat ca libPZPopManSaveCellBridge.so.
+
+6. Agent v7 / proof schema 6:
+   - încarcă bridge-ul după System.loadLibrary("PZPopMan64");
+   - marchează EXERCISED numai după writeCellSnapshot complet fără eroare;
+   - nu suprimă o eroare de salvare;
+   - scrie fallback marker pentru pornirea x86 sigură următoare.
+
+7. Integrare launcher/registry:
+   - rezultatul PopMan participă la compatibilitate, log și proof;
+   - proprietățile runtime sunt trimise agentului;
+   - PopMan activ poate arma agentul independent de Stream/FBO.
+
+============================================================
+GATE DE SIGURANȚĂ INTENȚIONAT
+============================================================
+
+În PopManNativeManager:
+
+  BRIDGE_SEMANTICS_VERIFIED = false
+
+Prin urmare CP2-01 NU poate activa payloadul ARM64, chiar dacă utilizatorul
+bifează toggle-ul. Va raporta:
+
+  SAVE_CELL_BRIDGE_SEMANTICS_PENDING_CP2_02
+
+și va păstra ruta x86_64 sigură.
+
+Acesta nu este un defect și nu trebuie eliminat prin presupunere. Gate-ul se
+schimbă numai după comparația cu wrapperul Linux x86_64 oficial.
+
+============================================================
+URMĂTORUL CHECKPOINT
+============================================================
+
+CP2-02:
+- primește libPZPopMan64.so Linux x86_64 din Build 42.20/42.20.3;
+- disamblează wrapperul JNI n_saveCell;
+- confirmă sau corectează call chain-ul bridge-ului;
+- schimbă gate-ul numai după echivalență;
+- închide testele statice și produce sursa pentru test pe dispozitiv.
+
+============================================================
+REZULTAT
+============================================================
+
+CP2-01 = DONE
+POPMAN_NATIVE_AVAILABLE = STAGED
+POPMAN_NATIVE_ACTIVE = NO (safety gate)
+POPMAN_NATIVE_EXERCISED = NO
+DEVICE_TEST = NO

@@ -1,0 +1,145 @@
+ZOMDROID OPTLAB - CHECKPOINT 1 / ETAPA 00
+PATHFINDING ARM64 ABI AUDIT
+Data UTC: 2026-08-28
+
+STATUS
+======
+
+AUDIT STATIC: PASS
+IMPLEMENTARE: NU A INCEPUT IN ACEASTA ETAPA
+BUILD ANDROID: NU SE APLICA
+DEVICE TEST: PENDING
+
+INTRARI AUDITATE
+================
+
+Project Zomboid 42.20 projectzomboid.jar
+SHA256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+Project Zomboid 42.20.3 projectzomboid.jar
+SHA256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+libPZPathFind64.so furnizata pentru 42.20
+libPZPathFind64.so furnizata pentru 42.20.3
+
+Cele doua librarii sunt identice byte-for-byte.
+SHA256 comun: a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+Build ID comun: 03bab6801bb4639deda24d8b5674b0be9b49639e
+Dimensiune: 11995392 bytes
+Format: ELF64 little-endian, AArch64, shared object, debug_info prezent, not stripped
+SONAME: libPZPathFind64.so
+Dependente dinamice: libm.so, libdl.so, libc.so
+Aliniere segmente LOAD: 4096 bytes
+
+CONTRACT JAVA STABIL 42.20 -> 42.20.3
+=====================================
+
+Clasele centrale au acelasi SHA256 in ambele JAR-uri:
+
+zombie/pathfind/nativeCode/PathfindNative.class
+7fbc06c9757083c318dcc136cfcb31c2ad4941d15926c9de6f7792dcef3d6022
+
+zombie/pathfind/nativeCode/PathfindNativeRenderer.class
+070c67fcaa68c63f20a6d7d52967e334f38c5b1bfb9b3f7f09e3fc0383cc8c08
+
+zombie/pathfind/nativeCode/PathfindNativeThread.class
+bbf51396746b4047a9f5c3a53d484d61b5a05a6a5eb3c6286dcf90864bc21d20
+
+In pachetul nativeCode difera numai:
+
+- ChunkUpdateTask.class;
+- SquareUpdateTask.class.
+
+Aceste diferente nu schimba lista metodelor JNI. Faptul ca TIS livreaza aceeasi librarie nativa
+in 42.20 si 42.20.3 confirma acelasi ABI nativ pentru ambele patch-uri. Diferentele de serializare
+Java raman proprietatea fiecarui projectzomboid.jar si nu vor fi inlocuite de ZomDroid.
+
+JNI EXPORTS VERIFICATE
+======================
+
+Java_zombie_pathfind_nativeCode_PathfindNative_initWorld
+Java_zombie_pathfind_nativeCode_PathfindNative_destroyWorld
+Java_zombie_pathfind_nativeCode_PathfindNative_freeMemoryAtExit
+Java_zombie_pathfind_nativeCode_PathfindNative_update
+Java_zombie_pathfind_nativeCode_PathfindNative_updateChunk
+Java_zombie_pathfind_nativeCode_PathfindNative_removeChunk
+Java_zombie_pathfind_nativeCode_PathfindNative_updateSquare
+Java_zombie_pathfind_nativeCode_PathfindNative_addVehicle
+Java_zombie_pathfind_nativeCode_PathfindNative_removeVehicle
+Java_zombie_pathfind_nativeCode_PathfindNative_teleportVehicle
+Java_zombie_pathfind_nativeCode_PathfindNative_findPath
+Java_zombie_pathfind_nativeCode_PathfindNativeRenderer_renderNative
+Java_zombie_pathfind_nativeCode_PathfindNativeRenderer_setDebugOption
+
+RUTA REALA DIN JOC
+==================
+
+1. PathfindNative.init() incarca System.loadLibrary("PZPathFind64").
+2. DebugOptions.pathfindUseNativeCode controleaza selectia dintre PathfindNative si
+   PolygonalMap2, fallback-ul Java original al jocului.
+3. PathfindNative.useNativeCode este implicit true in clasa jocului.
+4. PathfindNative.checkUseNativeCode() opreste ruta curenta, initializeaza ruta selectata si
+   reincarca chunk-urile si vehiculele active.
+5. PathfindNativeThread proceseaza task-urile de chunk/square/vehicle si cererile de pathfinding.
+6. Ruta exercitata poate fi demonstrata pe iesirea normala din metoda Java wrapper
+   PathfindNative.findPath(PathFindRequest, ByteBuffer, boolean), care apeleaza JNI findPath.
+
+STAREA ZOMDROID INAINTE DE CP1
+==============================
+
+PathfindingWorkaround scrie neconditionat Pathfind.UseNativeCode=false pentru Build 42 cu
+projectzomboid.jar. Din acest motiv libraria ARM64 poate fi prezenta si valida, dar ruta nativa
+ramane dezactivata la fiecare lansare.
+
+Agentul zomdroid-agent este deja incarcat de presetul Build 42, inclusiv cand mecanismele CP4 sunt
+OFF. Poate fi folosit pentru dovada EXERCISED si pentru detectarea fail-open fara un agent nou.
+
+DECIZIE DE IMPLEMENTARE
+=======================
+
+Nu se rescrie algoritmul Pathfinding in C++. Se integreaza libraria oficiala TIS identica pentru
+42.20 si 42.20.3.
+
+Gate-uri inainte de activare:
+
+- familie Build 42;
+- projectzomboid.jar prezent;
+- hash exact pentru clasele PathfindNative, PathfindNativeRenderer si PathfindNativeThread;
+- payload ELF64 AArch64 cu dimensiunea si SHA256 auditate;
+- toate cele 13 exporturi JNI prezente;
+- copiere atomica si verificare SHA256 dupa copiere.
+
+Fallback:
+
+- toggle OFF -> Pathfind.UseNativeCode=false;
+- orice gate/copie esuata -> Pathfind.UseNativeCode=false si ruta Java originala;
+- exceptie runtime din wrapperul findPath sau thread loop -> se cere false in DebugOptions,
+  se inregistreaza PATHFINDING_NATIVE_FALLBACK si urmatorul checkUseNativeCode trece pe Java;
+- eroarea unui request este suprimata numai dupa cererea fallback-ului, cu rezultat de path gol,
+  pentru a evita crash-ul jocului.
+
+DIAGNOSTIC PLANIFICAT
+=====================
+
+PATHFINDING_NATIVE_AVAILABLE
+PATHFINDING_NATIVE_ACTIVE
+PATHFINDING_NATIVE_EXERCISED
+PATHFINDING_NATIVE_FALLBACK
+
+ACTIVE nu va fi prezentat ca EXERCISED. EXERCISED va fi scris numai dupa terminarea normala a unei
+cereri reale prin wrapperul nativ.
+
+URMATOAREA ETAPA
+================
+
+CP1-01 - Native Modules UI si preferinte persistente:
+
+- Lighting64 Native: toggle real, implicit ON pentru pastrarea baseline-ului stabil;
+- PZClipper Native: toggle real, implicit ON;
+- Pathfinding Native: toggle real, implicit OFF;
+- PopMan Native: vizibil, OFF / Unavailable.
+
+ROLLBACK
+========
+
+Snapshotul CP4 COMPILE-READY este baza de rollback pentru toate modificarile CP1.

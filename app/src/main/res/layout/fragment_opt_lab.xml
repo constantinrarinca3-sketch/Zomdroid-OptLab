@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:orientation="vertical"
+    tools:context=".fragments.OptLabFragment">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/opt_lab_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
+        app:tabGravity="start"
+        app:tabIndicatorColor="?attr/colorPrimary"
+        app:tabIndicatorFullWidth="false"
+        app:tabMode="scrollable"
+        app:tabRippleColor="?attr/colorSurfaceContainerHigh"
+        app:tabSelectedTextColor="?attr/colorPrimary"
+        app:tabTextColor="?attr/colorOnSurface" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant" />
+
+    <FrameLayout
+        android:id="@+id/opt_lab_page_host"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

@@ -1,0 +1,3755 @@
+diff --git a/CHECKPOINTS/R13-TABBED-UI/UI-00-BASELINE-ROLLBACK-RO.txt b/CHECKPOINTS/R13-TABBED-UI/UI-00-BASELINE-ROLLBACK-RO.txt
+new file mode 100644
+index 0000000..72008e9
+--- /dev/null
++++ b/CHECKPOINTS/R13-TABBED-UI/UI-00-BASELINE-ROLLBACK-RO.txt
+@@ -0,0 +1,37 @@
++ZOMDROID R13 - CHECKPOINT PERSISTENT UI-00
++Data UTC: 2026-08-29
++Scop autorizat: numai redesignul OPT-LAB; portarea CP6.6 este oprita explicit.
++
++SURSA AUTORITATIVA
++- Arhiva R12 primita:
++  ZomDroid-R12-CP6.2-DIRECT-INTEGRATION-SOURCE-2026-08-29.tar(1).zst
++- SHA256:
++  55cea4d031838cb5454c843260fd10da5b6dbf2b6ced917de9dc9467422c0609
++- Manifestul intern R12: 2846 / 2846 fisiere PASS dupa extragere.
++
++ROLLBACK
++- Ramura: r13-optlab-tabbed-ui
++- Commit baseline neatins:
++  6a73d966791b19f1520aeabc236e4f6edcadffa8
++
++DESIGN-TINTA
++- Ecran OPT-LAB full-screen, nu lant de AlertDialog-uri.
++- Taburi: Overview, Runtime, Display, Build 42, Native, Experimental.
++- Overview cu profil, carduri de sumar si Safe Mode.
++- Light/dark mostenit din tema aplicatiei; fara culori hardcodate divergente.
++- Toate preferintele si toggle-urile existente raman persistente si reversibile.
++- Masterul general nu modifica valorile Build 42/Native/Experimental.
++- Setarile riscante sunt prezentate separat, cu stare implicita OFF.
++
++LIMITA ACESTUI CHECKPOINT
++- Pachetul MGLPZ CP6.6 este primit, dar NU este citit, portat sau modificat aici.
++- SHA256 pachet CP6.6 primit:
++  6b9b9b334f02a14b7a1dac707f15d95efec2e33784923aada934cec5ae89d9d9
++- Agentul, bytecode-ul si bundle-ul CP6.2 raman nemodificate in etapa UI.
++
++PASI
++1. Inventar exact UI/preferinte si alegerea componentelor disponibile.
++2. Implementare container full-screen si taburi.
++3. Migrare controale/carduri + Safe Mode.
++4. Host tests pentru mapare, independenta si absenta regresiilor.
++5. Arhiva, patch, SHA256 si oprire inainte de CP6.6.
+diff --git a/CHECKPOINTS/R13-TABBED-UI/UI-01-FULLSCREEN-TABS-SAFE-MODE-RO.md b/CHECKPOINTS/R13-TABBED-UI/UI-01-FULLSCREEN-TABS-SAFE-MODE-RO.md
+new file mode 100644
+index 0000000..faa2168
+--- /dev/null
++++ b/CHECKPOINTS/R13-TABBED-UI/UI-01-FULLSCREEN-TABS-SAFE-MODE-RO.md
+@@ -0,0 +1,49 @@
++# ZomDroid R13 — checkpoint persistent UI-01
++
++Data UTC: 2026-08-29  
++Ramură: `r13-optlab-tabbed-ui`  
++Rollback integral: `6a73d966791b19f1520aeabc236e4f6edcadffa8`
++
++## Stare implementată
++
++- OPT-LAB este o destinație Android `Fragment` full-screen în graful de navigație.
++- Sunt șase taburi reale în același ecran: Overview, Runtime, Display, Build 42,
++  Native și Experimental.
++- Overview folosește carduri de navigație și sumar live, conform direcției vizuale
++  aprobate.
++- Culorile, suprafețele, contururile și textul sunt derivate exclusiv din tema
++  Material a aplicației; rezultatul moștenește tema light și tema dark.
++- Dialogurile OPT-LAB imbricate vechi au fost eliminate.
++- Setările generale, Build 42, Native și Experimental rămân module independente.
++- Pathfinding, PopMan și CP2C sunt prezentate separat ca experimentale și rămân
++  implicit OFF.
++- Safe Mode este efectiv și reversibil: ocolește temporar toate optimizările fără
++  să șteargă valorile salvate; dezactivarea lui restaurează selecțiile anterioare.
++
++## Verificări host efectuate
++
++- `OPTLAB_TABBED_UI_COMPILE PASS javac_release=17 tabs=6`
++- `OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=8 safe_mode=1`
++- `NATIVE_MODULES_PREFERENCES_UNIT PASS schema=3 safe_mode=1`
++- `OPTLAB_TABBED_UI_SOURCE PASS ... cp62_unchanged=1`
++- `CP6_2_EXACT_JAR_BYTECODE PASS versions=42.20,42.20.3`
++- CP6.2 wiring/bundle, agent runtime, Native, PopMan, Pathfinding, Jassimp și
++  MobileGL: PASS.
++- `git diff --check`: PASS.
++
++## Limită de mediu
++
++Buildul Gradle Android complet nu a fost executat: distribuția Gradle 8.13 nu
++există în cache, iar accesul la `services.gradle.org` este blocat în acest mediu.
++Acesta rămâne `NOT RUN`, nu PASS.
++
++## Integritate și limită de scop
++
++- `app/src/main/assets/bundles/jars.tar` a rămas exact:
++  `bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c`
++- agentul împachetat a rămas exact:
++  `045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8`
++- Pachetul CP6.6 nu a fost deschis, citit sau portat în acest checkpoint.
++
++Următorul pas autorizabil este portarea CP6.6, dar numai după oprirea și raportarea
++etapei UI către utilizator.
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index e62c0c6..6d71c18 100755
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -88,9 +88,9 @@ android {
+         applicationId = "com.zomdroid.mglpz2"
+         minSdk = 30
+         targetSdk = 35
+-        versionCode = 14753
+-        versionName = "1.4.7v4-optlab-r11-chunk-optimization-side"
+-        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R11 Chunk"
++        versionCode = 14754
++        versionName = "1.4.7v4-optlab-r13-tabbed-ui-side"
++        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R13 UI"
+ 
+         // JavaSteam + protobuf + kotlin stack push past the 64K method limit.
+         multiDexEnabled = true
+@@ -115,16 +115,16 @@ android {
+         create("sideBySide") {
+             dimension = "installMode"
+             applicationId = "com.zomdroid.mglpz2"
+-            versionCode = 14753
+-            versionName = "1.4.7v4-optlab-r11-chunk-optimization-side"
+-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R11 Chunk"
++            versionCode = 14754
++            versionName = "1.4.7v4-optlab-r13-tabbed-ui-side"
++            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R13 UI"
+         }
+         create("replaceR1") {
+             dimension = "installMode"
+             applicationId = "com.zomdroid.mglpz1"
+-            versionCode = 14753
+-            versionName = "1.4.7v4-optlab-r11-chunk-optimization-replace"
+-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R11 Chunk Replace"
++            versionCode = 14754
++            versionName = "1.4.7v4-optlab-r13-tabbed-ui-replace"
++            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R13 UI Replace"
+         }
+     }
+ 
+diff --git a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+index 4f66d4e..1d1f6a5 100644
+--- a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
++++ b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+@@ -7,7 +7,7 @@ import androidx.annotation.NonNull;
+ 
+ /** Restart-scoped ownership switches for native game modules. */
+ public final class NativeModulesPreferences {
+-    public static final int SCHEMA = 2;
++    public static final int SCHEMA = 3;
+ 
+     private static final String PREFS_NAME = "zomdroid_native_modules_v1";
+     private static final String K_LIGHTING64 = "lighting64_native";
+@@ -16,34 +16,38 @@ public final class NativeModulesPreferences {
+     private static final String K_POPMAN = "popman_native";
+ 
+     private final SharedPreferences prefs;
++    private final OptLabPreferences optLab;
+ 
+-    private NativeModulesPreferences(SharedPreferences prefs) {
++    private NativeModulesPreferences(SharedPreferences prefs, OptLabPreferences optLab) {
+         this.prefs = prefs;
++        this.optLab = optLab;
+     }
+ 
+     @NonNull
+     public static NativeModulesPreferences from(@NonNull Context context) {
+-        return new NativeModulesPreferences(context.getApplicationContext()
+-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE));
++        Context app = context.getApplicationContext();
++        return new NativeModulesPreferences(
++                app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE),
++                OptLabPreferences.from(app));
+     }
+ 
+     /** Existing audited CP4 behavior remains the default baseline. */
+     public boolean isLighting64Enabled() {
+-        return prefs.getBoolean(K_LIGHTING64, true);
++        return enabled(K_LIGHTING64, true);
+     }
+ 
+     /** Existing audited CP4 behavior remains the default baseline. */
+     public boolean isPzClipperEnabled() {
+-        return prefs.getBoolean(K_PZCLIPPER, true);
++        return enabled(K_PZCLIPPER, true);
+     }
+ 
+     /** Pathfinding stays opt-in until device A/B validation is complete. */
+     public boolean isPathfindingEnabled() {
+-        return prefs.getBoolean(K_PATHFINDING, false);
++        return enabled(K_PATHFINDING, false);
+     }
+ 
+     public boolean isPopManEnabled() {
+-        return prefs.getBoolean(K_POPMAN, false);
++        return enabled(K_POPMAN, false);
+     }
+ 
+     public void setLighting64Enabled(boolean enabled) {
+@@ -65,6 +69,7 @@ public final class NativeModulesPreferences {
+ 
+     public String machineReadable() {
+         return "nativeModulesSchema=" + SCHEMA
++                + " safeMode=" + bit(optLab.isSafeModeEnabled())
+                 + " lighting64=" + bit(isLighting64Enabled())
+                 + " pzClipper=" + bit(isPzClipperEnabled())
+                 + " pathfinding=" + bit(isPathfindingEnabled())
+@@ -84,6 +89,10 @@ public final class NativeModulesPreferences {
+         }
+     }
+ 
++    private boolean enabled(String key, boolean fallback) {
++        return !optLab.isSafeModeEnabled() && prefs.getBoolean(key, fallback);
++    }
++
+     private static int bit(boolean value) {
+         return value ? 1 : 0;
+     }
+diff --git a/app/src/main/java/com/zomdroid/OptLabPreferences.java b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+index 2f88bd7..ea6e72c 100644
+--- a/app/src/main/java/com/zomdroid/OptLabPreferences.java
++++ b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+@@ -13,7 +13,7 @@ import androidx.annotation.NonNull;
+  * launcher settings.
+  */
+ public final class OptLabPreferences {
+-    public static final int SCHEMA = 7;
++    public static final int SCHEMA = 8;
+     public static final String EXPECTED_PZ_JAR_SHA256 =
+             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
+     public static final String EXPECTED_PZ_42203_JAR_SHA256 =
+@@ -25,6 +25,7 @@ public final class OptLabPreferences {
+ 
+     private static final String PREFS_NAME = "zomdroid_opt_lab_v1";
+ 
++    private static final String K_SAFE_MODE = "safe_mode";
+     private static final String K_MASTER = "master";
+     private static final String K_PROFILE = "profile";
+     private static final String K_QUIET = "quiet_runtime";
+@@ -123,7 +124,12 @@ public final class OptLabPreferences {
+                 || EXPECTED_PZ_42203_JAR_SHA256.equals(sha256);
+     }
+ 
+-    public boolean isMasterEnabled() { return prefs.getBoolean(K_MASTER, false); }
++    /**
++     * Global, reversible launch bypass. The configured values remain untouched while every
++     * effective optimization getter returns its safe baseline.
++     */
++    public boolean isSafeModeEnabled() { return prefs.getBoolean(K_SAFE_MODE, false); }
++    public boolean isMasterEnabled() { return enabled(K_MASTER, false); }
+     public Profile getProfile() {
+         return isMasterEnabled() ? enumValue(K_PROFILE, Profile.class, Profile.CUSTOM)
+                 : Profile.BASELINE;
+@@ -133,7 +139,7 @@ public final class OptLabPreferences {
+         return isMasterEnabled() ? enumValue(K_STDIO, StdioMode.class, StdioMode.LEGACY)
+                 : StdioMode.LEGACY;
+     }
+-    public boolean isMainloopPacing() { return prefs.getBoolean(K_PACING, false); }
++    public boolean isMainloopPacing() { return enabled(K_PACING, false); }
+     public boolean isSqliteAndroidNative() { return isMasterEnabled() && prefs.getBoolean(K_SQLITE, false); }
+     public Box64Policy getBox64Policy() {
+         return isMasterEnabled() ? enumValue(K_BOX64, Box64Policy.class, Box64Policy.LEGACY_3_0)
+@@ -156,42 +162,42 @@ public final class OptLabPreferences {
+     public boolean isMobileGlFileLogEnabled() {
+         return isMasterEnabled() && prefs.getBoolean(K_MGL_LOG, false);
+     }
+-    public boolean isStreamWake() { return prefs.getBoolean(K_STREAM_WAKE, false); }
+-    public boolean isStreamQueueFast() { return prefs.getBoolean(K_STREAM_QUEUE_FAST, false); }
++    public boolean isStreamWake() { return enabled(K_STREAM_WAKE, false); }
++    public boolean isStreamQueueFast() { return enabled(K_STREAM_QUEUE_FAST, false); }
+     public boolean isStreamVelocityEta() {
+-        return prefs.getBoolean(K_STREAM_VELOCITY_ETA, false);
++        return enabled(K_STREAM_VELOCITY_ETA, false);
+     }
+-    public boolean isFboDirtyDedup() { return prefs.getBoolean(K_FBO_DIRTY_DEDUP, false); }
+-    public boolean isFboFrameBudget() { return prefs.getBoolean(K_FBO_FRAME_BUDGET, false); }
++    public boolean isFboDirtyDedup() { return enabled(K_FBO_DIRTY_DEDUP, false); }
++    public boolean isFboFrameBudget() { return enabled(K_FBO_FRAME_BUDGET, false); }
+     public boolean isStreamFboCoordinator() {
+-        return prefs.getBoolean(K_STREAM_FBO_COORDINATOR, false);
++        return enabled(K_STREAM_FBO_COORDINATOR, false);
+     }
+-    public boolean isChunkForage() { return prefs.getBoolean(K_CHUNK_FORAGE, false); }
++    public boolean isChunkForage() { return enabled(K_CHUNK_FORAGE, false); }
+     public boolean isChunkNeighbourWorker() {
+-        return prefs.getBoolean(K_CHUNK_NEIGHBOUR_WORKER, false);
++        return enabled(K_CHUNK_NEIGHBOUR_WORKER, false);
+     }
+     public boolean isChunkNeighbourMain() {
+-        return prefs.getBoolean(K_CHUNK_NEIGHBOUR_MAIN, false);
++        return enabled(K_CHUNK_NEIGHBOUR_MAIN, false);
+     }
+-    public boolean isChunkGridLoad() { return prefs.getBoolean(K_CHUNK_GRID_LOAD, false); }
+-    public boolean isChunkVehicles() { return prefs.getBoolean(K_CHUNK_VEHICLES, false); }
++    public boolean isChunkGridLoad() { return enabled(K_CHUNK_GRID_LOAD, false); }
++    public boolean isChunkVehicles() { return enabled(K_CHUNK_VEHICLES, false); }
+     public boolean isChunkRandomizedBuildings() {
+-        return prefs.getBoolean(K_CHUNK_BUILDINGS, false);
++        return enabled(K_CHUNK_BUILDINGS, false);
+     }
+-    public boolean isChunkLuaMapObjects() { return prefs.getBoolean(K_CHUNK_LUA, false); }
++    public boolean isChunkLuaMapObjects() { return enabled(K_CHUNK_LUA, false); }
+     public boolean isChunkWorldgenBiome() {
+-        return prefs.getBoolean(K_CHUNK_WORLDGEN, false);
++        return enabled(K_CHUNK_WORLDGEN, false);
+     }
+-    public boolean isChunkCp2cDirtyClear() { return prefs.getBoolean(K_CHUNK_CP2C, false); }
++    public boolean isChunkCp2cDirtyClear() { return enabled(K_CHUNK_CP2C, false); }
+     public boolean isRenderChunkDepthUpload() {
+-        return prefs.getBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, false);
++        return enabled(K_RENDER_CHUNK_DEPTH_UPLOAD, false);
+     }
+     public boolean isRenderChunkDepthLookup() {
+         return isRenderChunkDepthUpload()
+                 && prefs.getBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false);
+     }
+     public boolean isRenderRingEmptyClear() {
+-        return prefs.getBoolean(K_RENDER_RING_EMPTY_CLEAR, false);
++        return enabled(K_RENDER_RING_EMPTY_CLEAR, false);
+     }
+     public boolean isOnlyBuild42() {
+         return prefs.getBoolean(K_ONLY_BUILD42, true);
+@@ -279,6 +285,10 @@ public final class OptLabPreferences {
+                 .putString(K_PROFILE, Profile.CUSTOM.name()));
+     }
+ 
++    public void setSafeModeEnabled(boolean value) {
++        commit(prefs.edit().putBoolean(K_SAFE_MODE, value));
++    }
++
+     public void setQuietRuntime(boolean value) { editCustom(K_QUIET, value); }
+     public void setStdioMode(StdioMode value) { editCustom(K_STDIO, value.name()); }
+     public void setMainloopPacing(boolean value) { editBuild42(K_PACING, value); }
+@@ -360,6 +370,30 @@ public final class OptLabPreferences {
+                 // Experimental CP2C remains fully independent from production presets.
+                 .putBoolean(K_CHUNK_WORLDGEN, enabled));
+     }
++
++    /** Clears every production Build 42 mechanism while preserving Experimental CP2C. */
++    public void setBuild42ProductionAllOff() {
++        commit(prefs.edit()
++                .putBoolean(K_PACING, false)
++                .putBoolean(K_STREAM_WAKE, false)
++                .putBoolean(K_STREAM_QUEUE_FAST, false)
++                .putBoolean(K_STREAM_VELOCITY_ETA, false)
++                .putBoolean(K_FBO_DIRTY_DEDUP, false)
++                .putBoolean(K_FBO_FRAME_BUDGET, false)
++                .putBoolean(K_STREAM_FBO_COORDINATOR, false)
++                .putBoolean(K_CHUNK_FORAGE, false)
++                .putBoolean(K_CHUNK_NEIGHBOUR_WORKER, false)
++                .putBoolean(K_CHUNK_NEIGHBOUR_MAIN, false)
++                .putBoolean(K_CHUNK_GRID_LOAD, false)
++                .putBoolean(K_CHUNK_VEHICLES, false)
++                .putBoolean(K_CHUNK_BUILDINGS, false)
++                .putBoolean(K_CHUNK_LUA, false)
++                .putBoolean(K_CHUNK_WORLDGEN, false)
++                .putBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, false)
++                .putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false)
++                .putBoolean(K_RENDER_RING_EMPTY_CLEAR, false));
++    }
++
+     public void setOnlyBuild42(boolean value) {
+         commit(prefs.edit().putBoolean(K_ONLY_BUILD42, value));
+     }
+@@ -408,6 +442,7 @@ public final class OptLabPreferences {
+     }
+ 
+     public String summary() {
++        if (isSafeModeEnabled()) return "SAFE MODE · setări păstrate";
+         if (!isMasterEnabled()) return "ALL OFF / legacy";
+         return getProfile() + " · quiet=" + bool(isQuietRuntime())
+                 + " box64=" + getBox64Policy().name()
+@@ -417,6 +452,7 @@ public final class OptLabPreferences {
+ 
+     public String machineReadable() {
+         return "schema=" + SCHEMA
++                + " safeMode=" + bool(isSafeModeEnabled())
+                 + " profile=" + getProfile().name()
+                 + " master=" + bool(isMasterEnabled())
+                 + " quiet=" + bool(isQuietRuntime())
+@@ -494,5 +530,9 @@ public final class OptLabPreferences {
+         }
+     }
+ 
++    private boolean enabled(String key, boolean fallback) {
++        return !isSafeModeEnabled() && prefs.getBoolean(key, fallback);
++    }
++
+     private static int bool(boolean value) { return value ? 1 : 0; }
+ }
+diff --git a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+deleted file mode 100644
+index 2c4ef45..0000000
+--- a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
++++ /dev/null
+@@ -1,197 +0,0 @@
+-package com.zomdroid.fragments;
+-
+-import android.content.Context;
+-import android.graphics.Typeface;
+-import android.widget.Button;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.TextView;
+-
+-import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.widget.SwitchCompat;
+-
+-import com.zomdroid.OptLabPreferences;
+-import com.zomdroid.R;
+-
+-/** Restart-scoped panel containing only bytecode features owned by the Build 42 pack. */
+-public final class Build42OptLabDialog {
+-    private Build42OptLabDialog() {}
+-
+-    public static void show(Context context, Runnable onClosed) {
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        int pad = dp(context, 16);
+-
+-        LinearLayout content = new LinearLayout(context);
+-        content.setOrientation(LinearLayout.VERTICAL);
+-        content.setPadding(pad, dp(context, 4), pad, pad);
+-
+-        TextView intro = text(context, context.getString(R.string.opt_lab_build42_intro), false);
+-        intro.setPadding(0, 0, 0, dp(context, 10));
+-        content.addView(intro);
+-
+-        SwitchCompat onlyBuild42 = toggle(context,
+-                context.getString(R.string.opt_lab_only_build42), prefs.isOnlyBuild42());
+-        content.addView(onlyBuild42);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_build42_presets));
+-        Button streamAll = preset(context, OptLabPreferences.Profile.STREAM_ALL);
+-        Button fboAll = preset(context, OptLabPreferences.Profile.FBO_ALL);
+-        Button fullCandidate = preset(context, OptLabPreferences.Profile.FULL_CANDIDATE);
+-        content.addView(streamAll);
+-        content.addView(fboAll);
+-        content.addView(fullCandidate);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_runtime_b42_section));
+-        SwitchCompat pacing = toggle(context, context.getString(R.string.opt_lab_pacing),
+-                prefs.isMainloopPacing());
+-        content.addView(pacing);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_stream_section));
+-        SwitchCompat streamWake = toggle(context, context.getString(R.string.opt_lab_stream_wake),
+-                prefs.isStreamWake());
+-        SwitchCompat streamQueue = toggle(context,
+-                context.getString(R.string.opt_lab_stream_queue), prefs.isStreamQueueFast());
+-        SwitchCompat streamEta = toggle(context, context.getString(R.string.opt_lab_stream_eta),
+-                prefs.isStreamVelocityEta());
+-        content.addView(streamWake);
+-        content.addView(streamQueue);
+-        content.addView(streamEta);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_fbo_section));
+-        SwitchCompat fboDedup = toggle(context, context.getString(R.string.opt_lab_fbo_dedup),
+-                prefs.isFboDirtyDedup());
+-        SwitchCompat fboBudget = toggle(context, context.getString(R.string.opt_lab_fbo_budget),
+-                prefs.isFboFrameBudget());
+-        SwitchCompat coordinator = toggle(context,
+-                context.getString(R.string.opt_lab_stream_fbo_coordinator),
+-                prefs.isStreamFboCoordinator());
+-        content.addView(fboDedup);
+-        content.addView(fboBudget);
+-        content.addView(coordinator);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_chunk_section));
+-        Button chunkButton = new Button(context);
+-        chunkButton.setText(R.string.opt_lab_chunk_open);
+-        content.addView(chunkButton);
+-        TextView chunkSummary = text(context, prefs.chunkOptimizationSummary(), false);
+-        chunkSummary.setPadding(0, dp(context, 4), 0, 0);
+-        content.addView(chunkSummary);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_render_section));
+-        Button renderButton = new Button(context);
+-        renderButton.setText(R.string.opt_lab_render_open);
+-        content.addView(renderButton);
+-        TextView renderSummary = text(context, prefs.renderOptimizationSummary(), false);
+-        renderSummary.setPadding(0, dp(context, 4), 0, 0);
+-        content.addView(renderSummary);
+-
+-        TextView warning = text(context,
+-                context.getString(R.string.opt_lab_build42_restart_warning), false);
+-        warning.setPadding(0, dp(context, 12), 0, 0);
+-        content.addView(warning);
+-
+-        final boolean[] updating = {false};
+-        Runnable sync = () -> {
+-            OptLabPreferences now = OptLabPreferences.from(context);
+-            updating[0] = true;
+-            onlyBuild42.setChecked(now.isOnlyBuild42());
+-            pacing.setChecked(now.isMainloopPacing());
+-            streamWake.setChecked(now.isStreamWake());
+-            streamQueue.setChecked(now.isStreamQueueFast());
+-            streamEta.setChecked(now.isStreamVelocityEta());
+-            fboDedup.setChecked(now.isFboDirtyDedup());
+-            fboBudget.setChecked(now.isFboFrameBudget());
+-            coordinator.setChecked(now.isStreamFboCoordinator());
+-            coordinator.setEnabled(now.isFboFrameBudget());
+-            chunkSummary.setText(now.chunkOptimizationSummary());
+-            renderSummary.setText(now.renderOptimizationSummary());
+-            updating[0] = false;
+-        };
+-
+-        onlyBuild42.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setOnlyBuild42(checked);
+-        });
+-        pacing.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setMainloopPacing(checked);
+-        });
+-        streamWake.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setStreamWake(checked);
+-        });
+-        streamQueue.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setStreamQueueFast(checked);
+-        });
+-        streamEta.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setStreamVelocityEta(checked);
+-        });
+-        fboDedup.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setFboDirtyDedup(checked);
+-        });
+-        fboBudget.setOnCheckedChangeListener((view, checked) -> {
+-            if (updating[0]) return;
+-            prefs.setFboFrameBudget(checked);
+-            if (!checked && prefs.isStreamFboCoordinator()) {
+-                prefs.setStreamFboCoordinator(false);
+-            }
+-            sync.run();
+-        });
+-        coordinator.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) prefs.setStreamFboCoordinator(checked);
+-        });
+-        streamAll.setOnClickListener(view -> {
+-            prefs.setProfile(OptLabPreferences.Profile.STREAM_ALL);
+-            sync.run();
+-        });
+-        fboAll.setOnClickListener(view -> {
+-            prefs.setProfile(OptLabPreferences.Profile.FBO_ALL);
+-            sync.run();
+-        });
+-        fullCandidate.setOnClickListener(view -> {
+-            prefs.setProfile(OptLabPreferences.Profile.FULL_CANDIDATE);
+-            sync.run();
+-        });
+-        chunkButton.setOnClickListener(view -> ChunkOptimizationDialog.show(context, sync));
+-        renderButton.setOnClickListener(view -> RenderOptimizationDialog.show(context, sync));
+-
+-        sync.run();
+-        ScrollView scroll = new ScrollView(context);
+-        scroll.addView(content);
+-        new AlertDialog.Builder(context)
+-                .setTitle(R.string.opt_lab_build42_title)
+-                .setView(scroll)
+-                .setPositiveButton(R.string.dialog_button_ok, null)
+-                .setOnDismissListener(dialog -> onClosed.run())
+-                .show();
+-    }
+-
+-    private static SwitchCompat toggle(Context context, String label, boolean checked) {
+-        SwitchCompat toggle = new SwitchCompat(context);
+-        toggle.setText(label);
+-        toggle.setChecked(checked);
+-        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
+-        return toggle;
+-    }
+-
+-    private static Button preset(Context context, OptLabPreferences.Profile profile) {
+-        Button button = new Button(context);
+-        button.setText(profile.toString());
+-        return button;
+-    }
+-
+-    private static TextView text(Context context, String value, boolean bold) {
+-        TextView view = new TextView(context);
+-        view.setText(value);
+-        view.setTextSize(13);
+-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+-        return view;
+-    }
+-
+-    private static void addSection(LinearLayout parent, Context context, String value) {
+-        TextView label = text(context, value, true);
+-        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
+-        parent.addView(label);
+-    }
+-
+-    private static int dp(Context context, int value) {
+-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java b/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java
+deleted file mode 100644
+index 2581d7a..0000000
+--- a/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java
++++ /dev/null
+@@ -1,157 +0,0 @@
+-package com.zomdroid.fragments;
+-
+-import android.content.Context;
+-import android.graphics.Typeface;
+-import android.widget.Button;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.TextView;
+-
+-import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.widget.SwitchCompat;
+-
+-import com.zomdroid.OptLabPreferences;
+-import com.zomdroid.R;
+-
+-/** Independent production fast paths for the Build 42 chunk pipeline. */
+-public final class ChunkOptimizationDialog {
+-    private ChunkOptimizationDialog() {}
+-
+-    public static void show(Context context, Runnable onClosed) {
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        int pad = dp(context, 16);
+-        LinearLayout content = new LinearLayout(context);
+-        content.setOrientation(LinearLayout.VERTICAL);
+-        content.setPadding(pad, dp(context, 4), pad, pad);
+-
+-        TextView intro = text(context, context.getString(R.string.opt_lab_chunk_intro), false);
+-        intro.setPadding(0, 0, 0, dp(context, 8));
+-        content.addView(intro);
+-        TextView summary = text(context, prefs.chunkOptimizationSummary(), true);
+-        content.addView(summary);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_chunk_profiles));
+-        Button stable = button(context, R.string.opt_lab_chunk_stable_profile);
+-        Button all = button(context, R.string.opt_lab_chunk_all_profile);
+-        Button off = button(context, R.string.opt_lab_chunk_all_off);
+-        content.addView(stable);
+-        content.addView(all);
+-        content.addView(off);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_chunk_section));
+-        SwitchCompat forage = toggle(context, R.string.opt_lab_chunk_forage,
+-                prefs.isChunkForage());
+-        SwitchCompat neighbourWorker = toggle(context, R.string.opt_lab_chunk_neighbour_worker,
+-                prefs.isChunkNeighbourWorker());
+-        SwitchCompat neighbourMain = toggle(context, R.string.opt_lab_chunk_neighbour_main,
+-                prefs.isChunkNeighbourMain());
+-        SwitchCompat grid = toggle(context, R.string.opt_lab_chunk_grid,
+-                prefs.isChunkGridLoad());
+-        SwitchCompat vehicles = toggle(context, R.string.opt_lab_chunk_vehicles,
+-                prefs.isChunkVehicles());
+-        SwitchCompat buildings = toggle(context, R.string.opt_lab_chunk_buildings,
+-                prefs.isChunkRandomizedBuildings());
+-        SwitchCompat lua = toggle(context, R.string.opt_lab_chunk_lua,
+-                prefs.isChunkLuaMapObjects());
+-        SwitchCompat worldgen = toggle(context, R.string.opt_lab_chunk_worldgen,
+-                prefs.isChunkWorldgenBiome());
+-        content.addView(forage);
+-        content.addView(neighbourWorker);
+-        content.addView(neighbourMain);
+-        content.addView(grid);
+-        content.addView(vehicles);
+-        content.addView(buildings);
+-        content.addView(lua);
+-        content.addView(worldgen);
+-
+-        TextView warning = text(context, context.getString(R.string.opt_lab_chunk_restart), false);
+-        warning.setPadding(0, dp(context, 12), 0, 0);
+-        content.addView(warning);
+-
+-        final boolean[] updating = {false};
+-        Runnable sync = () -> {
+-            OptLabPreferences now = OptLabPreferences.from(context);
+-            updating[0] = true;
+-            forage.setChecked(now.isChunkForage());
+-            neighbourWorker.setChecked(now.isChunkNeighbourWorker());
+-            neighbourMain.setChecked(now.isChunkNeighbourMain());
+-            grid.setChecked(now.isChunkGridLoad());
+-            vehicles.setChecked(now.isChunkVehicles());
+-            buildings.setChecked(now.isChunkRandomizedBuildings());
+-            lua.setChecked(now.isChunkLuaMapObjects());
+-            worldgen.setChecked(now.isChunkWorldgenBiome());
+-            summary.setText(now.chunkOptimizationSummary());
+-            updating[0] = false;
+-        };
+-
+-        forage.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkForage(checked); sync.run(); }
+-        });
+-        neighbourWorker.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkNeighbourWorker(checked); sync.run(); }
+-        });
+-        neighbourMain.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkNeighbourMain(checked); sync.run(); }
+-        });
+-        grid.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkGridLoad(checked); sync.run(); }
+-        });
+-        vehicles.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkVehicles(checked); sync.run(); }
+-        });
+-        buildings.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkRandomizedBuildings(checked); sync.run(); }
+-        });
+-        lua.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkLuaMapObjects(checked); sync.run(); }
+-        });
+-        worldgen.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkWorldgenBiome(checked); sync.run(); }
+-        });
+-        stable.setOnClickListener(view -> { prefs.setChunkStableProfile(); sync.run(); });
+-        all.setOnClickListener(view -> { prefs.setChunkAllProduction(true); sync.run(); });
+-        off.setOnClickListener(view -> { prefs.setChunkAllProduction(false); sync.run(); });
+-
+-        sync.run();
+-        ScrollView scroll = new ScrollView(context);
+-        scroll.addView(content);
+-        new AlertDialog.Builder(context)
+-                .setTitle(R.string.opt_lab_chunk_title)
+-                .setView(scroll)
+-                .setPositiveButton(R.string.dialog_button_ok, null)
+-                .setOnDismissListener(dialog -> onClosed.run())
+-                .show();
+-    }
+-
+-    private static SwitchCompat toggle(Context context, int label, boolean checked) {
+-        SwitchCompat toggle = new SwitchCompat(context);
+-        toggle.setText(label);
+-        toggle.setChecked(checked);
+-        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
+-        return toggle;
+-    }
+-
+-    private static Button button(Context context, int label) {
+-        Button button = new Button(context);
+-        button.setText(label);
+-        return button;
+-    }
+-
+-    private static TextView text(Context context, String value, boolean bold) {
+-        TextView view = new TextView(context);
+-        view.setText(value);
+-        view.setTextSize(13);
+-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+-        return view;
+-    }
+-
+-    private static void addSection(LinearLayout parent, Context context, String value) {
+-        TextView label = text(context, value, true);
+-        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
+-        parent.addView(label);
+-    }
+-
+-    private static int dp(Context context, int value) {
+-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java b/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java
+deleted file mode 100644
+index 823b405..0000000
+--- a/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java
++++ /dev/null
+@@ -1,96 +0,0 @@
+-package com.zomdroid.fragments;
+-
+-import android.content.Context;
+-import android.graphics.Typeface;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.TextView;
+-
+-import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.widget.SwitchCompat;
+-
+-import com.zomdroid.NativeModulesPreferences;
+-import com.zomdroid.R;
+-
+-/** Separate restart-scoped panel for ARM64 game modules. */
+-public final class NativeModulesDialog {
+-    private NativeModulesDialog() {}
+-
+-    public static void show(Context context, Runnable onClosed) {
+-        NativeModulesPreferences prefs = NativeModulesPreferences.from(context);
+-        int pad = dp(context, 16);
+-
+-        LinearLayout content = new LinearLayout(context);
+-        content.setOrientation(LinearLayout.VERTICAL);
+-        content.setPadding(pad, dp(context, 4), pad, pad);
+-
+-        TextView intro = text(context, context.getString(R.string.native_modules_intro), false);
+-        intro.setPadding(0, 0, 0, dp(context, 10));
+-        content.addView(intro);
+-
+-        SwitchCompat lighting = toggle(context,
+-                context.getString(R.string.native_modules_lighting),
+-                prefs.isLighting64Enabled());
+-        SwitchCompat clipper = toggle(context,
+-                context.getString(R.string.native_modules_clipper),
+-                prefs.isPzClipperEnabled());
+-        SwitchCompat pathfinding = toggle(context,
+-                context.getString(R.string.native_modules_pathfinding),
+-                prefs.isPathfindingEnabled());
+-        SwitchCompat popMan = toggle(context,
+-                context.getString(R.string.native_modules_popman),
+-                prefs.isPopManEnabled());
+-        content.addView(lighting);
+-        content.addView(clipper);
+-        content.addView(pathfinding);
+-        content.addView(popMan);
+-
+-        TextView unavailable = text(context,
+-                context.getString(R.string.native_modules_popman_unavailable), true);
+-        unavailable.setPadding(0, dp(context, 2), 0, dp(context, 8));
+-        content.addView(unavailable);
+-
+-        TextView restart = text(context,
+-                context.getString(R.string.native_modules_restart), false);
+-        restart.setPadding(0, dp(context, 10), 0, 0);
+-        content.addView(restart);
+-
+-        lighting.setOnCheckedChangeListener((view, checked) ->
+-                prefs.setLighting64Enabled(checked));
+-        clipper.setOnCheckedChangeListener((view, checked) ->
+-                prefs.setPzClipperEnabled(checked));
+-        pathfinding.setOnCheckedChangeListener((view, checked) ->
+-                prefs.setPathfindingEnabled(checked));
+-        popMan.setOnCheckedChangeListener((view, checked) ->
+-                prefs.setPopManEnabled(checked));
+-
+-        ScrollView scroll = new ScrollView(context);
+-        scroll.addView(content);
+-        new AlertDialog.Builder(context)
+-                .setTitle(R.string.native_modules_title)
+-                .setView(scroll)
+-                .setPositiveButton(R.string.dialog_button_ok, null)
+-                .setOnDismissListener(dialog -> onClosed.run())
+-                .show();
+-    }
+-
+-    private static SwitchCompat toggle(Context context, String label, boolean checked) {
+-        SwitchCompat toggle = new SwitchCompat(context);
+-        toggle.setText(label);
+-        toggle.setChecked(checked);
+-        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
+-        return toggle;
+-    }
+-
+-    private static TextView text(Context context, String value, boolean bold) {
+-        TextView view = new TextView(context);
+-        view.setText(value);
+-        view.setTextSize(13);
+-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+-        return view;
+-    }
+-
+-    private static int dp(Context context, int value) {
+-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
+deleted file mode 100644
+index 9cd6fcb..0000000
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
++++ /dev/null
+@@ -1,479 +0,0 @@
+-package com.zomdroid.fragments;
+-
+-import android.content.Context;
+-import android.graphics.Typeface;
+-import android.view.View;
+-import android.widget.AdapterView;
+-import android.widget.ArrayAdapter;
+-import android.widget.Button;
+-import android.widget.FrameLayout;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.Spinner;
+-import android.widget.TextView;
+-
+-import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.widget.SwitchCompat;
+-
+-import com.google.android.material.tabs.TabLayout;
+-import com.zomdroid.NativeModulesPreferences;
+-import com.zomdroid.OptLabPreferences;
+-import com.zomdroid.R;
+-
+-/** Theme-aware, restart-scoped OPT-LAB dialog split into extensible pages. */
+-public final class OptLabDialog {
+-    private static final int TAB_RUNTIME = 1;
+-    private static final int TAB_DISPLAY = 2;
+-    private static final int TAB_BUILD42 = 3;
+-    private static final int TAB_NATIVE = 4;
+-    private static final int TAB_EXPERIMENTAL = 5;
+-
+-    private static final OptLabPreferences.Profile[] GENERAL_PROFILES = {
+-            OptLabPreferences.Profile.BASELINE,
+-            OptLabPreferences.Profile.RUNTIME_SAFE,
+-            OptLabPreferences.Profile.ALL_TEST_ON,
+-            OptLabPreferences.Profile.CUSTOM
+-    };
+-
+-    private OptLabDialog() {}
+-
+-    public static void show(Context context, Runnable onClosed) {
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        int pad = dp(context, 16);
+-
+-        LinearLayout root = page(context, pad);
+-        TextView intro = text(context, context.getString(R.string.opt_lab_intro), false);
+-        intro.setPadding(0, 0, 0, dp(context, 8));
+-        root.addView(intro);
+-
+-        TabLayout tabs = new TabLayout(context);
+-        tabs.setTabMode(TabLayout.MODE_SCROLLABLE);
+-        tabs.setTabGravity(TabLayout.GRAVITY_START);
+-        addTab(tabs, context, R.string.opt_lab_tab_overview);
+-        addTab(tabs, context, R.string.opt_lab_tab_runtime);
+-        addTab(tabs, context, R.string.opt_lab_tab_display);
+-        addTab(tabs, context, R.string.opt_lab_tab_build42);
+-        addTab(tabs, context, R.string.opt_lab_tab_native);
+-        addTab(tabs, context, R.string.opt_lab_tab_experimental);
+-        root.addView(tabs);
+-
+-        FrameLayout pageHost = new FrameLayout(context);
+-        root.addView(pageHost, new LinearLayout.LayoutParams(
+-                LinearLayout.LayoutParams.MATCH_PARENT,
+-                LinearLayout.LayoutParams.WRAP_CONTENT));
+-
+-        LinearLayout overviewPage = page(context, 0);
+-        LinearLayout runtimePage = page(context, 0);
+-        LinearLayout displayPage = page(context, 0);
+-        LinearLayout build42Page = page(context, 0);
+-        LinearLayout nativePage = page(context, 0);
+-        LinearLayout experimentalPage = page(context, 0);
+-        LinearLayout[] pages = {overviewPage, runtimePage, displayPage, build42Page,
+-                nativePage, experimentalPage};
+-        for (LinearLayout page : pages) {
+-            page.setVisibility(View.GONE);
+-            pageHost.addView(page);
+-        }
+-        overviewPage.setVisibility(View.VISIBLE);
+-
+-        addLabel(overviewPage, context, context.getString(R.string.opt_lab_profile));
+-        Spinner profile = spinner(context, GENERAL_PROFILES, generalProfile(prefs.getProfile()));
+-        overviewPage.addView(profile);
+-        SwitchCompat master = toggle(context, context.getString(R.string.opt_lab_general_master),
+-                prefs.isMasterEnabled());
+-        overviewPage.addView(master);
+-
+-        addSection(overviewPage, context, context.getString(R.string.opt_lab_overview_modules));
+-        Button runtimeCard = navigationButton(context);
+-        Button displayCard = navigationButton(context);
+-        Button build42Card = navigationButton(context);
+-        Button nativeCard = navigationButton(context);
+-        Button experimentalCard = navigationButton(context);
+-        overviewPage.addView(runtimeCard);
+-        overviewPage.addView(displayCard);
+-        overviewPage.addView(build42Card);
+-        overviewPage.addView(nativeCard);
+-        overviewPage.addView(experimentalCard);
+-        TextView independent = text(context,
+-                context.getString(R.string.opt_lab_independent_note), false);
+-        independent.setPadding(0, dp(context, 10), 0, 0);
+-        overviewPage.addView(independent);
+-
+-        addSection(runtimePage, context, context.getString(R.string.opt_lab_runtime_section));
+-        SwitchCompat quiet = toggle(context, context.getString(R.string.opt_lab_quiet),
+-                prefs.isQuietRuntime());
+-        SwitchCompat buffered = toggle(context, context.getString(R.string.opt_lab_buffered_stdio),
+-                prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
+-        SwitchCompat sqlite = toggle(context, context.getString(R.string.opt_lab_sqlite),
+-                prefs.isSqliteAndroidNative());
+-        runtimePage.addView(quiet);
+-        runtimePage.addView(buffered);
+-        runtimePage.addView(sqlite);
+-        addLabel(runtimePage, context, context.getString(R.string.opt_lab_box64));
+-        Spinner box64 = spinner(context, OptLabPreferences.Box64Policy.values(),
+-                prefs.getBox64Policy());
+-        runtimePage.addView(box64);
+-
+-        addSection(displayPage, context, context.getString(R.string.opt_lab_android_section));
+-        SwitchCompat surface = toggle(context, context.getString(R.string.opt_lab_surface),
+-                prefs.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
+-        SwitchCompat refresh = toggle(context, context.getString(R.string.opt_lab_refresh),
+-                prefs.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
+-        SwitchCompat input = toggle(context, context.getString(R.string.opt_lab_input_queue),
+-                prefs.getInputQueueMode() == OptLabPreferences.InputQueueMode.MUTEX_SAFE);
+-        SwitchCompat analog = toggle(context, context.getString(R.string.opt_lab_analog),
+-                prefs.isAnalogFilter());
+-        SwitchCompat coalesce = toggle(context, context.getString(R.string.opt_lab_coalesce),
+-                prefs.isInputCoalesce());
+-        SwitchCompat mglLog = toggle(context, context.getString(R.string.opt_lab_mgl_log),
+-                prefs.isMobileGlFileLogEnabled());
+-        displayPage.addView(surface);
+-        displayPage.addView(refresh);
+-        displayPage.addView(input);
+-        displayPage.addView(analog);
+-        displayPage.addView(coalesce);
+-        displayPage.addView(mglLog);
+-
+-        addSection(build42Page, context, context.getString(R.string.opt_lab_build42_section));
+-        build42Page.addView(text(context,
+-                context.getString(R.string.opt_lab_build42_independent), false));
+-        Button build42Button = new Button(context);
+-        build42Button.setText(R.string.opt_lab_build42_open);
+-        build42Page.addView(build42Button);
+-        TextView build42Summary = text(context, prefs.build42Summary(), false);
+-        build42Summary.setPadding(0, dp(context, 4), 0, 0);
+-        build42Page.addView(build42Summary);
+-        addSection(build42Page, context, context.getString(R.string.opt_lab_chunk_section));
+-        Button chunkOptimizationButton = new Button(context);
+-        chunkOptimizationButton.setText(R.string.opt_lab_chunk_open);
+-        build42Page.addView(chunkOptimizationButton);
+-        TextView chunkOptimizationSummary = text(context,
+-                prefs.chunkOptimizationSummary(), false);
+-        chunkOptimizationSummary.setPadding(0, dp(context, 4), 0, 0);
+-        build42Page.addView(chunkOptimizationSummary);
+-
+-        addSection(nativePage, context, context.getString(R.string.native_modules_section));
+-        nativePage.addView(text(context,
+-                context.getString(R.string.native_modules_overview_intro), false));
+-        Button nativeModulesButton = new Button(context);
+-        nativeModulesButton.setText(R.string.native_modules_open);
+-        nativePage.addView(nativeModulesButton);
+-        TextView nativeModulesSummary = text(context,
+-                NativeModulesPreferences.from(context).summary(), false);
+-        nativeModulesSummary.setPadding(0, dp(context, 4), 0, 0);
+-        nativePage.addView(nativeModulesSummary);
+-        TextView experimentalNative = text(context,
+-                context.getString(R.string.native_modules_experimental_warning), true);
+-        experimentalNative.setPadding(0, dp(context, 10), 0, 0);
+-        nativePage.addView(experimentalNative);
+-
+-        addSection(experimentalPage, context,
+-                context.getString(R.string.opt_lab_experimental_title));
+-        experimentalPage.addView(text(context,
+-                context.getString(R.string.opt_lab_experimental_placeholder), false));
+-        SwitchCompat cp2c = toggle(context, context.getString(R.string.opt_lab_chunk_cp2c),
+-                prefs.isChunkCp2cDirtyClear());
+-        experimentalPage.addView(cp2c);
+-        TextView cp2cWarning = text(context,
+-                context.getString(R.string.opt_lab_chunk_cp2c_warning), false);
+-        cp2cWarning.setPadding(0, dp(context, 6), 0, 0);
+-        experimentalPage.addView(cp2cWarning);
+-
+-        for (LinearLayout page : new LinearLayout[]{runtimePage, displayPage}) {
+-            TextView warning = text(context,
+-                    context.getString(R.string.opt_lab_general_restart_warning), false);
+-            warning.setPadding(0, dp(context, 12), 0, 0);
+-            page.addView(warning);
+-        }
+-
+-        final boolean[] updating = {false};
+-        final boolean[] suppressProfileCallback = {false};
+-        Runnable sync = () -> {
+-            OptLabPreferences now = OptLabPreferences.from(context);
+-            int effectiveProfile = indexOf(GENERAL_PROFILES, generalProfile(now.getProfile()));
+-            if (profile.getSelectedItemPosition() != effectiveProfile) {
+-                suppressProfileCallback[0] = true;
+-                profile.setSelection(effectiveProfile, false);
+-            }
+-            master.setChecked(now.isMasterEnabled());
+-            quiet.setChecked(now.isQuietRuntime());
+-            buffered.setChecked(now.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
+-            sqlite.setChecked(now.isSqliteAndroidNative());
+-            box64.setSelection(now.getBox64Policy().ordinal());
+-            surface.setChecked(now.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
+-            refresh.setChecked(now.getDisplayFpsHint()
+-                    == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
+-            input.setChecked(now.getInputQueueMode()
+-                    == OptLabPreferences.InputQueueMode.MUTEX_SAFE);
+-            analog.setChecked(now.isAnalogFilter());
+-            coalesce.setChecked(now.isInputCoalesce());
+-            mglLog.setChecked(now.isMobileGlFileLogEnabled());
+-            nativeModulesSummary.setText(NativeModulesPreferences.from(context).summary());
+-            build42Summary.setText(now.build42Summary());
+-            chunkOptimizationSummary.setText(now.chunkOptimizationSummary());
+-            cp2c.setChecked(now.isChunkCp2cDirtyClear());
+-
+-            boolean generalEnabled = now.isMasterEnabled();
+-            quiet.setEnabled(generalEnabled);
+-            buffered.setEnabled(generalEnabled);
+-            sqlite.setEnabled(generalEnabled);
+-            box64.setEnabled(generalEnabled);
+-            surface.setEnabled(generalEnabled);
+-            refresh.setEnabled(generalEnabled);
+-            input.setEnabled(generalEnabled);
+-            analog.setEnabled(generalEnabled);
+-            coalesce.setEnabled(generalEnabled);
+-            mglLog.setEnabled(generalEnabled);
+-
+-            runtimeCard.setText(context.getString(R.string.opt_lab_overview_runtime,
+-                    enabledCount(now, true), generalEnabled ? "ON" : "OFF"));
+-            displayCard.setText(context.getString(R.string.opt_lab_overview_display,
+-                    enabledCount(now, false), generalEnabled ? "ON" : "OFF"));
+-            build42Card.setText(context.getString(R.string.opt_lab_overview_build42,
+-                    now.build42Summary()));
+-            nativeCard.setText(context.getString(R.string.opt_lab_overview_native,
+-                    NativeModulesPreferences.from(context).summary()));
+-            experimentalCard.setText(context.getString(R.string.opt_lab_overview_experimental,
+-                    now.isChunkCp2cDirtyClear() ? "CP2C active · necesită validare"
+-                            : "0 active · necesită validare"));
+-        };
+-
+-        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+-            @Override public void onTabSelected(TabLayout.Tab tab) {
+-                for (int index = 0; index < pages.length; index++) {
+-                    pages[index].setVisibility(index == tab.getPosition()
+-                            ? View.VISIBLE : View.GONE);
+-                }
+-            }
+-            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+-            @Override public void onTabReselected(TabLayout.Tab tab) {}
+-        });
+-        runtimeCard.setOnClickListener(v -> select(tabs, TAB_RUNTIME));
+-        displayCard.setOnClickListener(v -> select(tabs, TAB_DISPLAY));
+-        build42Card.setOnClickListener(v -> select(tabs, TAB_BUILD42));
+-        nativeCard.setOnClickListener(v -> select(tabs, TAB_NATIVE));
+-        experimentalCard.setOnClickListener(v -> select(tabs, TAB_EXPERIMENTAL));
+-
+-        final boolean[] firstProfileCallback = {true};
+-        Runnable showCustomProfile = () -> {
+-            int custom = indexOf(GENERAL_PROFILES, OptLabPreferences.Profile.CUSTOM);
+-            if (profile.getSelectedItemPosition() != custom) {
+-                suppressProfileCallback[0] = true;
+-                profile.setSelection(custom, false);
+-            }
+-        };
+-        profile.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+-            @Override public void onItemSelected(AdapterView<?> parent, View view,
+-                                                  int position, long id) {
+-                if (firstProfileCallback[0]) { firstProfileCallback[0] = false; return; }
+-                if (suppressProfileCallback[0]) { suppressProfileCallback[0] = false; return; }
+-                if (updating[0]) return;
+-                updating[0] = true;
+-                prefs.setProfile((OptLabPreferences.Profile) parent.getItemAtPosition(position));
+-                sync.run();
+-                updating[0] = false;
+-            }
+-            @Override public void onNothingSelected(AdapterView<?> parent) {}
+-        });
+-        master.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setMasterEnabled(checked);
+-                updating[0] = true;
+-                sync.run();
+-                updating[0] = false;
+-                if (checked) showCustomProfile.run();
+-            }
+-        });
+-        quiet.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setQuietRuntime(checked); showCustomProfile.run(); sync.run(); }
+-        });
+-        buffered.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setStdioMode(checked ? OptLabPreferences.StdioMode.BUFFERED
+-                        : OptLabPreferences.StdioMode.LEGACY);
+-                showCustomProfile.run(); sync.run();
+-            }
+-        });
+-        sqlite.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setSqliteAndroidNative(checked); showCustomProfile.run(); sync.run(); }
+-        });
+-        box64.setOnItemSelectedListener(enumListener(updating,
+-                value -> prefs.setBox64Policy((OptLabPreferences.Box64Policy) value),
+-                () -> { showCustomProfile.run(); sync.run(); }));
+-        surface.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setSurfaceMode(checked ? OptLabPreferences.SurfaceMode.GEN_ACK
+-                        : OptLabPreferences.SurfaceMode.LEGACY);
+-                showCustomProfile.run(); sync.run();
+-            }
+-        });
+-        refresh.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setDisplayFpsHint(checked
+-                        ? OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH
+-                        : OptLabPreferences.DisplayFpsHint.OFF);
+-                showCustomProfile.run(); sync.run();
+-            }
+-        });
+-        input.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setInputQueueMode(checked
+-                        ? OptLabPreferences.InputQueueMode.MUTEX_SAFE
+-                        : OptLabPreferences.InputQueueMode.LEGACY);
+-                showCustomProfile.run(); sync.run();
+-            }
+-        });
+-        analog.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setAnalogFilter(checked); showCustomProfile.run(); sync.run(); }
+-        });
+-        coalesce.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setInputCoalesce(checked); showCustomProfile.run(); sync.run(); }
+-        });
+-        mglLog.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setMobileGlFileLogEnabled(checked); showCustomProfile.run(); sync.run();
+-            }
+-        });
+-        nativeModulesButton.setOnClickListener(v -> NativeModulesDialog.show(context, sync));
+-        build42Button.setOnClickListener(v -> Build42OptLabDialog.show(context, sync));
+-        chunkOptimizationButton.setOnClickListener(
+-                v -> ChunkOptimizationDialog.show(context, sync));
+-        cp2c.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) { prefs.setChunkCp2cDirtyClear(checked); sync.run(); }
+-        });
+-
+-        updating[0] = true;
+-        sync.run();
+-        updating[0] = false;
+-
+-        ScrollView scroll = new ScrollView(context);
+-        scroll.addView(root);
+-        new AlertDialog.Builder(context)
+-                .setTitle(R.string.opt_lab_title)
+-                .setView(scroll)
+-                .setPositiveButton(R.string.dialog_button_ok, null)
+-                .setOnDismissListener(dialog -> onClosed.run())
+-                .show();
+-    }
+-
+-    private interface ValueConsumer { void accept(Object value); }
+-
+-    private static AdapterView.OnItemSelectedListener enumListener(boolean[] updating,
+-                                                                    ValueConsumer consumer,
+-                                                                    Runnable afterChange) {
+-        final boolean[] first = {true};
+-        return new AdapterView.OnItemSelectedListener() {
+-            @Override public void onItemSelected(AdapterView<?> parent, View view,
+-                                                  int position, long id) {
+-                if (first[0]) { first[0] = false; return; }
+-                if (!updating[0]) {
+-                    consumer.accept(parent.getItemAtPosition(position));
+-                    afterChange.run();
+-                }
+-            }
+-            @Override public void onNothingSelected(AdapterView<?> parent) {}
+-        };
+-    }
+-
+-    private static int enabledCount(OptLabPreferences prefs, boolean runtime) {
+-        if (!prefs.isMasterEnabled()) return 0;
+-        if (runtime) {
+-            int count = prefs.isQuietRuntime() ? 1 : 0;
+-            if (prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED) count++;
+-            if (prefs.isSqliteAndroidNative()) count++;
+-            if (prefs.getBox64Policy() != OptLabPreferences.Box64Policy.LEGACY_3_0) count++;
+-            return count;
+-        }
+-        int count = prefs.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK ? 1 : 0;
+-        if (prefs.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH) count++;
+-        if (prefs.getInputQueueMode() == OptLabPreferences.InputQueueMode.MUTEX_SAFE) count++;
+-        if (prefs.isAnalogFilter()) count++;
+-        if (prefs.isInputCoalesce()) count++;
+-        if (prefs.isMobileGlFileLogEnabled()) count++;
+-        return count;
+-    }
+-
+-    private static void addTab(TabLayout tabs, Context context, int label) {
+-        tabs.addTab(tabs.newTab().setText(context.getString(label)));
+-    }
+-
+-    private static void select(TabLayout tabs, int index) {
+-        TabLayout.Tab tab = tabs.getTabAt(index);
+-        if (tab != null) tab.select();
+-    }
+-
+-    private static Button navigationButton(Context context) {
+-        Button button = new Button(context);
+-        button.setAllCaps(false);
+-        button.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+-        return button;
+-    }
+-
+-    private static LinearLayout page(Context context, int padding) {
+-        LinearLayout page = new LinearLayout(context);
+-        page.setOrientation(LinearLayout.VERTICAL);
+-        page.setPadding(padding, dp(context, 4), padding, padding);
+-        return page;
+-    }
+-
+-    private static <T> Spinner spinner(Context context, T[] values, T selected) {
+-        Spinner spinner = new Spinner(context);
+-        ArrayAdapter<T> adapter = new ArrayAdapter<>(context,
+-                android.R.layout.simple_spinner_item, values);
+-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+-        spinner.setAdapter(adapter);
+-        spinner.setSelection(adapter.getPosition(selected));
+-        spinner.setPadding(0, 0, 0, dp(context, 8));
+-        return spinner;
+-    }
+-
+-    private static OptLabPreferences.Profile generalProfile(OptLabPreferences.Profile profile) {
+-        switch (profile) {
+-            case STREAM_ALL:
+-            case FBO_ALL:
+-            case FULL_CANDIDATE:
+-                return OptLabPreferences.Profile.CUSTOM;
+-            default:
+-                return profile;
+-        }
+-    }
+-
+-    private static <T> int indexOf(T[] values, T selected) {
+-        for (int index = 0; index < values.length; index++) {
+-            if (values[index].equals(selected)) return index;
+-        }
+-        return 0;
+-    }
+-
+-    private static SwitchCompat toggle(Context context, String label, boolean checked) {
+-        SwitchCompat toggle = new SwitchCompat(context);
+-        toggle.setText(label);
+-        toggle.setChecked(checked);
+-        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
+-        return toggle;
+-    }
+-
+-    private static TextView text(Context context, String value, boolean bold) {
+-        TextView view = new TextView(context);
+-        view.setText(value);
+-        view.setTextSize(13);
+-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+-        return view;
+-    }
+-
+-    private static void addLabel(LinearLayout parent, Context context, String value) {
+-        TextView label = text(context, value, true);
+-        label.setPadding(0, dp(context, 8), 0, dp(context, 2));
+-        parent.addView(label);
+-    }
+-
+-    private static void addSection(LinearLayout parent, Context context, String value) {
+-        TextView label = text(context, value, true);
+-        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
+-        parent.addView(label);
+-    }
+-
+-    private static int dp(Context context, int value) {
+-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+new file mode 100644
+index 0000000..37cadd6
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+@@ -0,0 +1,599 @@
++package com.zomdroid.fragments;
++
++import android.os.Bundle;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.AdapterView;
++import android.widget.FrameLayout;
++
++import androidx.annotation.NonNull;
++import androidx.annotation.Nullable;
++import androidx.appcompat.widget.SwitchCompat;
++import androidx.fragment.app.Fragment;
++
++import com.google.android.material.button.MaterialButton;
++import com.google.android.material.tabs.TabLayout;
++import com.zomdroid.NativeModulesPreferences;
++import com.zomdroid.OptLabPreferences;
++import com.zomdroid.R;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/** Full-screen, theme-aware OPT-LAB settings surface. */
++public final class OptLabFragment extends Fragment {
++    private static final int TAB_OVERVIEW = 0;
++    private static final int TAB_RUNTIME = 1;
++    private static final int TAB_DISPLAY = 2;
++    private static final int TAB_BUILD42 = 3;
++    private static final int TAB_NATIVE = 4;
++    private static final int TAB_EXPERIMENTAL = 5;
++
++    private static final OptLabPreferences.Profile[] GENERAL_PROFILES = {
++            OptLabPreferences.Profile.BASELINE,
++            OptLabPreferences.Profile.RUNTIME_SAFE,
++            OptLabPreferences.Profile.ALL_TEST_ON,
++            OptLabPreferences.Profile.CUSTOM
++    };
++
++    private OptLabPreferences prefs;
++    private NativeModulesPreferences nativePrefs;
++    private TabLayout tabs;
++    private FrameLayout pageHost;
++    private View[] pages;
++    private boolean updating;
++    private boolean uiReady;
++
++    private OptLabUi.SpinnerCard<OptLabPreferences.Profile> profileCard;
++    private OptLabUi.NavCard overviewRuntime;
++    private OptLabUi.NavCard overviewDisplay;
++    private OptLabUi.NavCard overviewBuild42;
++    private OptLabUi.NavCard overviewNative;
++    private OptLabUi.NavCard overviewExperimental;
++    private OptLabUi.ToggleCard safeMode;
++
++    private OptLabUi.ToggleCard generalMaster;
++    private OptLabUi.ToggleCard quiet;
++    private OptLabUi.ToggleCard buffered;
++    private OptLabUi.ToggleCard sqlite;
++    private OptLabUi.SpinnerCard<OptLabPreferences.Box64Policy> box64;
++
++    private OptLabUi.ToggleCard surface;
++    private OptLabUi.ToggleCard refresh;
++    private OptLabUi.ToggleCard inputQueue;
++    private OptLabUi.ToggleCard analog;
++    private OptLabUi.ToggleCard coalesce;
++    private OptLabUi.ToggleCard mobileGlLog;
++
++    private OptLabUi.ToggleCard onlyBuild42;
++    private OptLabUi.ToggleCard pacing;
++    private OptLabUi.ToggleCard streamWake;
++    private OptLabUi.ToggleCard streamQueue;
++    private OptLabUi.ToggleCard streamEta;
++    private OptLabUi.ToggleCard fboDedup;
++    private OptLabUi.ToggleCard fboBudget;
++    private OptLabUi.ToggleCard streamFboCoordinator;
++    private OptLabUi.ToggleCard chunkForage;
++    private OptLabUi.ToggleCard chunkNeighbourWorker;
++    private OptLabUi.ToggleCard chunkNeighbourMain;
++    private OptLabUi.ToggleCard chunkGrid;
++    private OptLabUi.ToggleCard chunkVehicles;
++    private OptLabUi.ToggleCard chunkBuildings;
++    private OptLabUi.ToggleCard chunkLua;
++    private OptLabUi.ToggleCard chunkWorldgen;
++    private OptLabUi.ToggleCard renderUpload;
++    private OptLabUi.ToggleCard renderLookup;
++    private OptLabUi.ToggleCard renderRingClear;
++
++    private OptLabUi.ToggleCard lighting;
++    private OptLabUi.ToggleCard clipper;
++    private OptLabUi.ToggleCard pathfinding;
++    private OptLabUi.ToggleCard popMan;
++    private OptLabUi.ToggleCard cp2c;
++
++    private final List<MaterialButton> build42Buttons = new ArrayList<>();
++
++    @Nullable
++    @Override
++    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
++                             @Nullable Bundle savedInstanceState) {
++        View root = inflater.inflate(R.layout.fragment_opt_lab, container, false);
++        prefs = OptLabPreferences.from(requireContext());
++        nativePrefs = NativeModulesPreferences.from(requireContext());
++        tabs = root.findViewById(R.id.opt_lab_tabs);
++        pageHost = root.findViewById(R.id.opt_lab_page_host);
++
++        addTab(R.string.opt_lab_tab_overview);
++        addTab(R.string.opt_lab_tab_runtime);
++        addTab(R.string.opt_lab_tab_display);
++        addTab(R.string.opt_lab_tab_build42);
++        addTab(R.string.opt_lab_tab_native);
++        addTab(R.string.opt_lab_tab_experimental);
++
++        pages = new View[]{
++                buildOverviewPage(),
++                buildRuntimePage(),
++                buildDisplayPage(),
++                buildBuild42Page(),
++                buildNativePage(),
++                buildExperimentalPage()
++        };
++        for (int index = 0; index < pages.length; index++) {
++            pages[index].setVisibility(index == TAB_OVERVIEW ? View.VISIBLE : View.GONE);
++            pageHost.addView(pages[index], new FrameLayout.LayoutParams(
++                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
++        }
++        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
++            @Override public void onTabSelected(TabLayout.Tab tab) {
++                showPage(tab.getPosition());
++            }
++            @Override public void onTabUnselected(TabLayout.Tab tab) {}
++            @Override public void onTabReselected(TabLayout.Tab tab) {
++                pages[tab.getPosition()].scrollTo(0, 0);
++            }
++        });
++
++        bindListeners();
++        uiReady = true;
++        syncAll();
++        return root;
++    }
++
++    @Override
++    public void onResume() {
++        super.onResume();
++        if (uiReady) syncAll();
++    }
++
++    @Override
++    public void onDestroyView() {
++        uiReady = false;
++        pages = null;
++        tabs = null;
++        pageHost = null;
++        super.onDestroyView();
++    }
++
++    private View buildOverviewPage() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        profileCard = OptLabUi.spinnerCard(requireContext(), R.drawable.optlab_ic_profile,
++                getString(R.string.opt_lab_profile_general), GENERAL_PROFILES);
++        OptLabUi.addCard(page.content, profileCard.root);
++
++        overviewRuntime = OptLabUi.navCard(requireContext(), R.drawable.optlab_ic_runtime,
++                getString(R.string.opt_lab_runtime_card), "", view -> selectTab(TAB_RUNTIME));
++        overviewDisplay = OptLabUi.navCard(requireContext(), R.drawable.optlab_ic_display,
++                getString(R.string.opt_lab_display_card), "", view -> selectTab(TAB_DISPLAY));
++        overviewBuild42 = OptLabUi.navCard(requireContext(), R.drawable.optlab_ic_build42,
++                getString(R.string.opt_lab_build42_card), "", view -> selectTab(TAB_BUILD42));
++        overviewNative = OptLabUi.navCard(requireContext(), R.drawable.optlab_ic_native,
++                getString(R.string.opt_lab_native_card), "", view -> selectTab(TAB_NATIVE));
++        overviewExperimental = OptLabUi.navCard(requireContext(),
++                R.drawable.optlab_ic_experimental,
++                getString(R.string.opt_lab_experimental_card), "",
++                view -> selectTab(TAB_EXPERIMENTAL));
++        OptLabUi.addCard(page.content, overviewRuntime.root);
++        OptLabUi.addCard(page.content, overviewDisplay.root);
++        OptLabUi.addCard(page.content, overviewBuild42.root);
++        OptLabUi.addCard(page.content, overviewNative.root);
++        OptLabUi.addCard(page.content, overviewExperimental.root);
++
++        safeMode = OptLabUi.toggleCard(requireContext(), R.drawable.optlab_ic_safe_mode,
++                getString(R.string.opt_lab_safe_mode),
++                getString(R.string.opt_lab_safe_mode_summary), true);
++        OptLabUi.addCard(page.content, safeMode.root);
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_changes_next_launch)));
++        return page.root;
++    }
++
++    private View buildRuntimePage() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_general_controls)));
++        generalMaster = addToggle(page, getString(R.string.opt_lab_general_master),
++                getString(R.string.opt_lab_independent_note));
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_runtime_section)));
++        quiet = addToggle(page, getString(R.string.opt_lab_quiet), "");
++        buffered = addToggle(page, getString(R.string.opt_lab_buffered_stdio), "");
++        sqlite = addToggle(page, getString(R.string.opt_lab_sqlite), "");
++        box64 = OptLabUi.spinnerCard(requireContext(), R.drawable.optlab_ic_runtime,
++                getString(R.string.opt_lab_box64), OptLabPreferences.Box64Policy.values());
++        OptLabUi.addCard(page.content, box64.root);
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_general_restart_warning)));
++        return page.root;
++    }
++
++    private View buildDisplayPage() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_android_section)));
++        surface = addToggle(page, getString(R.string.opt_lab_surface), "");
++        refresh = addToggle(page, getString(R.string.opt_lab_refresh), "");
++        inputQueue = addToggle(page, getString(R.string.opt_lab_input_queue), "");
++        analog = addToggle(page, getString(R.string.opt_lab_analog), "");
++        coalesce = addToggle(page, getString(R.string.opt_lab_coalesce), "");
++        mobileGlLog = addToggle(page, getString(R.string.opt_lab_mgl_log), "");
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_general_restart_warning)));
++        return page.root;
++    }
++
++    private View buildBuild42Page() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_build42_intro)));
++        onlyBuild42 = addToggle(page, getString(R.string.opt_lab_only_build42),
++                getString(R.string.opt_lab_build42_independent));
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_build42_presets)));
++        addBuild42Button(page, OptLabPreferences.Profile.STREAM_ALL.toString(),
++                () -> prefs.setProfile(OptLabPreferences.Profile.STREAM_ALL));
++        addBuild42Button(page, OptLabPreferences.Profile.FBO_ALL.toString(),
++                () -> prefs.setProfile(OptLabPreferences.Profile.FBO_ALL));
++        addBuild42Button(page, OptLabPreferences.Profile.FULL_CANDIDATE.toString(),
++                () -> prefs.setProfile(OptLabPreferences.Profile.FULL_CANDIDATE));
++        addBuild42Button(page, getString(R.string.opt_lab_build42_all_off),
++                prefs::setBuild42ProductionAllOff);
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_runtime_b42_section)));
++        pacing = addToggle(page, getString(R.string.opt_lab_pacing), "");
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_stream_section)));
++        streamWake = addToggle(page, getString(R.string.opt_lab_stream_wake), "");
++        streamQueue = addToggle(page, getString(R.string.opt_lab_stream_queue), "");
++        streamEta = addToggle(page, getString(R.string.opt_lab_stream_eta), "");
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_fbo_section)));
++        fboDedup = addToggle(page, getString(R.string.opt_lab_fbo_dedup), "");
++        fboBudget = addToggle(page, getString(R.string.opt_lab_fbo_budget), "");
++        streamFboCoordinator = addToggle(page,
++                getString(R.string.opt_lab_stream_fbo_coordinator), "");
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_chunk_section)));
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_chunk_intro)));
++        addBuild42Button(page, getString(R.string.opt_lab_chunk_stable_profile),
++                prefs::setChunkStableProfile);
++        addBuild42Button(page, getString(R.string.opt_lab_chunk_all_profile),
++                () -> prefs.setChunkAllProduction(true));
++        addBuild42Button(page, getString(R.string.opt_lab_chunk_all_off),
++                () -> prefs.setChunkAllProduction(false));
++        chunkForage = addToggle(page, getString(R.string.opt_lab_chunk_forage), "");
++        chunkNeighbourWorker = addToggle(page,
++                getString(R.string.opt_lab_chunk_neighbour_worker), "");
++        chunkNeighbourMain = addToggle(page,
++                getString(R.string.opt_lab_chunk_neighbour_main), "");
++        chunkGrid = addToggle(page, getString(R.string.opt_lab_chunk_grid), "");
++        chunkVehicles = addToggle(page, getString(R.string.opt_lab_chunk_vehicles), "");
++        chunkBuildings = addToggle(page, getString(R.string.opt_lab_chunk_buildings), "");
++        chunkLua = addToggle(page, getString(R.string.opt_lab_chunk_lua), "");
++        chunkWorldgen = addToggle(page, getString(R.string.opt_lab_chunk_worldgen), "");
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_render_section)));
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_render_intro)));
++        addBuild42Button(page, getString(R.string.opt_lab_render_cp62_safe),
++                () -> prefs.setRenderCp62SafeProfile(true));
++        addBuild42Button(page, getString(R.string.opt_lab_render_all_off),
++                () -> prefs.setRenderCp62SafeProfile(false));
++        renderUpload = addToggle(page,
++                getString(R.string.opt_lab_render_chunk_depth_upload), "");
++        renderLookup = addToggle(page,
++                getString(R.string.opt_lab_render_chunk_depth_lookup), "");
++        renderRingClear = addToggle(page,
++                getString(R.string.opt_lab_render_ring_empty_clear), "");
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_render_ring_bulk_status)));
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_build42_restart_warning)));
++        return page.root;
++    }
++
++    private View buildNativePage() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_native_stable)));
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.native_modules_intro)));
++        lighting = addToggle(page, getString(R.string.native_modules_lighting),
++                "Build 42 ARM64 · fallback individual");
++        clipper = addToggle(page, getString(R.string.native_modules_clipper),
++                "Build 42 ARM64 · fallback individual");
++        OptLabUi.NavCard experimentalLink = OptLabUi.navCard(requireContext(),
++                R.drawable.optlab_ic_experimental,
++                getString(R.string.opt_lab_experimental_card),
++                getString(R.string.opt_lab_native_experimental_link),
++                view -> selectTab(TAB_EXPERIMENTAL));
++        OptLabUi.addCard(page.content, experimentalLink.root);
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.native_modules_restart)));
++        return page.root;
++    }
++
++    private View buildExperimentalPage() {
++        OptLabUi.Page page = OptLabUi.page(requireContext());
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_experimental_placeholder)));
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_experimental_native)));
++        pathfinding = addToggle(page, getString(R.string.native_modules_pathfinding),
++                "Regresie comportamentală raportată · recomandat OFF");
++        popMan = addToggle(page, getString(R.string.native_modules_popman),
++                "Regresia completă pe dispozitiv este încă necesară · recomandat OFF");
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.native_modules_popman_unavailable)));
++
++        page.content.addView(OptLabUi.section(requireContext(),
++                getString(R.string.opt_lab_chunk_section)));
++        cp2c = addToggle(page, getString(R.string.opt_lab_chunk_cp2c),
++                getString(R.string.opt_lab_chunk_cp2c_warning));
++        page.content.addView(OptLabUi.note(requireContext(),
++                getString(R.string.opt_lab_changes_next_launch)));
++        return page.root;
++    }
++
++    private void bindListeners() {
++        profileCard.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
++            @Override public void onItemSelected(AdapterView<?> parent, View view,
++                                                  int position, long id) {
++                if (!uiReady || updating) return;
++                prefs.setProfile((OptLabPreferences.Profile) parent.getItemAtPosition(position));
++                syncAll();
++            }
++            @Override public void onNothingSelected(AdapterView<?> parent) {}
++        });
++        box64.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
++            @Override public void onItemSelected(AdapterView<?> parent, View view,
++                                                  int position, long id) {
++                if (!uiReady || updating) return;
++                prefs.setBox64Policy((OptLabPreferences.Box64Policy)
++                        parent.getItemAtPosition(position));
++                syncAll();
++            }
++            @Override public void onNothingSelected(AdapterView<?> parent) {}
++        });
++
++        bind(safeMode, prefs::setSafeModeEnabled);
++        bind(generalMaster, prefs::setMasterEnabled);
++        bind(quiet, prefs::setQuietRuntime);
++        bind(buffered, value -> prefs.setStdioMode(value
++                ? OptLabPreferences.StdioMode.BUFFERED : OptLabPreferences.StdioMode.LEGACY));
++        bind(sqlite, prefs::setSqliteAndroidNative);
++        bind(surface, value -> prefs.setSurfaceMode(value
++                ? OptLabPreferences.SurfaceMode.GEN_ACK : OptLabPreferences.SurfaceMode.LEGACY));
++        bind(refresh, value -> prefs.setDisplayFpsHint(value
++                ? OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH
++                : OptLabPreferences.DisplayFpsHint.OFF));
++        bind(inputQueue, value -> prefs.setInputQueueMode(value
++                ? OptLabPreferences.InputQueueMode.MUTEX_SAFE
++                : OptLabPreferences.InputQueueMode.LEGACY));
++        bind(analog, prefs::setAnalogFilter);
++        bind(coalesce, prefs::setInputCoalesce);
++        bind(mobileGlLog, prefs::setMobileGlFileLogEnabled);
++
++        bind(onlyBuild42, prefs::setOnlyBuild42);
++        bind(pacing, prefs::setMainloopPacing);
++        bind(streamWake, prefs::setStreamWake);
++        bind(streamQueue, prefs::setStreamQueueFast);
++        bind(streamEta, prefs::setStreamVelocityEta);
++        bind(fboDedup, prefs::setFboDirtyDedup);
++        bind(fboBudget, prefs::setFboFrameBudget);
++        bind(streamFboCoordinator, prefs::setStreamFboCoordinator);
++        bind(chunkForage, prefs::setChunkForage);
++        bind(chunkNeighbourWorker, prefs::setChunkNeighbourWorker);
++        bind(chunkNeighbourMain, prefs::setChunkNeighbourMain);
++        bind(chunkGrid, prefs::setChunkGridLoad);
++        bind(chunkVehicles, prefs::setChunkVehicles);
++        bind(chunkBuildings, prefs::setChunkRandomizedBuildings);
++        bind(chunkLua, prefs::setChunkLuaMapObjects);
++        bind(chunkWorldgen, prefs::setChunkWorldgenBiome);
++        bind(renderUpload, prefs::setRenderChunkDepthUpload);
++        bind(renderLookup, prefs::setRenderChunkDepthLookup);
++        bind(renderRingClear, prefs::setRenderRingEmptyClear);
++
++        bind(lighting, nativePrefs::setLighting64Enabled);
++        bind(clipper, nativePrefs::setPzClipperEnabled);
++        bind(pathfinding, nativePrefs::setPathfindingEnabled);
++        bind(popMan, nativePrefs::setPopManEnabled);
++        bind(cp2c, prefs::setChunkCp2cDirtyClear);
++    }
++
++    private void syncAll() {
++        if (!uiReady) return;
++        updating = true;
++        boolean safe = prefs.isSafeModeEnabled();
++        boolean general = prefs.isMasterEnabled();
++
++        safeMode.toggle.setChecked(safe);
++        safeMode.subtitle.setText(getString(safe
++                ? R.string.opt_lab_safe_mode_active : R.string.opt_lab_safe_mode_summary));
++        select(profileCard, generalProfile(prefs.getProfile()));
++        profileCard.setEnabled(!safe);
++
++        generalMaster.toggle.setChecked(general);
++        quiet.toggle.setChecked(prefs.isQuietRuntime());
++        buffered.toggle.setChecked(prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
++        sqlite.toggle.setChecked(prefs.isSqliteAndroidNative());
++        select(box64, prefs.getBox64Policy());
++        generalMaster.setEnabled(!safe);
++        setEnabled(!safe && general, quiet, buffered, sqlite);
++        box64.setEnabled(!safe && general);
++
++        surface.toggle.setChecked(prefs.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
++        refresh.toggle.setChecked(prefs.getDisplayFpsHint()
++                == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
++        inputQueue.toggle.setChecked(prefs.getInputQueueMode()
++                == OptLabPreferences.InputQueueMode.MUTEX_SAFE);
++        analog.toggle.setChecked(prefs.isAnalogFilter());
++        coalesce.toggle.setChecked(prefs.isInputCoalesce());
++        mobileGlLog.toggle.setChecked(prefs.isMobileGlFileLogEnabled());
++        setEnabled(!safe && general, surface, refresh, inputQueue, analog, coalesce, mobileGlLog);
++
++        onlyBuild42.toggle.setChecked(prefs.isOnlyBuild42());
++        pacing.toggle.setChecked(prefs.isMainloopPacing());
++        streamWake.toggle.setChecked(prefs.isStreamWake());
++        streamQueue.toggle.setChecked(prefs.isStreamQueueFast());
++        streamEta.toggle.setChecked(prefs.isStreamVelocityEta());
++        fboDedup.toggle.setChecked(prefs.isFboDirtyDedup());
++        fboBudget.toggle.setChecked(prefs.isFboFrameBudget());
++        streamFboCoordinator.toggle.setChecked(prefs.isStreamFboCoordinator());
++        chunkForage.toggle.setChecked(prefs.isChunkForage());
++        chunkNeighbourWorker.toggle.setChecked(prefs.isChunkNeighbourWorker());
++        chunkNeighbourMain.toggle.setChecked(prefs.isChunkNeighbourMain());
++        chunkGrid.toggle.setChecked(prefs.isChunkGridLoad());
++        chunkVehicles.toggle.setChecked(prefs.isChunkVehicles());
++        chunkBuildings.toggle.setChecked(prefs.isChunkRandomizedBuildings());
++        chunkLua.toggle.setChecked(prefs.isChunkLuaMapObjects());
++        chunkWorldgen.toggle.setChecked(prefs.isChunkWorldgenBiome());
++        renderUpload.toggle.setChecked(prefs.isRenderChunkDepthUpload());
++        renderLookup.toggle.setChecked(prefs.isRenderChunkDepthLookup());
++        renderRingClear.toggle.setChecked(prefs.isRenderRingEmptyClear());
++        setEnabled(!safe, onlyBuild42, pacing, streamWake, streamQueue, streamEta,
++                fboDedup, fboBudget, chunkForage, chunkNeighbourWorker, chunkNeighbourMain,
++                chunkGrid, chunkVehicles, chunkBuildings, chunkLua, chunkWorldgen,
++                renderUpload, renderRingClear);
++        streamFboCoordinator.setEnabled(!safe && prefs.isFboFrameBudget());
++        renderLookup.setEnabled(!safe && prefs.isRenderChunkDepthUpload());
++        for (MaterialButton button : build42Buttons) button.setEnabled(!safe);
++
++        lighting.toggle.setChecked(nativePrefs.isLighting64Enabled());
++        clipper.toggle.setChecked(nativePrefs.isPzClipperEnabled());
++        pathfinding.toggle.setChecked(nativePrefs.isPathfindingEnabled());
++        popMan.toggle.setChecked(nativePrefs.isPopManEnabled());
++        cp2c.toggle.setChecked(prefs.isChunkCp2cDirtyClear());
++        setEnabled(!safe, lighting, clipper, pathfinding, popMan, cp2c);
++
++        int runtimeCount = runtimeCount();
++        int displayCount = displayCount();
++        int build42Count = build42Count();
++        int experimentalCount = (nativePrefs.isPathfindingEnabled() ? 1 : 0)
++                + (nativePrefs.isPopManEnabled() ? 1 : 0)
++                + (prefs.isChunkCp2cDirtyClear() ? 1 : 0);
++        overviewRuntime.subtitle.setText(safe
++                ? getString(R.string.opt_lab_safe_mode_state)
++                : getString(R.string.opt_lab_active_count, runtimeCount));
++        overviewDisplay.subtitle.setText(safe
++                ? getString(R.string.opt_lab_safe_mode_state)
++                : getString(R.string.opt_lab_active_count, displayCount));
++        overviewBuild42.subtitle.setText(safe
++                ? getString(R.string.opt_lab_safe_mode_state)
++                : getString(R.string.opt_lab_build42_card_state,
++                        prefs.isOnlyBuild42() ? "ON" : "OFF",
++                        build42Count == 0 ? "ALL OFF" : build42Count + " active"));
++        overviewNative.subtitle.setText(getString(R.string.opt_lab_native_card_state));
++        overviewExperimental.subtitle.setText(safe
++                ? getString(R.string.opt_lab_safe_mode_state)
++                : getString(R.string.opt_lab_experimental_card_state, experimentalCount));
++        updating = false;
++    }
++
++    private OptLabUi.ToggleCard addToggle(OptLabUi.Page page, String title, String subtitle) {
++        OptLabUi.ToggleCard card = OptLabUi.toggleCard(requireContext(), title, subtitle);
++        OptLabUi.addCard(page.content, card.root);
++        return card;
++    }
++
++    private void addBuild42Button(OptLabUi.Page page, String label, Runnable action) {
++        MaterialButton button = OptLabUi.actionButton(requireContext(), label);
++        button.setOnClickListener(view -> {
++            action.run();
++            syncAll();
++        });
++        build42Buttons.add(button);
++        page.content.addView(button);
++    }
++
++    private void bind(OptLabUi.ToggleCard card, BooleanSetter setter) {
++        card.toggle.setOnCheckedChangeListener((view, checked) -> {
++            if (!uiReady || updating) return;
++            setter.set(checked);
++            syncAll();
++        });
++    }
++
++    private void addTab(int label) {
++        tabs.addTab(tabs.newTab().setText(label));
++    }
++
++    private void showPage(int selected) {
++        if (pages == null) return;
++        for (int index = 0; index < pages.length; index++) {
++            pages[index].setVisibility(index == selected ? View.VISIBLE : View.GONE);
++        }
++    }
++
++    private void selectTab(int index) {
++        TabLayout.Tab tab = tabs == null ? null : tabs.getTabAt(index);
++        if (tab != null) tab.select();
++    }
++
++    private int runtimeCount() {
++        int count = 0;
++        if (prefs.isQuietRuntime()) count++;
++        if (prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED) count++;
++        if (prefs.isSqliteAndroidNative()) count++;
++        if (prefs.getBox64Policy() != OptLabPreferences.Box64Policy.LEGACY_3_0) count++;
++        return count;
++    }
++
++    private int displayCount() {
++        int count = 0;
++        if (prefs.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK) count++;
++        if (prefs.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH) count++;
++        if (prefs.getInputQueueMode() == OptLabPreferences.InputQueueMode.MUTEX_SAFE) count++;
++        if (prefs.isAnalogFilter()) count++;
++        if (prefs.isInputCoalesce()) count++;
++        if (prefs.isMobileGlFileLogEnabled()) count++;
++        return count;
++    }
++
++    private int build42Count() {
++        int count = prefs.isMainloopPacing() ? 1 : 0;
++        if (prefs.isStreamWake()) count++;
++        if (prefs.isStreamQueueFast()) count++;
++        if (prefs.isStreamVelocityEta()) count++;
++        if (prefs.isFboDirtyDedup()) count++;
++        if (prefs.isFboFrameBudget()) count++;
++        if (prefs.isStreamFboCoordinator()) count++;
++        count += prefs.chunkOptimizationEnabledCount();
++        count += prefs.renderOptimizationEnabledCount();
++        return count;
++    }
++
++    private static void setEnabled(boolean enabled, OptLabUi.ToggleCard... cards) {
++        for (OptLabUi.ToggleCard card : cards) card.setEnabled(enabled);
++    }
++
++    private static OptLabPreferences.Profile generalProfile(OptLabPreferences.Profile profile) {
++        switch (profile) {
++            case STREAM_ALL:
++            case FBO_ALL:
++            case FULL_CANDIDATE:
++                return OptLabPreferences.Profile.CUSTOM;
++            default:
++                return profile;
++        }
++    }
++
++    private static <T> void select(OptLabUi.SpinnerCard<T> card, T value) {
++        int position = card.adapter.getPosition(value);
++        if (position >= 0 && card.spinner.getSelectedItemPosition() != position) {
++            card.spinner.setSelection(position, false);
++        }
++    }
++
++    private interface BooleanSetter {
++        void set(boolean value);
++    }
++}
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabUi.java b/app/src/main/java/com/zomdroid/fragments/OptLabUi.java
+new file mode 100644
+index 0000000..4c88296
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabUi.java
+@@ -0,0 +1,306 @@
++package com.zomdroid.fragments;
++
++import android.content.Context;
++import android.graphics.Typeface;
++import android.graphics.drawable.GradientDrawable;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.View;
++import android.widget.ArrayAdapter;
++import android.widget.FrameLayout;
++import android.widget.ImageView;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.Spinner;
++import android.widget.TextView;
++
++import androidx.annotation.DrawableRes;
++import androidx.appcompat.widget.SwitchCompat;
++import androidx.core.content.ContextCompat;
++
++import com.google.android.material.button.MaterialButton;
++import com.google.android.material.card.MaterialCardView;
++import com.zomdroid.R;
++
++/** Theme-derived building blocks for the full-screen OPT-LAB surface. */
++final class OptLabUi {
++    static final class Page {
++        final ScrollView root;
++        final LinearLayout content;
++
++        Page(ScrollView root, LinearLayout content) {
++            this.root = root;
++            this.content = content;
++        }
++    }
++
++    static final class NavCard {
++        final MaterialCardView root;
++        final TextView subtitle;
++
++        NavCard(MaterialCardView root, TextView subtitle) {
++            this.root = root;
++            this.subtitle = subtitle;
++        }
++    }
++
++    static final class ToggleCard {
++        final MaterialCardView root;
++        final TextView subtitle;
++        final SwitchCompat toggle;
++
++        ToggleCard(MaterialCardView root, TextView subtitle, SwitchCompat toggle) {
++            this.root = root;
++            this.subtitle = subtitle;
++            this.toggle = toggle;
++        }
++
++        void setEnabled(boolean enabled) {
++            root.setEnabled(enabled);
++            toggle.setEnabled(enabled);
++            root.setAlpha(enabled ? 1f : 0.55f);
++        }
++    }
++
++    static final class SpinnerCard<T> {
++        final MaterialCardView root;
++        final Spinner spinner;
++        final ArrayAdapter<T> adapter;
++
++        SpinnerCard(MaterialCardView root, Spinner spinner, ArrayAdapter<T> adapter) {
++            this.root = root;
++            this.spinner = spinner;
++            this.adapter = adapter;
++        }
++
++        void setEnabled(boolean enabled) {
++            root.setEnabled(enabled);
++            spinner.setEnabled(enabled);
++            root.setAlpha(enabled ? 1f : 0.55f);
++        }
++    }
++
++    private OptLabUi() {}
++
++    static Page page(Context context) {
++        LinearLayout content = new LinearLayout(context);
++        content.setOrientation(LinearLayout.VERTICAL);
++        int pad = dp(context, 16);
++        content.setPadding(pad, dp(context, 16), pad, dp(context, 28));
++
++        ScrollView scroll = new ScrollView(context);
++        scroll.setFillViewport(true);
++        scroll.addView(content, new ScrollView.LayoutParams(
++                ScrollView.LayoutParams.MATCH_PARENT,
++                ScrollView.LayoutParams.WRAP_CONTENT));
++        return new Page(scroll, content);
++    }
++
++    static NavCard navCard(Context context, @DrawableRes int icon, String title,
++                           String subtitle, View.OnClickListener listener) {
++        MaterialCardView card = card(context);
++        card.setClickable(true);
++        card.setFocusable(true);
++        card.setOnClickListener(listener);
++
++        LinearLayout row = horizontalRow(context, 16, 14);
++        row.setMinimumHeight(dp(context, 92));
++        row.addView(icon(context, icon), new LinearLayout.LayoutParams(
++                dp(context, 54), dp(context, 54)));
++
++        LinearLayout copy = new LinearLayout(context);
++        copy.setOrientation(LinearLayout.VERTICAL);
++        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(
++                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
++        copyParams.setMargins(dp(context, 16), 0, dp(context, 10), 0);
++        row.addView(copy, copyParams);
++        copy.addView(title(context, title));
++        TextView secondary = body(context, subtitle);
++        secondary.setPadding(0, dp(context, 3), 0, 0);
++        copy.addView(secondary);
++
++        ImageView arrow = new ImageView(context);
++        arrow.setImageResource(R.drawable.optlab_ic_chevron);
++        arrow.setColorFilter(color(context,
++                com.google.android.material.R.attr.colorOnSurfaceVariant));
++        row.addView(arrow, new LinearLayout.LayoutParams(dp(context, 24), dp(context, 24)));
++        card.addView(row);
++        return new NavCard(card, secondary);
++    }
++
++    static ToggleCard toggleCard(Context context, String title, String subtitle) {
++        return toggleCard(context, 0, title, subtitle, false);
++    }
++
++    static ToggleCard toggleCard(Context context, @DrawableRes int icon, String title,
++                                 String subtitle, boolean emphasized) {
++        MaterialCardView card = card(context);
++        if (emphasized) {
++            card.setStrokeColor(color(context, com.google.android.material.R.attr.colorPrimary));
++            card.setStrokeWidth(dp(context, 2));
++        }
++        LinearLayout row = horizontalRow(context, 16, 14);
++        row.setMinimumHeight(dp(context, icon == 0 ? 72 : 92));
++        if (icon != 0) {
++            row.addView(icon(context, icon), new LinearLayout.LayoutParams(
++                    dp(context, 54), dp(context, 54)));
++        }
++        LinearLayout copy = new LinearLayout(context);
++        copy.setOrientation(LinearLayout.VERTICAL);
++        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(
++                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
++        copyParams.setMargins(icon == 0 ? 0 : dp(context, 16), 0, dp(context, 8), 0);
++        row.addView(copy, copyParams);
++        copy.addView(title(context, title));
++        TextView secondary = body(context, subtitle);
++        if (!subtitle.isEmpty()) {
++            secondary.setPadding(0, dp(context, 3), 0, 0);
++            copy.addView(secondary);
++        }
++
++        SwitchCompat toggle = new SwitchCompat(context);
++        toggle.setShowText(false);
++        row.addView(toggle, new LinearLayout.LayoutParams(
++                LinearLayout.LayoutParams.WRAP_CONTENT,
++                LinearLayout.LayoutParams.WRAP_CONTENT));
++        card.addView(row);
++        card.setOnClickListener(view -> {
++            if (toggle.isEnabled()) toggle.toggle();
++        });
++        return new ToggleCard(card, secondary, toggle);
++    }
++
++    static <T> SpinnerCard<T> spinnerCard(Context context, @DrawableRes int icon,
++                                           String label, T[] values) {
++        MaterialCardView card = card(context);
++        LinearLayout row = horizontalRow(context, 16, 14);
++        row.setMinimumHeight(dp(context, 104));
++        row.addView(icon(context, icon), new LinearLayout.LayoutParams(
++                dp(context, 54), dp(context, 54)));
++
++        LinearLayout copy = new LinearLayout(context);
++        copy.setOrientation(LinearLayout.VERTICAL);
++        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(
++                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
++        copyParams.setMargins(dp(context, 16), 0, 0, 0);
++        row.addView(copy, copyParams);
++        TextView caption = body(context, label);
++        copy.addView(caption);
++
++        Spinner spinner = new Spinner(context);
++        ArrayAdapter<T> adapter = new ArrayAdapter<>(context,
++                android.R.layout.simple_spinner_item, values);
++        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
++        spinner.setAdapter(adapter);
++        copy.addView(spinner, new LinearLayout.LayoutParams(
++                LinearLayout.LayoutParams.MATCH_PARENT,
++                LinearLayout.LayoutParams.WRAP_CONTENT));
++        card.addView(row);
++        return new SpinnerCard<>(card, spinner, adapter);
++    }
++
++    static MaterialButton actionButton(Context context, String text) {
++        MaterialButton button = new MaterialButton(context);
++        button.setText(text);
++        button.setAllCaps(false);
++        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
++                LinearLayout.LayoutParams.MATCH_PARENT,
++                LinearLayout.LayoutParams.WRAP_CONTENT);
++        params.setMargins(0, 0, 0, dp(context, 8));
++        button.setLayoutParams(params);
++        return button;
++    }
++
++    static void addCard(LinearLayout parent, View card) {
++        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
++                LinearLayout.LayoutParams.MATCH_PARENT,
++                LinearLayout.LayoutParams.WRAP_CONTENT);
++        params.setMargins(0, 0, 0, dp(parent.getContext(), 12));
++        parent.addView(card, params);
++    }
++
++    static TextView section(Context context, String value) {
++        TextView view = body(context, value);
++        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
++        view.setTextColor(color(context, com.google.android.material.R.attr.colorPrimary));
++        view.setPadding(dp(context, 2), dp(context, 12), 0, dp(context, 8));
++        return view;
++    }
++
++    static TextView note(Context context, String value) {
++        TextView view = body(context, value);
++        view.setPadding(dp(context, 4), dp(context, 4), dp(context, 4), dp(context, 14));
++        return view;
++    }
++
++    static int dp(Context context, int value) {
++        return Math.round(value * context.getResources().getDisplayMetrics().density);
++    }
++
++    private static MaterialCardView card(Context context) {
++        MaterialCardView card = new MaterialCardView(context);
++        card.setRadius(dp(context, 16));
++        card.setCardElevation(0f);
++        card.setStrokeWidth(dp(context, 1));
++        card.setStrokeColor(color(context,
++                com.google.android.material.R.attr.colorOutlineVariant));
++        card.setCardBackgroundColor(color(context,
++                com.google.android.material.R.attr.colorSurfaceContainerLow));
++        return card;
++    }
++
++    private static LinearLayout horizontalRow(Context context, int horizontal, int vertical) {
++        LinearLayout row = new LinearLayout(context);
++        row.setOrientation(LinearLayout.HORIZONTAL);
++        row.setGravity(Gravity.CENTER_VERTICAL);
++        row.setPadding(dp(context, horizontal), dp(context, vertical),
++                dp(context, horizontal), dp(context, vertical));
++        return row;
++    }
++
++    private static FrameLayout icon(Context context, @DrawableRes int drawable) {
++        FrameLayout frame = new FrameLayout(context);
++        GradientDrawable circle = new GradientDrawable();
++        circle.setShape(GradientDrawable.OVAL);
++        circle.setColor(color(context,
++                com.google.android.material.R.attr.colorSurfaceContainerLowest));
++        circle.setStroke(dp(context, 1),
++                color(context, com.google.android.material.R.attr.colorPrimary));
++        frame.setBackground(circle);
++
++        ImageView image = new ImageView(context);
++        image.setImageDrawable(ContextCompat.getDrawable(context, drawable));
++        image.setColorFilter(color(context, com.google.android.material.R.attr.colorPrimary));
++        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
++                dp(context, 26), dp(context, 26), Gravity.CENTER);
++        frame.addView(image, params);
++        return frame;
++    }
++
++    private static TextView title(Context context, String value) {
++        TextView view = new TextView(context);
++        view.setText(value);
++        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
++        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
++        view.setTextColor(color(context, com.google.android.material.R.attr.colorOnSurface));
++        return view;
++    }
++
++    private static TextView body(Context context, String value) {
++        TextView view = new TextView(context);
++        view.setText(value);
++        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
++        view.setTextColor(color(context,
++                com.google.android.material.R.attr.colorOnSurfaceVariant));
++        return view;
++    }
++
++    private static int color(Context context, int attribute) {
++        TypedValue value = new TypedValue();
++        if (!context.getTheme().resolveAttribute(attribute, value, true)) {
++            throw new IllegalStateException("Missing theme color attribute " + attribute);
++        }
++        return value.resourceId != 0
++                ? ContextCompat.getColor(context, value.resourceId) : value.data;
++    }
++}
+diff --git a/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java b/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java
+deleted file mode 100644
+index 5337ba6..0000000
+--- a/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java
++++ /dev/null
+@@ -1,143 +0,0 @@
+-package com.zomdroid.fragments;
+-
+-import android.content.Context;
+-import android.graphics.Typeface;
+-import android.widget.Button;
+-import android.widget.LinearLayout;
+-import android.widget.ScrollView;
+-import android.widget.TextView;
+-
+-import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.widget.SwitchCompat;
+-
+-import com.zomdroid.OptLabPreferences;
+-import com.zomdroid.R;
+-
+-/** Dedicated Build 42 panel for demonstrated CP6.x render-thread hotpaths. */
+-public final class RenderOptimizationDialog {
+-    private RenderOptimizationDialog() {}
+-
+-    public static void show(Context context, Runnable onClosed) {
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        int pad = dp(context, 16);
+-        LinearLayout content = new LinearLayout(context);
+-        content.setOrientation(LinearLayout.VERTICAL);
+-        content.setPadding(pad, dp(context, 4), pad, pad);
+-
+-        TextView intro = text(context, context.getString(R.string.opt_lab_render_intro), false);
+-        intro.setPadding(0, 0, 0, dp(context, 8));
+-        content.addView(intro);
+-        TextView summary = text(context, prefs.renderOptimizationSummary(), true);
+-        content.addView(summary);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_render_profiles));
+-        Button safe = button(context, R.string.opt_lab_render_cp62_safe);
+-        Button off = button(context, R.string.opt_lab_render_all_off);
+-        content.addView(safe);
+-        content.addView(off);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_render_chunk_depth));
+-        SwitchCompat upload = toggle(context, R.string.opt_lab_render_chunk_depth_upload,
+-                prefs.isRenderChunkDepthUpload());
+-        SwitchCompat lookup = toggle(context, R.string.opt_lab_render_chunk_depth_lookup,
+-                prefs.isRenderChunkDepthLookup());
+-        content.addView(upload);
+-        content.addView(lookup);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_render_ring));
+-        SwitchCompat emptyClear = toggle(context, R.string.opt_lab_render_ring_empty_clear,
+-                prefs.isRenderRingEmptyClear());
+-        content.addView(emptyClear);
+-
+-        TextView bulk = text(context,
+-                context.getString(R.string.opt_lab_render_ring_bulk_status), false);
+-        bulk.setPadding(0, dp(context, 10), 0, 0);
+-        content.addView(bulk);
+-
+-        TextView warning = text(context,
+-                context.getString(R.string.opt_lab_render_restart), false);
+-        warning.setPadding(0, dp(context, 12), 0, 0);
+-        content.addView(warning);
+-
+-        final boolean[] updating = {false};
+-        Runnable sync = () -> {
+-            OptLabPreferences now = OptLabPreferences.from(context);
+-            updating[0] = true;
+-            upload.setChecked(now.isRenderChunkDepthUpload());
+-            lookup.setChecked(now.isRenderChunkDepthLookup());
+-            lookup.setEnabled(now.isRenderChunkDepthUpload());
+-            emptyClear.setChecked(now.isRenderRingEmptyClear());
+-            summary.setText(now.renderOptimizationSummary());
+-            updating[0] = false;
+-        };
+-
+-        upload.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setRenderChunkDepthUpload(checked);
+-                sync.run();
+-            }
+-        });
+-        lookup.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setRenderChunkDepthLookup(checked);
+-                sync.run();
+-            }
+-        });
+-        emptyClear.setOnCheckedChangeListener((view, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setRenderRingEmptyClear(checked);
+-                sync.run();
+-            }
+-        });
+-        safe.setOnClickListener(view -> {
+-            prefs.setRenderCp62SafeProfile(true);
+-            sync.run();
+-        });
+-        off.setOnClickListener(view -> {
+-            prefs.setRenderCp62SafeProfile(false);
+-            sync.run();
+-        });
+-
+-        sync.run();
+-        ScrollView scroll = new ScrollView(context);
+-        scroll.addView(content);
+-        new AlertDialog.Builder(context)
+-                .setTitle(R.string.opt_lab_render_title)
+-                .setView(scroll)
+-                .setPositiveButton(R.string.dialog_button_ok, null)
+-                .setOnDismissListener(dialog -> onClosed.run())
+-                .show();
+-    }
+-
+-    private static SwitchCompat toggle(Context context, int label, boolean checked) {
+-        SwitchCompat toggle = new SwitchCompat(context);
+-        toggle.setText(label);
+-        toggle.setChecked(checked);
+-        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
+-        return toggle;
+-    }
+-
+-    private static Button button(Context context, int label) {
+-        Button button = new Button(context);
+-        button.setText(label);
+-        return button;
+-    }
+-
+-    private static TextView text(Context context, String value, boolean bold) {
+-        TextView view = new TextView(context);
+-        view.setText(value);
+-        view.setTextSize(13);
+-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+-        return view;
+-    }
+-
+-    private static void addSection(LinearLayout parent, Context context, String value) {
+-        TextView label = text(context, value, true);
+-        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
+-        parent.addView(label);
+-    }
+-
+-    private static int dp(Context context, int value) {
+-        return Math.round(value * context.getResources().getDisplayMetrics().density);
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/fragments/SettingsFragment.java b/app/src/main/java/com/zomdroid/fragments/SettingsFragment.java
+index 3c537dd..4ec1684 100644
+--- a/app/src/main/java/com/zomdroid/fragments/SettingsFragment.java
++++ b/app/src/main/java/com/zomdroid/fragments/SettingsFragment.java
+@@ -343,7 +343,7 @@ public class SettingsFragment extends Fragment {
+ 
+         updateOptLabSummary();
+         binding.settingsOptLabBtn.setOnClickListener(v ->
+-                OptLabDialog.show(requireContext(), this::updateOptLabSummary));
++                Navigation.findNavController(v).navigate(R.id.opt_lab_fragment));
+ 
+         // Advanced section — collapsible
+         setupCollapsible(
+@@ -382,6 +382,12 @@ public class SettingsFragment extends Fragment {
+         return args.trim().replaceAll("\\s+", " ");
+     }
+ 
++    @Override
++    public void onResume() {
++        super.onResume();
++        updateOptLabSummary();
++    }
++
+     @Override
+     public void onDestroyView() {
+         super.onDestroyView();
+diff --git a/app/src/main/res/drawable/optlab_ic_build42.xml b/app/src/main/res/drawable/optlab_ic_build42.xml
+new file mode 100644
+index 0000000..1eb81a0
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_build42.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M12,2 3,7v10l9,5 9,-5V7zM12,4.3 18.9,8 12,11.8 5.1,8zM5,9.7l6,3.3v6.3l-6,-3.4zM13,19.3V13l6,-3.3v6.2z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_chevron.xml b/app/src/main/res/drawable/optlab_ic_chevron.xml
+new file mode 100644
+index 0000000..88619e1
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_chevron.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M9.29,6.71a1,1 0,0 1,1.42 0l4.58,4.58a1,1 0,0 1,0 1.42l-4.58,4.58a1,1 0,1 1,-1.42 -1.42L13.17,12 9.29,8.12a1,1 0,0 1,0 -1.41z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_display.xml b/app/src/main/res/drawable/optlab_ic_display.xml
+new file mode 100644
+index 0000000..8afd44a
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_display.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M3,4h18c1.1,0 2,0.9 2,2v11c0,1.1 -0.9,2 -2,2h-7v2h3v2H7v-2h3v-2H3c-1.1,0 -2,-0.9 -2,-2V6c0,-1.1 0.9,-2 2,-2zM3,6v11h18V6z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_experimental.xml b/app/src/main/res/drawable/optlab_ic_experimental.xml
+new file mode 100644
+index 0000000..d468f50
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_experimental.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M9,2h6v2h-1v5.59l5.7,8.55A2.5,2.5 0,0 1,17.62 22H6.38a2.5,2.5 0,0 1,-2.08 -3.86L10,9.59V4H9zM8.25,15l-2.29,3.43A0.5,0.5 0,0 0,6.38 20h11.24a0.5,0.5 0,0 0,0.42 -0.77L15.22,15z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_native.xml b/app/src/main/res/drawable/optlab_ic_native.xml
+new file mode 100644
+index 0000000..d2e273c
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_native.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M9,2h2v3h2V2h2v3h2a2,2 0,0 1,2 2v2h3v2h-3v2h3v2h-3v2a2,2 0,0 1,-2 2h-2v3h-2v-3h-2v3H9v-3H7a2,2 0,0 1,-2 -2v-2H2v-2h3v-2H2V9h3V7a2,2 0,0 1,2 -2h2zM8,8v8h8V8zM10,10h4v4h-4z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_profile.xml b/app/src/main/res/drawable/optlab_ic_profile.xml
+new file mode 100644
+index 0000000..52f12ef
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_profile.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M12,12c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4 -4,1.79 -4,4 1.79,4 4,4zM12,14c-3.31,0 -6,2.24 -6,5v1h12v-1c0,-2.76 -2.69,-5 -6,-5z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_runtime.xml b/app/src/main/res/drawable/optlab_ic_runtime.xml
+new file mode 100644
+index 0000000..cce2eaf
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_runtime.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M12,4a9,9 0,0 0,-9 9c0,2.39 0.94,4.68 2.64,6.36L7.05,17.95A7,7 0,1 1,18.9 15H13l4.5,-4.5L22,15h-1.05A9,9 0,0 0,12 4zM11,7h2v6h-2z" />
++</vector>
+diff --git a/app/src/main/res/drawable/optlab_ic_safe_mode.xml b/app/src/main/res/drawable/optlab_ic_safe_mode.xml
+new file mode 100644
+index 0000000..627e666
+--- /dev/null
++++ b/app/src/main/res/drawable/optlab_ic_safe_mode.xml
+@@ -0,0 +1,6 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp" android:height="24dp"
++    android:viewportWidth="24" android:viewportHeight="24">
++    <path android:fillColor="@android:color/white"
++        android:pathData="M12,2 4,5v6c0,5.05 3.41,9.75 8,11 4.59,-1.25 8,-5.95 8,-11V5zM11,7h2v6h-2zM11,15h2v2h-2z" />
++</vector>
+diff --git a/app/src/main/res/layout/fragment_opt_lab.xml b/app/src/main/res/layout/fragment_opt_lab.xml
+new file mode 100644
+index 0000000..3e4abcc
+--- /dev/null
++++ b/app/src/main/res/layout/fragment_opt_lab.xml
+@@ -0,0 +1,35 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    xmlns:tools="http://schemas.android.com/tools"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:background="?attr/colorSurface"
++    android:orientation="vertical"
++    tools:context=".fragments.OptLabFragment">
++
++    <com.google.android.material.tabs.TabLayout
++        android:id="@+id/opt_lab_tabs"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:background="?attr/colorSurface"
++        app:tabGravity="start"
++        app:tabIndicatorColor="?attr/colorPrimary"
++        app:tabIndicatorFullWidth="false"
++        app:tabMode="scrollable"
++        app:tabRippleColor="?attr/colorSurfaceContainerHigh"
++        app:tabSelectedTextColor="?attr/colorPrimary"
++        app:tabTextColor="?attr/colorOnSurface" />
++
++    <View
++        android:layout_width="match_parent"
++        android:layout_height="1dp"
++        android:background="?attr/colorOutlineVariant" />
++
++    <FrameLayout
++        android:id="@+id/opt_lab_page_host"
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1" />
++
++</LinearLayout>
+diff --git a/app/src/main/res/navigation/nav_graph.xml b/app/src/main/res/navigation/nav_graph.xml
+index 12ea911..d1181e3 100755
+--- a/app/src/main/res/navigation/nav_graph.xml
++++ b/app/src/main/res/navigation/nav_graph.xml
+@@ -68,6 +68,12 @@
+         tools:layout="@layout/fragment_settings">
+     </fragment>
+ 
++    <fragment
++        android:id="@+id/opt_lab_fragment"
++        android:name="com.zomdroid.fragments.OptLabFragment"
++        android:label="@string/opt_lab_title"
++        tools:layout="@layout/fragment_opt_lab" />
++
+     <fragment
+         android:id="@+id/gamepad_mapper_fragment"
+         android:name="com.zomdroid.fragments.GamepadMapperFragment"
+@@ -134,4 +140,4 @@
+         android:name="com.zomdroid.fragments.SteamDownloadFragment"
+         android:label="@string/steam_dl_menu" />
+ 
+-</navigation>
+\ No newline at end of file
++</navigation>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 8d67a24..bc9d7f9 100755
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -609,6 +609,27 @@
+     <string name="opt_lab_tab_build42" translatable="false">Build 42</string>
+     <string name="opt_lab_tab_native" translatable="false">Native</string>
+     <string name="opt_lab_tab_experimental" translatable="false">Experimental</string>
++    <string name="opt_lab_profile_general" translatable="false">Profil general</string>
++    <string name="opt_lab_runtime_card" translatable="false">Runtime / JVM</string>
++    <string name="opt_lab_display_card" translatable="false">Display / Input</string>
++    <string name="opt_lab_build42_card" translatable="false">Build 42</string>
++    <string name="opt_lab_native_card" translatable="false">Native ARM64</string>
++    <string name="opt_lab_experimental_card" translatable="false">Experimental</string>
++    <string name="opt_lab_active_count" translatable="false">%1$d optimizări active</string>
++    <string name="opt_lab_build42_card_state" translatable="false">Only Build 42: %1$s · %2$s</string>
++    <string name="opt_lab_native_card_state" translatable="false">Lighting · PZClipper · Pathfinding · PopMan</string>
++    <string name="opt_lab_experimental_card_state" translatable="false">%1$d active · necesită validare</string>
++    <string name="opt_lab_safe_mode" translatable="false">Safe mode</string>
++    <string name="opt_lab_safe_mode_summary" translatable="false">Dezactivează temporar toate optimizările</string>
++    <string name="opt_lab_safe_mode_active" translatable="false">Activ · configurația salvată este păstrată</string>
++    <string name="opt_lab_safe_mode_note" translatable="false">Safe Mode oprește configurația efectivă la următoarea pornire, fără să șteargă valorile salvate. Oprirea lui restaurează exact selecțiile anterioare.</string>
++    <string name="opt_lab_changes_next_launch" translatable="false">Modificările se aplică la următoarea pornire completă a jocului.</string>
++    <string name="opt_lab_general_controls" translatable="false">Control general</string>
++    <string name="opt_lab_native_stable" translatable="false">Module native validate</string>
++    <string name="opt_lab_native_experimental_link" translatable="false">Pathfinding și PopMan se află în tabul Experimental.</string>
++    <string name="opt_lab_experimental_native" translatable="false">NATIVE ARM64 · EXPERIMENTAL</string>
++    <string name="opt_lab_build42_all_off" translatable="false">Build 42 · ALL OFF</string>
++    <string name="opt_lab_safe_mode_state" translatable="false">SAFE MODE</string>
+     <string name="opt_lab_overview_modules" translatable="false">Module OPT-LAB</string>
+     <string name="opt_lab_overview_runtime" translatable="false">Runtime / JVM\n%1$d active · %2$s</string>
+     <string name="opt_lab_overview_display" translatable="false">Display / Input\n%1$d active · %2$s</string>
+diff --git a/tools/NativeModulesPreferencesUnit.java b/tools/NativeModulesPreferencesUnit.java
+index e4f2c58..8238388 100644
+--- a/tools/NativeModulesPreferencesUnit.java
++++ b/tools/NativeModulesPreferencesUnit.java
+@@ -2,6 +2,7 @@ import android.content.Context;
+ import android.content.SharedPreferences;
+ 
+ import com.zomdroid.NativeModulesPreferences;
++import com.zomdroid.OptLabPreferences;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -27,7 +28,23 @@ public final class NativeModulesPreferencesUnit {
+         require(restored.isPopManEnabled(), "PopMan persisted ON");
+         require(restored.machineReadable().contains("lighting64=0 pzClipper=0 pathfinding=1 popMan=1"),
+                 "machine-readable state");
+-        System.out.println("NATIVE_MODULES_PREFERENCES_UNIT PASS");
++
++        OptLabPreferences optLab = OptLabPreferences.from(context);
++        optLab.setSafeModeEnabled(true);
++        NativeModulesPreferences safe = NativeModulesPreferences.from(context);
++        require(!safe.isLighting64Enabled(), "Safe Mode bypasses Lighting");
++        require(!safe.isPzClipperEnabled(), "Safe Mode bypasses PZClipper");
++        require(!safe.isPathfindingEnabled(), "Safe Mode bypasses Pathfinding");
++        require(!safe.isPopManEnabled(), "Safe Mode bypasses PopMan");
++        require(safe.machineReadable().contains("safeMode=1"), "Safe Mode diagnostic");
++        optLab.setSafeModeEnabled(false);
++        NativeModulesPreferences resumed = NativeModulesPreferences.from(context);
++        require(!resumed.isLighting64Enabled(), "stored Lighting restored");
++        require(!resumed.isPzClipperEnabled(), "stored PZClipper restored");
++        require(resumed.isPathfindingEnabled(), "stored Pathfinding restored");
++        require(resumed.isPopManEnabled(), "stored PopMan restored");
++        require(NativeModulesPreferences.SCHEMA == 3, "native schema 3");
++        System.out.println("NATIVE_MODULES_PREFERENCES_UNIT PASS schema=3 safe_mode=1");
+     }
+ 
+     private static final class FakeContext extends Context {
+diff --git a/tools/OptLabPreferencesIndependenceUnit.java b/tools/OptLabPreferencesIndependenceUnit.java
+index 4956369..f820316 100644
+--- a/tools/OptLabPreferencesIndependenceUnit.java
++++ b/tools/OptLabPreferencesIndependenceUnit.java
+@@ -58,10 +58,29 @@ public final class OptLabPreferencesIndependenceUnit {
+         require(prefs.isFboDirtyDedup(), "general profile preserves Build 42");
+         require(prefs.getProfile() == OptLabPreferences.Profile.RUNTIME_SAFE,
+                 "general profile identity preserved");
+-        require(OptLabPreferences.SCHEMA == 7, "schema 7");
++
++        prefs.setSafeModeEnabled(true);
++        require(prefs.isSafeModeEnabled(), "Safe Mode persisted ON");
++        require(!prefs.isMasterEnabled(), "Safe Mode bypasses general master");
++        require(!prefs.isFboDirtyDedup(), "Safe Mode bypasses Build 42");
++        require(!prefs.isChunkCp2cDirtyClear(), "Safe Mode bypasses Experimental");
++        require(!prefs.isAnyAgentOptimizationEnabled(), "Safe Mode requests no agent work");
++        require(prefs.summary().contains("SAFE MODE"), "Safe Mode visible in summary");
++        prefs.setSafeModeEnabled(false);
++        require(prefs.isMasterEnabled(), "general master restored after Safe Mode");
++        require(prefs.isFboDirtyDedup(), "Build 42 state restored after Safe Mode");
++        require(prefs.isChunkCp2cDirtyClear(), "Experimental state restored after Safe Mode");
++
++        prefs.setBuild42ProductionAllOff();
++        require(!prefs.isAnyChunkOptimizationEnabled(), "Build 42 ALL OFF clears Chunk");
++        require(!prefs.isAnyRenderOptimizationEnabled(), "Build 42 ALL OFF clears Render");
++        require(!prefs.isFboDirtyDedup(), "Build 42 ALL OFF clears FBO");
++        require(prefs.isChunkCp2cDirtyClear(), "Build 42 ALL OFF preserves Experimental");
++
++        require(OptLabPreferences.SCHEMA == 8, "schema 8");
+         require(OptLabPreferences.isKnownPzJarSha256(
+                 OptLabPreferences.EXPECTED_PZ_42203_JAR_SHA256), "42.20.3 known");
+-        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=7");
++        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=8 safe_mode=1");
+     }
+ 
+     private static final class FakeContext extends Context {
+diff --git a/tools/test-cp62-apk-wiring.sh b/tools/test-cp62-apk-wiring.sh
+index c38408e..48cf683 100755
+--- a/tools/test-cp62-apk-wiring.sh
++++ b/tools/test-cp62-apk-wiring.sh
+@@ -26,7 +26,9 @@ for prop,getter in props.items():
+ for feature in ('RTHREAD_CHUNK_DEPTH_UPLOAD','RTHREAD_CHUNK_DEPTH_LOOKUP',
+                 'RTHREAD_RING_RENDER_CLEAR'):
+     assert feature in registry and feature in agent, f'registry/agent missing {feature}'
+-assert 'public static final int SCHEMA = 7' in prefs, 'preference schema not bumped'
++assert 'public static final int SCHEMA = 8' in prefs, 'preference schema not bumped for Safe Mode'
++assert 'isSafeModeEnabled()' in prefs and 'K_SAFE_MODE' in prefs, \
++    'Safe Mode effective gate missing'
+ assert 'isAnyRenderOptimizationEnabled()' in prefs, 'agent launch gate ignores Render'
+ assert 'if (!value) editor.putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false)' in prefs, \
+     'upload/lookup dependency not atomic'
+diff --git a/tools/test-native-modules-preferences.sh b/tools/test-native-modules-preferences.sh
+index 344a35c..f9c92b7 100755
+--- a/tools/test-native-modules-preferences.sh
++++ b/tools/test-native-modules-preferences.sh
+@@ -12,6 +12,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
+   "$PROJECT_DIR/tools/NativeModulesPreferencesUnit.java"
+ 
+diff --git a/tools/test-native-modules-ui-source.sh b/tools/test-native-modules-ui-source.sh
+index 244663e..2e9fc18 100755
+--- a/tools/test-native-modules-ui-source.sh
++++ b/tools/test-native-modules-ui-source.sh
+@@ -2,80 +2,4 @@
+ set -euo pipefail
+ 
+ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+-WORK_DIR="$(mktemp -d)"
+-trap 'rm -rf -- "$WORK_DIR"' EXIT
+-
+-mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/ui-stubs" -type f -name '*.java' \
+-  -print0 | LC_ALL=C sort -z)
+-java -m jdk.compiler/com.sun.tools.javac.Main \
+-  --release 17 \
+-  -d "$WORK_DIR/classes" \
+-  "${STUBS[@]}" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java"
+-
+-python3 - "$PROJECT_DIR" <<'PY'
+-from pathlib import Path
+-import re
+-import sys
+-import xml.etree.ElementTree as ET
+-
+-root=Path(sys.argv[1])
+-general=(root/'app/src/main/java/com/zomdroid/fragments/OptLabDialog.java').read_text()
+-build42=(root/'app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java').read_text()
+-native=(root/'app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java').read_text()
+-chunk=(root/'app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java').read_text()
+-render=(root/'app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java').read_text()
+-profiles=re.search(r'GENERAL_PROFILES\s*=\s*\{(.*?)\};', general, re.S)
+-assert profiles, 'GENERAL_PROFILES missing'
+-for name in ('STREAM_ALL','FBO_ALL','FULL_CANDIDATE'):
+-    assert name not in profiles.group(1), f'{name} leaked into general selector'
+-    assert f'Profile.{name}' in build42, f'{name} missing from Build42 dialog'
+-assert 'NativeModulesDialog.show' in general, 'Native Modules separate button missing'
+-assert 'Build42OptLabDialog.show' in general, 'Build42 separate button missing'
+-assert 'ChunkOptimizationDialog.show' in general, 'Chunk Optimization branch missing'
+-assert 'ChunkOptimizationDialog.show' in build42, 'Chunk branch missing from Build42 dialog'
+-assert 'RenderOptimizationDialog.show' in build42, 'Render branch missing from Build42 dialog'
+-assert 'com.google.android.material.tabs.TabLayout' in general, 'theme-aware TabLayout missing'
+-for name in ('opt_lab_tab_overview', 'opt_lab_tab_runtime', 'opt_lab_tab_display',
+-             'opt_lab_tab_build42', 'opt_lab_tab_native', 'opt_lab_tab_experimental'):
+-    assert f'R.string.{name}' in general, f'{name} tab missing'
+-assert 'setTextColor' not in general and 'Color.' not in general, \
+-    'OPT-LAB must inherit light/dark theme colors'
+-assert 'isMasterEnabled()' not in build42, \
+-    'Build 42 controls must be independent of the general master'
+-assert 'popMan.setEnabled(false)' not in native, 'PopMan toggle must be usable after CP2'
+-for setter in ('setChunkForage', 'setChunkNeighbourWorker', 'setChunkNeighbourMain',
+-               'setChunkGridLoad', 'setChunkVehicles', 'setChunkRandomizedBuildings',
+-               'setChunkLuaMapObjects', 'setChunkWorldgenBiome'):
+-    assert setter in chunk, f'{setter} not wired in Chunk dialog'
+-assert 'setChunkCp2cDirtyClear' in general, 'CP2C must stay in Experimental tab'
+-assert 'setChunkCp2cDirtyClear' not in chunk, 'CP2C leaked into production Chunk presets'
+-for setter in ('setRenderChunkDepthUpload', 'setRenderChunkDepthLookup',
+-               'setRenderRingEmptyClear', 'setRenderCp62SafeProfile'):
+-    assert setter in render, f'{setter} not wired in Render dialog'
+-assert 'ring_bulk_status' in render, 'unproven Ring bulk packing status missing'
+-assert 'setTextColor' not in render and 'Color.' not in render, \
+-    'Render dialog must inherit light/dark theme colors'
+-for setter in ('setLighting64Enabled','setPzClipperEnabled','setPathfindingEnabled',
+-               'setPopManEnabled'):
+-    assert setter in native, f'{setter} not wired'
+-xml=root/'app/src/main/res/values/strings.xml'
+-tree=ET.parse(xml)
+-values={item.attrib.get('name'): ''.join(item.itertext()) for item in tree.getroot()}
+-assert 'Restart game required' in values['native_modules_restart']
+-assert 'EXPERIMENTAL' in values['native_modules_pathfinding']
+-assert 'EXPERIMENTAL' in values['native_modules_popman']
+-assert 'nu modifică celelalte module' in values['opt_lab_independent_note']
+-assert '42.20 și 42.20.3' in values['opt_lab_chunk_intro']
+-assert 'EXPERIMENTAL' in values['opt_lab_chunk_cp2c']
+-assert '42.20 și 42.20.3' in values['opt_lab_render_intro']
+-assert 'neintegrat și implicit OFF' in values['opt_lab_render_ring_bulk_status']
+-for theme in ('values/themes.xml', 'values-night/themes.xml'):
+-    ET.parse(root/'app/src/main/res'/theme)
+-print('NATIVE_MODULES_UI_SOURCE PASS tabs=6 separate_dialogs=4 '
+-      'native_toggles=4 chunk_toggles=8 build42_independent=1 '
+-      'render_toggles=3 theme_inherited=1 experimental_labels=3')
+-PY
++exec "$PROJECT_DIR/tools/test-optlab-tabbed-ui-source.sh"
+diff --git a/tools/test-optlab-tabbed-ui-compile.sh b/tools/test-optlab-tabbed-ui-compile.sh
+new file mode 100755
+index 0000000..888b140
+--- /dev/null
++++ b/tools/test-optlab-tabbed-ui-compile.sh
+@@ -0,0 +1,17 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++BUILD_DIR="$(mktemp -d)"
++trap 'rm -rf -- "$BUILD_DIR"' EXIT
++
++mapfile -t STUBS < <(find "$PROJECT_DIR/tools/ui-stubs" -type f -name '*.java' | sort)
++
++java -m jdk.compiler/com.sun.tools.javac.Main --release 17 -d "$BUILD_DIR" \
++    "${STUBS[@]}" \
++    "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/OptLabUi.java" \
++    "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java"
++
++test -f "$BUILD_DIR/com/zomdroid/fragments/OptLabFragment.class"
++test -f "$BUILD_DIR/com/zomdroid/fragments/OptLabUi.class"
++echo "OPTLAB_TABBED_UI_COMPILE PASS javac_release=17 tabs=6"
+diff --git a/tools/test-optlab-tabbed-ui-source.sh b/tools/test-optlab-tabbed-ui-source.sh
+new file mode 100755
+index 0000000..efeff4c
+--- /dev/null
++++ b/tools/test-optlab-tabbed-ui-source.sh
+@@ -0,0 +1,118 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++
++"$PROJECT_DIR/tools/test-optlab-tabbed-ui-compile.sh"
++"$PROJECT_DIR/tools/test-optlab-preferences-independence.sh"
++"$PROJECT_DIR/tools/test-native-modules-preferences.sh"
++
++python3 - "$PROJECT_DIR" <<'PY'
++from pathlib import Path
++import hashlib
++import re
++import sys
++import tarfile
++import xml.etree.ElementTree as ET
++
++root = Path(sys.argv[1])
++fragment = (root/'app/src/main/java/com/zomdroid/fragments/OptLabFragment.java').read_text()
++ui = (root/'app/src/main/java/com/zomdroid/fragments/OptLabUi.java').read_text()
++settings = (root/'app/src/main/java/com/zomdroid/fragments/SettingsFragment.java').read_text()
++prefs = (root/'app/src/main/java/com/zomdroid/OptLabPreferences.java').read_text()
++native = (root/'app/src/main/java/com/zomdroid/NativeModulesPreferences.java').read_text()
++
++assert 'extends Fragment' in fragment, 'OPT-LAB is not a real navigation Fragment'
++assert 'AlertDialog' not in fragment and 'AlertDialog' not in ui, 'nested dialog leaked into UI'
++assert 'R.id.opt_lab_fragment' in settings, 'Settings does not navigate to full-screen OPT-LAB'
++assert 'OptLabDialog.show' not in settings, 'legacy dialog entry point remains active'
++for old in ('OptLabDialog.java', 'Build42OptLabDialog.java', 'ChunkOptimizationDialog.java',
++            'RenderOptimizationDialog.java', 'NativeModulesDialog.java'):
++    assert not (root/'app/src/main/java/com/zomdroid/fragments'/old).exists(), \
++        f'legacy nested dialog still exists: {old}'
++
++for label in ('opt_lab_tab_overview', 'opt_lab_tab_runtime', 'opt_lab_tab_display',
++              'opt_lab_tab_build42', 'opt_lab_tab_native', 'opt_lab_tab_experimental'):
++    assert f'R.string.{label}' in fragment, f'missing tab {label}'
++assert fragment.count('buildOverviewPage()') >= 2
++assert fragment.count('buildRuntimePage()') >= 2
++assert fragment.count('buildDisplayPage()') >= 2
++assert fragment.count('buildBuild42Page()') >= 2
++assert fragment.count('buildNativePage()') >= 2
++assert fragment.count('buildExperimentalPage()') >= 2
++
++for setter in (
++    'setMasterEnabled', 'setQuietRuntime', 'setStdioMode', 'setSqliteAndroidNative',
++    'setBox64Policy', 'setSurfaceMode', 'setDisplayFpsHint', 'setInputQueueMode',
++    'setAnalogFilter', 'setInputCoalesce', 'setMobileGlFileLogEnabled',
++    'setOnlyBuild42', 'setMainloopPacing', 'setStreamWake', 'setStreamQueueFast',
++    'setStreamVelocityEta', 'setFboDirtyDedup', 'setFboFrameBudget',
++    'setStreamFboCoordinator', 'setChunkForage', 'setChunkNeighbourWorker',
++    'setChunkNeighbourMain', 'setChunkGridLoad', 'setChunkVehicles',
++    'setChunkRandomizedBuildings', 'setChunkLuaMapObjects', 'setChunkWorldgenBiome',
++    'setRenderChunkDepthUpload', 'setRenderChunkDepthLookup',
++    'setRenderRingEmptyClear', 'setLighting64Enabled', 'setPzClipperEnabled',
++    'setPathfindingEnabled', 'setPopManEnabled', 'setChunkCp2cDirtyClear'):
++    assert setter in fragment, f'unmapped setter: {setter}'
++
++assert 'setSafeModeEnabled' in fragment and 'isSafeModeEnabled' in fragment
++assert 'SCHEMA = 8' in prefs and 'K_SAFE_MODE' in prefs
++assert 'SAFE MODE · setări păstrate' in prefs
++assert 'SCHEMA = 3' in native and 'optLab.isSafeModeEnabled()' in native
++assert 'setBuild42ProductionAllOff' in fragment and 'setBuild42ProductionAllOff' in prefs
++assert 'setRenderCp62SafeProfile' in fragment, 'CP6.2 demonstrated preset missing'
++assert 'ring_bulk_status' in fragment, 'unvalidated Ring bulk status missing'
++assert 'Pathfinding' in fragment and 'PopMan' in fragment
++
++assert 'MaterialCardView' in ui, 'card layout missing'
++assert 'colorSurfaceContainerLow' in ui and 'colorPrimary' in ui
++assert 'Color.' not in ui and '0x' not in ui and '#' not in ui, \
++    'hardcoded UI color found'
++
++layout = root/'app/src/main/res/layout/fragment_opt_lab.xml'
++nav = root/'app/src/main/res/navigation/nav_graph.xml'
++ET.parse(layout)
++nav_tree = ET.parse(nav)
++android = '{http://schemas.android.com/apk/res/android}'
++destinations = [node.attrib.get(android+'name') for node in nav_tree.getroot()]
++assert 'com.zomdroid.fragments.OptLabFragment' in destinations
++
++for icon in ('profile', 'runtime', 'display', 'build42', 'native', 'experimental',
++             'safe_mode', 'chevron'):
++    ET.parse(root/f'app/src/main/res/drawable/optlab_ic_{icon}.xml')
++for theme in ('values/themes.xml', 'values-night/themes.xml'):
++    ET.parse(root/'app/src/main/res'/theme)
++
++strings_tree = ET.parse(root/'app/src/main/res/values/strings.xml')
++values = {node.attrib.get('name'): ''.join(node.itertext())
++          for node in strings_tree.getroot()}
++assert values['opt_lab_safe_mode_summary'] == 'Dezactivează temporar toate optimizările'
++assert 'implicit OFF' in values['opt_lab_experimental_placeholder']
++assert 'EXPERIMENTAL' in values['native_modules_pathfinding']
++assert 'EXPERIMENTAL' in values['native_modules_popman']
++
++for source in (fragment, ui):
++    for name in re.findall(r'R\.string\.([A-Za-z0-9_]+)', source):
++        assert name in values, f'missing string resource: {name}'
++    for name in re.findall(r'R\.drawable\.([A-Za-z0-9_]+)', source):
++        assert (root/f'app/src/main/res/drawable/{name}.xml').is_file() or any(
++            (root/'app/src/main/res'/folder/f'{name}.png').is_file()
++            for folder in ('drawable', 'drawable-hdpi', 'drawable-xhdpi', 'drawable-xxhdpi')
++        ), f'missing drawable resource: {name}'
++
++def sha(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++bundle = root/'app/src/main/assets/bundles/jars.tar'
++assert sha(bundle) == 'bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c', \
++    'UI checkpoint changed CP6.2 agent bundle'
++with tarfile.open(bundle, 'r:') as archive:
++    member = archive.getmember('./zomdroid-agent.jar')
++    payload = archive.extractfile(member).read()
++assert hashlib.sha256(payload).hexdigest() == \
++    '045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8', \
++    'UI checkpoint changed bundled CP6.2 agent jar'
++
++print('OPTLAB_TABBED_UI_SOURCE PASS full_screen=1 tabs=6 cards=6 nested_dialogs=0 '
++      'safe_mode=effective_preserve theme=light_dark cp62_unchanged=1')
++PY
+diff --git a/tools/ui-stubs/android/R.java b/tools/ui-stubs/android/R.java
+new file mode 100644
+index 0000000..ba89eed
+--- /dev/null
++++ b/tools/ui-stubs/android/R.java
+@@ -0,0 +1,8 @@
++package android;
++
++public final class R {
++    public static final class layout {
++        public static final int simple_spinner_item = 1;
++        public static final int simple_spinner_dropdown_item = 2;
++    }
++}
+diff --git a/tools/ui-stubs/android/content/Context.java b/tools/ui-stubs/android/content/Context.java
+index 8f90ebb..04a2745 100644
+--- a/tools/ui-stubs/android/content/Context.java
++++ b/tools/ui-stubs/android/content/Context.java
+@@ -5,5 +5,7 @@ import android.content.res.Resources;
+ public class Context {
+     private final Resources resources = new Resources();
+     public String getString(int id) { return Integer.toString(id); }
++    public String getString(int id, Object... args) { return Integer.toString(id); }
+     public Resources getResources() { return resources; }
++    public Resources.Theme getTheme() { return resources.newTheme(); }
+ }
+diff --git a/tools/ui-stubs/android/content/res/Resources.java b/tools/ui-stubs/android/content/res/Resources.java
+index 8b89097..372fc1e 100644
+--- a/tools/ui-stubs/android/content/res/Resources.java
++++ b/tools/ui-stubs/android/content/res/Resources.java
+@@ -1,8 +1,16 @@
+ package android.content.res;
+ 
+ import android.util.DisplayMetrics;
++import android.util.TypedValue;
+ 
+-public final class Resources {
++public class Resources {
+     private final DisplayMetrics metrics = new DisplayMetrics();
+     public DisplayMetrics getDisplayMetrics() { return metrics; }
++    public Theme newTheme() { return new Theme(); }
++    public static class Theme {
++        public boolean resolveAttribute(int attribute, TypedValue value, boolean refs) {
++            value.data = attribute;
++            return true;
++        }
++    }
+ }
+diff --git a/tools/ui-stubs/android/graphics/drawable/Drawable.java b/tools/ui-stubs/android/graphics/drawable/Drawable.java
+new file mode 100644
+index 0000000..d4cbf80
+--- /dev/null
++++ b/tools/ui-stubs/android/graphics/drawable/Drawable.java
+@@ -0,0 +1,3 @@
++package android.graphics.drawable;
++
++public class Drawable {}
+diff --git a/tools/ui-stubs/android/graphics/drawable/GradientDrawable.java b/tools/ui-stubs/android/graphics/drawable/GradientDrawable.java
+new file mode 100644
+index 0000000..7e9953a
+--- /dev/null
++++ b/tools/ui-stubs/android/graphics/drawable/GradientDrawable.java
+@@ -0,0 +1,8 @@
++package android.graphics.drawable;
++
++public class GradientDrawable extends Drawable {
++    public static final int OVAL = 1;
++    public void setShape(int value) {}
++    public void setColor(int value) {}
++    public void setStroke(int width, int color) {}
++}
+diff --git a/tools/ui-stubs/android/os/Bundle.java b/tools/ui-stubs/android/os/Bundle.java
+new file mode 100644
+index 0000000..97c426d
+--- /dev/null
++++ b/tools/ui-stubs/android/os/Bundle.java
+@@ -0,0 +1,3 @@
++package android.os;
++
++public class Bundle {}
+diff --git a/tools/ui-stubs/android/util/TypedValue.java b/tools/ui-stubs/android/util/TypedValue.java
+new file mode 100644
+index 0000000..fb0cab7
+--- /dev/null
++++ b/tools/ui-stubs/android/util/TypedValue.java
+@@ -0,0 +1,7 @@
++package android.util;
++
++public class TypedValue {
++    public static final int COMPLEX_UNIT_SP = 2;
++    public int data;
++    public int resourceId;
++}
+diff --git a/tools/ui-stubs/android/view/Gravity.java b/tools/ui-stubs/android/view/Gravity.java
+new file mode 100644
+index 0000000..d3331e3
+--- /dev/null
++++ b/tools/ui-stubs/android/view/Gravity.java
+@@ -0,0 +1,7 @@
++package android.view;
++
++public final class Gravity {
++    public static final int CENTER = 17;
++    public static final int CENTER_VERTICAL = 16;
++    private Gravity() {}
++}
+diff --git a/tools/ui-stubs/android/view/LayoutInflater.java b/tools/ui-stubs/android/view/LayoutInflater.java
+new file mode 100644
+index 0000000..3138436
+--- /dev/null
++++ b/tools/ui-stubs/android/view/LayoutInflater.java
+@@ -0,0 +1,9 @@
++package android.view;
++
++import android.content.Context;
++
++public class LayoutInflater {
++    public View inflate(int resource, ViewGroup root, boolean attachToRoot) {
++        return new View(new Context());
++    }
++}
+diff --git a/tools/ui-stubs/android/view/View.java b/tools/ui-stubs/android/view/View.java
+new file mode 100644
+index 0000000..63007f0
+--- /dev/null
++++ b/tools/ui-stubs/android/view/View.java
+@@ -0,0 +1,26 @@
++package android.view;
++
++import android.content.Context;
++import android.graphics.drawable.Drawable;
++
++public class View {
++    public static final int VISIBLE = 0;
++    public static final int GONE = 8;
++    private final Context context;
++    public View(Context context) { this.context = context; }
++    public Context getContext() { return context; }
++    public void setEnabled(boolean value) {}
++    public boolean isEnabled() { return true; }
++    public void setAlpha(float value) {}
++    public void setClickable(boolean value) {}
++    public void setFocusable(boolean value) {}
++    public void setOnClickListener(OnClickListener listener) {}
++    public void setPadding(int left, int top, int right, int bottom) {}
++    public void setMinimumHeight(int value) {}
++    public void setBackground(Drawable value) {}
++    public void setVisibility(int value) {}
++    public void setLayoutParams(ViewGroup.LayoutParams value) {}
++    public void scrollTo(int x, int y) {}
++    public <T extends View> T findViewById(int id) { return null; }
++    public interface OnClickListener { void onClick(View view); }
++}
+diff --git a/tools/ui-stubs/android/view/ViewGroup.java b/tools/ui-stubs/android/view/ViewGroup.java
+new file mode 100644
+index 0000000..6e69d61
+--- /dev/null
++++ b/tools/ui-stubs/android/view/ViewGroup.java
+@@ -0,0 +1,23 @@
++package android.view;
++
++import android.content.Context;
++
++public class ViewGroup extends View {
++    public ViewGroup(Context context) { super(context); }
++    public void addView(View view) {}
++    public void addView(View view, LayoutParams params) {}
++    public static class LayoutParams {
++        public static final int MATCH_PARENT = -1;
++        public static final int WRAP_CONTENT = -2;
++        public int width;
++        public int height;
++        public LayoutParams(int width, int height) {
++            this.width = width;
++            this.height = height;
++        }
++    }
++    public static class MarginLayoutParams extends LayoutParams {
++        public MarginLayoutParams(int width, int height) { super(width, height); }
++        public void setMargins(int left, int top, int right, int bottom) {}
++    }
++}
+diff --git a/tools/ui-stubs/android/widget/AdapterView.java b/tools/ui-stubs/android/widget/AdapterView.java
+new file mode 100644
+index 0000000..c5baec6
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/AdapterView.java
+@@ -0,0 +1,14 @@
++package android.widget;
++
++import android.content.Context;
++import android.view.View;
++import android.view.ViewGroup;
++
++public class AdapterView<T> extends ViewGroup {
++    public AdapterView(Context context) { super(context); }
++    public Object getItemAtPosition(int position) { return null; }
++    public interface OnItemSelectedListener {
++        void onItemSelected(AdapterView<?> parent, View view, int position, long id);
++        void onNothingSelected(AdapterView<?> parent);
++    }
++}
+diff --git a/tools/ui-stubs/android/widget/ArrayAdapter.java b/tools/ui-stubs/android/widget/ArrayAdapter.java
+new file mode 100644
+index 0000000..3774947
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/ArrayAdapter.java
+@@ -0,0 +1,9 @@
++package android.widget;
++
++import android.content.Context;
++
++public class ArrayAdapter<T> {
++    public ArrayAdapter(Context context, int resource, T[] values) {}
++    public void setDropDownViewResource(int resource) {}
++    public int getPosition(T value) { return 0; }
++}
+diff --git a/tools/ui-stubs/android/widget/FrameLayout.java b/tools/ui-stubs/android/widget/FrameLayout.java
+new file mode 100644
+index 0000000..45c2220
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/FrameLayout.java
+@@ -0,0 +1,16 @@
++package android.widget;
++
++import android.content.Context;
++import android.view.ViewGroup;
++
++public class FrameLayout extends ViewGroup {
++    public FrameLayout(Context context) { super(context); }
++    public static class LayoutParams extends ViewGroup.MarginLayoutParams {
++        public int gravity;
++        public LayoutParams(int width, int height) { super(width, height); }
++        public LayoutParams(int width, int height, int gravity) {
++            super(width, height);
++            this.gravity = gravity;
++        }
++    }
++}
+diff --git a/tools/ui-stubs/android/widget/ImageView.java b/tools/ui-stubs/android/widget/ImageView.java
+new file mode 100644
+index 0000000..e96223b
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/ImageView.java
+@@ -0,0 +1,12 @@
++package android.widget;
++
++import android.content.Context;
++import android.graphics.drawable.Drawable;
++import android.view.View;
++
++public class ImageView extends View {
++    public ImageView(Context context) { super(context); }
++    public void setImageResource(int value) {}
++    public void setImageDrawable(Drawable value) {}
++    public void setColorFilter(int value) {}
++}
+diff --git a/tools/ui-stubs/android/widget/LinearLayout.java b/tools/ui-stubs/android/widget/LinearLayout.java
+index 6f98877..e2054fa 100644
+--- a/tools/ui-stubs/android/widget/LinearLayout.java
++++ b/tools/ui-stubs/android/widget/LinearLayout.java
+@@ -1,11 +1,21 @@
+ package android.widget;
+ 
+ import android.content.Context;
++import android.view.View;
++import android.view.ViewGroup;
+ 
+-public class LinearLayout {
++public class LinearLayout extends ViewGroup {
++    public static final int HORIZONTAL = 0;
+     public static final int VERTICAL = 1;
+-    public LinearLayout(Context context) {}
++    public LinearLayout(Context context) { super(context); }
+     public void setOrientation(int value) {}
+-    public void setPadding(int left, int top, int right, int bottom) {}
+-    public void addView(Object value) {}
++    public void setGravity(int value) {}
++    public static class LayoutParams extends ViewGroup.MarginLayoutParams {
++        public float weight;
++        public LayoutParams(int width, int height) { super(width, height); }
++        public LayoutParams(int width, int height, float weight) {
++            super(width, height);
++            this.weight = weight;
++        }
++    }
+ }
+diff --git a/tools/ui-stubs/android/widget/ScrollView.java b/tools/ui-stubs/android/widget/ScrollView.java
+index d59f4ec..c02f875 100644
+--- a/tools/ui-stubs/android/widget/ScrollView.java
++++ b/tools/ui-stubs/android/widget/ScrollView.java
+@@ -1,8 +1,12 @@
+ package android.widget;
+ 
+ import android.content.Context;
++import android.view.ViewGroup;
+ 
+-public class ScrollView {
+-    public ScrollView(Context context) {}
+-    public void addView(Object value) {}
++public class ScrollView extends FrameLayout {
++    public ScrollView(Context context) { super(context); }
++    public void setFillViewport(boolean value) {}
++    public static class LayoutParams extends FrameLayout.LayoutParams {
++        public LayoutParams(int width, int height) { super(width, height); }
++    }
+ }
+diff --git a/tools/ui-stubs/android/widget/Spinner.java b/tools/ui-stubs/android/widget/Spinner.java
+new file mode 100644
+index 0000000..91429b5
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/Spinner.java
+@@ -0,0 +1,11 @@
++package android.widget;
++
++import android.content.Context;
++
++public class Spinner extends AdapterView<ArrayAdapter<?>> {
++    public Spinner(Context context) { super(context); }
++    public void setAdapter(ArrayAdapter<?> value) {}
++    public void setOnItemSelectedListener(OnItemSelectedListener value) {}
++    public int getSelectedItemPosition() { return 0; }
++    public void setSelection(int position, boolean animate) {}
++}
+diff --git a/tools/ui-stubs/android/widget/TextView.java b/tools/ui-stubs/android/widget/TextView.java
+index 039fb3a..2d73255 100644
+--- a/tools/ui-stubs/android/widget/TextView.java
++++ b/tools/ui-stubs/android/widget/TextView.java
+@@ -2,12 +2,15 @@ package android.widget;
+ 
+ import android.content.Context;
+ import android.graphics.Typeface;
++import android.view.View;
+ 
+-public class TextView {
+-    public TextView(Context context) {}
+-    public void setText(String value) {}
++public class TextView extends View {
++    public TextView(Context context) { super(context); }
++    public void setText(CharSequence value) {}
+     public void setText(int value) {}
+     public void setTextSize(float value) {}
++    public void setTextSize(int unit, float value) {}
+     public void setTypeface(Typeface value, int style) {}
+-    public void setPadding(int left, int top, int right, int bottom) {}
++    public void setTypeface(Typeface value) {}
++    public void setTextColor(int value) {}
+ }
+diff --git a/tools/ui-stubs/androidx/annotation/DrawableRes.java b/tools/ui-stubs/androidx/annotation/DrawableRes.java
+new file mode 100644
+index 0000000..3e655eb
+--- /dev/null
++++ b/tools/ui-stubs/androidx/annotation/DrawableRes.java
+@@ -0,0 +1,3 @@
++package androidx.annotation;
++
++public @interface DrawableRes {}
+diff --git a/tools/ui-stubs/androidx/annotation/NonNull.java b/tools/ui-stubs/androidx/annotation/NonNull.java
+new file mode 100644
+index 0000000..3ab6fbb
+--- /dev/null
++++ b/tools/ui-stubs/androidx/annotation/NonNull.java
+@@ -0,0 +1,3 @@
++package androidx.annotation;
++
++public @interface NonNull {}
+diff --git a/tools/ui-stubs/androidx/annotation/Nullable.java b/tools/ui-stubs/androidx/annotation/Nullable.java
+new file mode 100644
+index 0000000..fde866b
+--- /dev/null
++++ b/tools/ui-stubs/androidx/annotation/Nullable.java
+@@ -0,0 +1,3 @@
++package androidx.annotation;
++
++public @interface Nullable {}
+diff --git a/tools/ui-stubs/androidx/appcompat/widget/SwitchCompat.java b/tools/ui-stubs/androidx/appcompat/widget/SwitchCompat.java
+index 5bc9054..accc247 100644
+--- a/tools/ui-stubs/androidx/appcompat/widget/SwitchCompat.java
++++ b/tools/ui-stubs/androidx/appcompat/widget/SwitchCompat.java
+@@ -7,6 +7,8 @@ public class SwitchCompat extends TextView {
+     public interface Listener { void changed(SwitchCompat view, boolean checked); }
+     public SwitchCompat(Context context) { super(context); }
+     public void setChecked(boolean value) {}
+-    public void setEnabled(boolean value) {}
++    public boolean isChecked() { return false; }
++    public void toggle() {}
++    public void setShowText(boolean value) {}
+     public void setOnCheckedChangeListener(Listener listener) {}
+ }
+diff --git a/tools/ui-stubs/androidx/core/content/ContextCompat.java b/tools/ui-stubs/androidx/core/content/ContextCompat.java
+new file mode 100644
+index 0000000..1eb920e
+--- /dev/null
++++ b/tools/ui-stubs/androidx/core/content/ContextCompat.java
+@@ -0,0 +1,9 @@
++package androidx.core.content;
++
++import android.content.Context;
++import android.graphics.drawable.Drawable;
++
++public final class ContextCompat {
++    public static Drawable getDrawable(Context context, int resource) { return new Drawable(); }
++    public static int getColor(Context context, int resource) { return resource; }
++}
+diff --git a/tools/ui-stubs/androidx/fragment/app/Fragment.java b/tools/ui-stubs/androidx/fragment/app/Fragment.java
+new file mode 100644
+index 0000000..ed85cfe
+--- /dev/null
++++ b/tools/ui-stubs/androidx/fragment/app/Fragment.java
+@@ -0,0 +1,16 @@
++package androidx.fragment.app;
++
++import android.content.Context;
++import android.os.Bundle;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++
++public class Fragment {
++    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle state) { return null; }
++    public void onResume() {}
++    public void onDestroyView() {}
++    public Context requireContext() { return new Context(); }
++    public String getString(int resource) { return Integer.toString(resource); }
++    public String getString(int resource, Object... args) { return Integer.toString(resource); }
++}
+diff --git a/tools/ui-stubs/com/google/android/material/R.java b/tools/ui-stubs/com/google/android/material/R.java
+new file mode 100644
+index 0000000..0787f3b
+--- /dev/null
++++ b/tools/ui-stubs/com/google/android/material/R.java
+@@ -0,0 +1,12 @@
++package com.google.android.material;
++
++public final class R {
++    public static final class attr {
++        public static final int colorPrimary = 1;
++        public static final int colorOnSurface = 2;
++        public static final int colorOnSurfaceVariant = 3;
++        public static final int colorOutlineVariant = 4;
++        public static final int colorSurfaceContainerLow = 5;
++        public static final int colorSurfaceContainerLowest = 6;
++    }
++}
+diff --git a/tools/ui-stubs/com/google/android/material/button/MaterialButton.java b/tools/ui-stubs/com/google/android/material/button/MaterialButton.java
+new file mode 100644
+index 0000000..971cdfd
+--- /dev/null
++++ b/tools/ui-stubs/com/google/android/material/button/MaterialButton.java
+@@ -0,0 +1,9 @@
++package com.google.android.material.button;
++
++import android.content.Context;
++import android.widget.TextView;
++
++public class MaterialButton extends TextView {
++    public MaterialButton(Context context) { super(context); }
++    public void setAllCaps(boolean value) {}
++}
+diff --git a/tools/ui-stubs/com/google/android/material/card/MaterialCardView.java b/tools/ui-stubs/com/google/android/material/card/MaterialCardView.java
+new file mode 100644
+index 0000000..4e237c1
+--- /dev/null
++++ b/tools/ui-stubs/com/google/android/material/card/MaterialCardView.java
+@@ -0,0 +1,13 @@
++package com.google.android.material.card;
++
++import android.content.Context;
++import android.widget.FrameLayout;
++
++public class MaterialCardView extends FrameLayout {
++    public MaterialCardView(Context context) { super(context); }
++    public void setRadius(float value) {}
++    public void setCardElevation(float value) {}
++    public void setStrokeWidth(int value) {}
++    public void setStrokeColor(int value) {}
++    public void setCardBackgroundColor(int value) {}
++}
+diff --git a/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java b/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java
+new file mode 100644
+index 0000000..5a33443
+--- /dev/null
++++ b/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java
+@@ -0,0 +1,22 @@
++package com.google.android.material.tabs;
++
++import android.content.Context;
++import android.view.View;
++
++public class TabLayout extends View {
++    public TabLayout(Context context) { super(context); }
++    public Tab newTab() { return new Tab(); }
++    public void addTab(Tab tab) {}
++    public Tab getTabAt(int position) { return new Tab(); }
++    public void addOnTabSelectedListener(OnTabSelectedListener listener) {}
++    public static class Tab {
++        public Tab setText(int resource) { return this; }
++        public int getPosition() { return 0; }
++        public void select() {}
++    }
++    public interface OnTabSelectedListener {
++        void onTabSelected(Tab tab);
++        void onTabUnselected(Tab tab);
++        void onTabReselected(Tab tab);
++    }
++}
+diff --git a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+index d6bc3b2..b977a2f 100644
+--- a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
++++ b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+@@ -3,50 +3,90 @@ package com.zomdroid;
+ import android.content.Context;
+ 
+ public final class OptLabPreferences {
+-    public enum Profile { STREAM_ALL, FBO_ALL, FULL_CANDIDATE }
++    public enum Profile {
++        BASELINE, RUNTIME_SAFE, ALL_TEST_ON, CUSTOM,
++        STREAM_ALL, FBO_ALL, FULL_CANDIDATE
++    }
++    public enum Box64Policy { LEGACY_3_0, CONSERVATIVE_2_0, BALANCED_2_1 }
++    public enum StdioMode { LEGACY, BUFFERED }
++    public enum SurfaceMode { LEGACY, GEN_ACK }
++    public enum DisplayFpsHint { OFF, NATIVE_REFRESH }
++    public enum InputQueueMode { LEGACY, MUTEX_SAFE }
++
+     public static OptLabPreferences from(Context context) { return new OptLabPreferences(); }
+-    public String chunkOptimizationSummary() { return "0/8 active"; }
+-    public String renderOptimizationSummary() { return "0/3 active"; }
++    public Profile getProfile() { return Profile.CUSTOM; }
++    public void setProfile(Profile value) {}
++    public boolean isSafeModeEnabled() { return false; }
++    public void setSafeModeEnabled(boolean value) {}
++    public boolean isMasterEnabled() { return true; }
++    public void setMasterEnabled(boolean value) {}
++    public boolean isQuietRuntime() { return false; }
++    public void setQuietRuntime(boolean value) {}
++    public StdioMode getStdioMode() { return StdioMode.LEGACY; }
++    public void setStdioMode(StdioMode value) {}
++    public boolean isSqliteAndroidNative() { return false; }
++    public void setSqliteAndroidNative(boolean value) {}
++    public Box64Policy getBox64Policy() { return Box64Policy.LEGACY_3_0; }
++    public void setBox64Policy(Box64Policy value) {}
++    public SurfaceMode getSurfaceMode() { return SurfaceMode.LEGACY; }
++    public void setSurfaceMode(SurfaceMode value) {}
++    public DisplayFpsHint getDisplayFpsHint() { return DisplayFpsHint.OFF; }
++    public void setDisplayFpsHint(DisplayFpsHint value) {}
++    public InputQueueMode getInputQueueMode() { return InputQueueMode.LEGACY; }
++    public void setInputQueueMode(InputQueueMode value) {}
++    public boolean isAnalogFilter() { return false; }
++    public void setAnalogFilter(boolean value) {}
++    public boolean isInputCoalesce() { return false; }
++    public void setInputCoalesce(boolean value) {}
++    public boolean isMobileGlFileLogEnabled() { return false; }
++    public void setMobileGlFileLogEnabled(boolean value) {}
++
++    public boolean isOnlyBuild42() { return true; }
++    public void setOnlyBuild42(boolean value) {}
++    public boolean isMainloopPacing() { return false; }
++    public void setMainloopPacing(boolean value) {}
++    public boolean isStreamWake() { return false; }
++    public void setStreamWake(boolean value) {}
++    public boolean isStreamQueueFast() { return false; }
++    public void setStreamQueueFast(boolean value) {}
++    public boolean isStreamVelocityEta() { return false; }
++    public void setStreamVelocityEta(boolean value) {}
++    public boolean isFboDirtyDedup() { return false; }
++    public void setFboDirtyDedup(boolean value) {}
++    public boolean isFboFrameBudget() { return false; }
++    public void setFboFrameBudget(boolean value) {}
++    public boolean isStreamFboCoordinator() { return false; }
++    public void setStreamFboCoordinator(boolean value) {}
++
+     public boolean isChunkForage() { return false; }
+-    public boolean isChunkNeighbourWorker() { return false; }
+-    public boolean isChunkNeighbourMain() { return false; }
+-    public boolean isChunkGridLoad() { return false; }
+-    public boolean isChunkVehicles() { return false; }
+-    public boolean isChunkRandomizedBuildings() { return false; }
+-    public boolean isChunkLuaMapObjects() { return false; }
+-    public boolean isChunkWorldgenBiome() { return false; }
+     public void setChunkForage(boolean value) {}
++    public boolean isChunkNeighbourWorker() { return false; }
+     public void setChunkNeighbourWorker(boolean value) {}
++    public boolean isChunkNeighbourMain() { return false; }
+     public void setChunkNeighbourMain(boolean value) {}
++    public boolean isChunkGridLoad() { return false; }
+     public void setChunkGridLoad(boolean value) {}
++    public boolean isChunkVehicles() { return false; }
+     public void setChunkVehicles(boolean value) {}
++    public boolean isChunkRandomizedBuildings() { return false; }
+     public void setChunkRandomizedBuildings(boolean value) {}
++    public boolean isChunkLuaMapObjects() { return false; }
+     public void setChunkLuaMapObjects(boolean value) {}
++    public boolean isChunkWorldgenBiome() { return false; }
+     public void setChunkWorldgenBiome(boolean value) {}
++    public boolean isChunkCp2cDirtyClear() { return false; }
++    public void setChunkCp2cDirtyClear(boolean value) {}
++    public int chunkOptimizationEnabledCount() { return 0; }
+     public void setChunkStableProfile() {}
+     public void setChunkAllProduction(boolean value) {}
++
+     public boolean isRenderChunkDepthUpload() { return false; }
+-    public boolean isRenderChunkDepthLookup() { return false; }
+-    public boolean isRenderRingEmptyClear() { return false; }
+     public void setRenderChunkDepthUpload(boolean value) {}
++    public boolean isRenderChunkDepthLookup() { return false; }
+     public void setRenderChunkDepthLookup(boolean value) {}
++    public boolean isRenderRingEmptyClear() { return false; }
+     public void setRenderRingEmptyClear(boolean value) {}
++    public int renderOptimizationEnabledCount() { return 0; }
+     public void setRenderCp62SafeProfile(boolean value) {}
+-    public boolean isOnlyBuild42() { return true; }
+-    public boolean isMainloopPacing() { return false; }
+-    public boolean isStreamWake() { return false; }
+-    public boolean isStreamQueueFast() { return false; }
+-    public boolean isStreamVelocityEta() { return false; }
+-    public boolean isFboDirtyDedup() { return false; }
+-    public boolean isFboFrameBudget() { return false; }
+-    public boolean isStreamFboCoordinator() { return false; }
+-    public void setOnlyBuild42(boolean value) {}
+-    public void setMainloopPacing(boolean value) {}
+-    public void setStreamWake(boolean value) {}
+-    public void setStreamQueueFast(boolean value) {}
+-    public void setStreamVelocityEta(boolean value) {}
+-    public void setFboDirtyDedup(boolean value) {}
+-    public void setFboFrameBudget(boolean value) {}
+-    public void setStreamFboCoordinator(boolean value) {}
+-    public void setProfile(Profile profile) {}
++    public void setBuild42ProductionAllOff() {}
+ }
+diff --git a/tools/ui-stubs/com/zomdroid/R.java b/tools/ui-stubs/com/zomdroid/R.java
+index 53bdd56..1314d6d 100644
+--- a/tools/ui-stubs/com/zomdroid/R.java
++++ b/tools/ui-stubs/com/zomdroid/R.java
+@@ -1,61 +1,110 @@
+ package com.zomdroid;
+ 
+ public final class R {
++    public static final class layout {
++        public static final int fragment_opt_lab = 1;
++    }
++    public static final class id {
++        public static final int opt_lab_tabs = 1;
++        public static final int opt_lab_page_host = 2;
++    }
++    public static final class drawable {
++        public static final int optlab_ic_profile = 1;
++        public static final int optlab_ic_runtime = 2;
++        public static final int optlab_ic_display = 3;
++        public static final int optlab_ic_build42 = 4;
++        public static final int optlab_ic_native = 5;
++        public static final int optlab_ic_experimental = 6;
++        public static final int optlab_ic_safe_mode = 7;
++        public static final int optlab_ic_chevron = 8;
++    }
+     public static final class string {
+-        public static final int native_modules_intro = 1;
+-        public static final int native_modules_lighting = 2;
+-        public static final int native_modules_clipper = 3;
++        public static final int native_modules_clipper = 1;
++        public static final int native_modules_intro = 2;
++        public static final int native_modules_lighting = 3;
+         public static final int native_modules_pathfinding = 4;
+         public static final int native_modules_popman = 5;
+         public static final int native_modules_popman_unavailable = 6;
+         public static final int native_modules_restart = 7;
+-        public static final int native_modules_title = 8;
+-        public static final int dialog_button_ok = 9;
+-        public static final int opt_lab_chunk_intro = 10;
+-        public static final int opt_lab_chunk_profiles = 11;
+-        public static final int opt_lab_chunk_stable_profile = 12;
+-        public static final int opt_lab_chunk_all_profile = 13;
+-        public static final int opt_lab_chunk_all_off = 14;
+-        public static final int opt_lab_chunk_section = 15;
+-        public static final int opt_lab_chunk_forage = 16;
+-        public static final int opt_lab_chunk_neighbour_worker = 17;
+-        public static final int opt_lab_chunk_neighbour_main = 18;
+-        public static final int opt_lab_chunk_grid = 19;
+-        public static final int opt_lab_chunk_vehicles = 20;
+-        public static final int opt_lab_chunk_buildings = 21;
+-        public static final int opt_lab_chunk_lua = 22;
+-        public static final int opt_lab_chunk_worldgen = 23;
+-        public static final int opt_lab_chunk_restart = 24;
+-        public static final int opt_lab_chunk_title = 25;
+-        public static final int opt_lab_render_intro = 26;
+-        public static final int opt_lab_render_profiles = 27;
+-        public static final int opt_lab_render_cp62_safe = 28;
+-        public static final int opt_lab_render_all_off = 29;
+-        public static final int opt_lab_render_chunk_depth = 30;
+-        public static final int opt_lab_render_chunk_depth_upload = 31;
+-        public static final int opt_lab_render_chunk_depth_lookup = 32;
+-        public static final int opt_lab_render_ring = 33;
+-        public static final int opt_lab_render_ring_empty_clear = 34;
+-        public static final int opt_lab_render_ring_bulk_status = 35;
+-        public static final int opt_lab_render_restart = 36;
+-        public static final int opt_lab_render_title = 37;
+-        public static final int opt_lab_build42_intro = 38;
+-        public static final int opt_lab_only_build42 = 39;
+-        public static final int opt_lab_build42_presets = 40;
+-        public static final int opt_lab_runtime_b42_section = 41;
+-        public static final int opt_lab_pacing = 42;
+-        public static final int opt_lab_stream_section = 43;
+-        public static final int opt_lab_stream_wake = 44;
+-        public static final int opt_lab_stream_queue = 45;
+-        public static final int opt_lab_stream_eta = 46;
+-        public static final int opt_lab_fbo_section = 47;
+-        public static final int opt_lab_fbo_dedup = 48;
+-        public static final int opt_lab_fbo_budget = 49;
+-        public static final int opt_lab_stream_fbo_coordinator = 50;
+-        public static final int opt_lab_chunk_open = 51;
+-        public static final int opt_lab_render_section = 52;
+-        public static final int opt_lab_render_open = 53;
+-        public static final int opt_lab_build42_restart_warning = 54;
+-        public static final int opt_lab_build42_title = 55;
++        public static final int opt_lab_active_count = 8;
++        public static final int opt_lab_analog = 9;
++        public static final int opt_lab_android_section = 10;
++        public static final int opt_lab_box64 = 11;
++        public static final int opt_lab_buffered_stdio = 12;
++        public static final int opt_lab_build42_all_off = 13;
++        public static final int opt_lab_build42_card = 14;
++        public static final int opt_lab_build42_card_state = 15;
++        public static final int opt_lab_build42_independent = 16;
++        public static final int opt_lab_build42_intro = 17;
++        public static final int opt_lab_build42_presets = 18;
++        public static final int opt_lab_build42_restart_warning = 19;
++        public static final int opt_lab_changes_next_launch = 20;
++        public static final int opt_lab_chunk_all_off = 21;
++        public static final int opt_lab_chunk_all_profile = 22;
++        public static final int opt_lab_chunk_buildings = 23;
++        public static final int opt_lab_chunk_cp2c = 24;
++        public static final int opt_lab_chunk_cp2c_warning = 25;
++        public static final int opt_lab_chunk_forage = 26;
++        public static final int opt_lab_chunk_grid = 27;
++        public static final int opt_lab_chunk_intro = 28;
++        public static final int opt_lab_chunk_lua = 29;
++        public static final int opt_lab_chunk_neighbour_main = 30;
++        public static final int opt_lab_chunk_neighbour_worker = 31;
++        public static final int opt_lab_chunk_section = 32;
++        public static final int opt_lab_chunk_stable_profile = 33;
++        public static final int opt_lab_chunk_vehicles = 34;
++        public static final int opt_lab_chunk_worldgen = 35;
++        public static final int opt_lab_coalesce = 36;
++        public static final int opt_lab_display_card = 37;
++        public static final int opt_lab_experimental_card = 38;
++        public static final int opt_lab_experimental_card_state = 39;
++        public static final int opt_lab_experimental_native = 40;
++        public static final int opt_lab_experimental_placeholder = 41;
++        public static final int opt_lab_fbo_budget = 42;
++        public static final int opt_lab_fbo_dedup = 43;
++        public static final int opt_lab_fbo_section = 44;
++        public static final int opt_lab_general_controls = 45;
++        public static final int opt_lab_general_master = 46;
++        public static final int opt_lab_general_restart_warning = 47;
++        public static final int opt_lab_independent_note = 48;
++        public static final int opt_lab_input_queue = 49;
++        public static final int opt_lab_mgl_log = 50;
++        public static final int opt_lab_native_card = 51;
++        public static final int opt_lab_native_card_state = 52;
++        public static final int opt_lab_native_experimental_link = 53;
++        public static final int opt_lab_native_stable = 54;
++        public static final int opt_lab_only_build42 = 55;
++        public static final int opt_lab_pacing = 56;
++        public static final int opt_lab_profile_general = 57;
++        public static final int opt_lab_quiet = 58;
++        public static final int opt_lab_refresh = 59;
++        public static final int opt_lab_render_all_off = 60;
++        public static final int opt_lab_render_chunk_depth_lookup = 61;
++        public static final int opt_lab_render_chunk_depth_upload = 62;
++        public static final int opt_lab_render_cp62_safe = 63;
++        public static final int opt_lab_render_intro = 64;
++        public static final int opt_lab_render_ring_bulk_status = 65;
++        public static final int opt_lab_render_ring_empty_clear = 66;
++        public static final int opt_lab_render_section = 67;
++        public static final int opt_lab_runtime_b42_section = 68;
++        public static final int opt_lab_runtime_card = 69;
++        public static final int opt_lab_runtime_section = 70;
++        public static final int opt_lab_safe_mode = 71;
++        public static final int opt_lab_safe_mode_active = 72;
++        public static final int opt_lab_safe_mode_state = 73;
++        public static final int opt_lab_safe_mode_summary = 74;
++        public static final int opt_lab_sqlite = 75;
++        public static final int opt_lab_stream_eta = 76;
++        public static final int opt_lab_stream_fbo_coordinator = 77;
++        public static final int opt_lab_stream_queue = 78;
++        public static final int opt_lab_stream_section = 79;
++        public static final int opt_lab_stream_wake = 80;
++        public static final int opt_lab_surface = 81;
++        public static final int opt_lab_tab_build42 = 82;
++        public static final int opt_lab_tab_display = 83;
++        public static final int opt_lab_tab_experimental = 84;
++        public static final int opt_lab_tab_native = 85;
++        public static final int opt_lab_tab_overview = 86;
++        public static final int opt_lab_tab_runtime = 87;
+     }
+ }

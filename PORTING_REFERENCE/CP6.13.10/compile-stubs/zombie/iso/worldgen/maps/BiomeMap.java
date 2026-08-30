@@ -1,0 +1,1 @@
+package zombie.iso.worldgen.maps; public class BiomeMap { public enum Type { ZONE, BIOME, ORE } public int[] getZones(int x,int y,Type t){return null;} public String getZoneName(int id){return null;} }

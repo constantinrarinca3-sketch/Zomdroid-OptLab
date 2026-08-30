@@ -1,0 +1,74 @@
+ZomDroid R14 — CP6.6 MEGAHOTPATH + OPT-LAB MODULAR
+FINAL SOURCE HANDOFF — 2026-08-29 UTC
+
+VERDICT
+  SOURCE IMPLEMENTATION = DONE
+  CP6.6 UNIFIED AGENT = DONE
+  REGISTRY / PROFILES / LAUNCHER = DONE
+  MODULAR BUILD 42 UI = DONE
+  HOST + STATIC + BOTH REAL JARS = PASS
+  ANDROID COMPILE = NO (Gradle 8.13 nu este disponibil offline)
+  DEVICE TEST INTEGRATED APK = NO
+
+IDENTITY
+  versionCode = 14755
+  versionName = 1.4.7v5-optlab-r14-cp66-modular-*
+  agent = version 11 / proof schema 10
+  jars.tar SHA-256 = 7b002af7d017ef1cd1d29fb7bad36f15464056b43f4963c1be3cf3e224ca0923
+  zomdroid-agent.jar SHA-256 = 2209798f9b79203ba1e421581495b6ec96ebc9f4dca253565b95210aed4b0554
+
+CE ESTE IMPLEMENTAT
+  - Optimizările CP6.6 sunt în agentul unic, cu probe structurale și fallback
+    individual; nu există agent extern sau telemetrie periodică în hotpath.
+  - JAR-urile exacte 42.20 și 42.20.3 trec transformarea reală.
+  - 27 proprietăți agent sunt generate exclusiv din registrul unic, fără dubluri.
+  - Profiluri Safe / Recommended / Aggressive / Custom.
+  - Clasificări Stable / Experimental / Internal / Archived.
+  - Șase module Build 42, fiecare cu pagină detaliată.
+  - Advanced controls afișează controalele individuale; Internal nu are toggle.
+  - Dependențele se închid tranzitiv la ON/OFF.
+  - Build 42 ALL OFF păstrează CP2C experimental separat.
+  - Memory / Allocation este rezervat onest pentru pachete viitoare.
+
+CLASIFICARE CP6.6
+  INTERNAL / Recommended:
+    shader lookup, MVP unchanged, GameProfiler idle, Render Style idle.
+  STABLE / Recommended / Advanced:
+    StateRun texture equivalence, safe redundant Texture.bind.
+  EXPERIMENTAL / implicit OFF:
+    buildDrawBuffer loop hoist, extended idle probes.
+  ARCHIVED / imposibil de lansat:
+    Ring bulk, profile fast, tex-parameter cache, MatrixStack epoch,
+    aggressive StateRun merge.
+
+DOVEZI HOST
+  - OPTLAB_REGISTRY_INTEGRITY_UNIT PASS: 46 feature-uri, 11 RTHREAD vizibile,
+    5 arhivate, ID/prefs/proprietăți unice, 0 cicluri, 3 profiluri verificate.
+  - OPTLAB_REGISTRY_UNIT PASS: 27 proprietăți unice, CP6.6 wired.
+  - OPTLAB_TABBED_UI_SOURCE PASS: 6 taburi, 6 module, detail pages, Advanced.
+  - PREMAIN_PATHFINDING_ONLY PASS.
+  - CP6_2_EXACT_JAR_BYTECODE PASS 42.20 + 42.20.3.
+  - CP6_6_HOTPATH_BOTH_REAL_JARS PASS.
+  - CHUNK_OPTIMIZATION_BOTH_REAL_JARS PASS.
+  - PATHFINDING_REAL_BYTECODE_TRANSFORM PASS pe ambele JAR-uri.
+
+DE TESTAT PE DISPOZITIV
+  1. Compilează ambele flavor-uri necesare și instalează sideBySide mai întâi.
+  2. Safe Mode ON: jocul pornește fără proprietăți de optimizare active.
+  3. Recommended: verifică logul [ZD-OPT-LAB-AGENT] version=11 schema=10.
+  4. Verifică ACTIVE/EXERCISED pentru fiecare mecanism Recommended, fără FALLBACK.
+  5. Mers pe jos 15–20 min, aceeași zonă/save: frametime, 1% low, agățări.
+  6. Zombi: urmărire, uși, obstacole, interior/exterior și hoardă.
+  7. Stream/chunk: vecini, vehicule, revenire în chunk, save/reload.
+  8. Advanced: A/B individual pentru cele două Stable CP6.6.
+  9. Experimental: build loop și extended probes separat, ultimul pas.
+ 10. PopMan și CP2C rămân teste separate; nu se declară PASS aici.
+
+CHECKPOINTURI PERSISTENTE
+  CP6.6-01 UNIFIED AGENT = DONE / DEVICE TEST NO
+  CP6.6-02 REGISTRY + PROFILES = DONE / DEVICE TEST NO
+  CP6.6-03 MODULAR UI = DONE / DEVICE TEST NO
+
+NOTĂ
+  „DEVICE_POC_VALIDATED” descrie dovada PoC din pachetul primit; nu este
+  prezentată drept validare a APK-ului R14 integrat.

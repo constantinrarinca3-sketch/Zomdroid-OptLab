@@ -1,0 +1,50 @@
+ZOMDROID R13 TABBED UI - HOST TEST RESULTS
+Date UTC: 2026-08-29
+Scope: UI stage only; CP6.6 handoff not opened or ported.
+
+PASS  tools/test-optlab-tabbed-ui-compile.sh
+      OPTLAB_TABBED_UI_COMPILE PASS javac_release=17 tabs=6
+PASS  tools/test-optlab-preferences-independence.sh
+      OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=8 safe_mode=1
+PASS  tools/test-native-modules-preferences.sh
+      NATIVE_MODULES_PREFERENCES_UNIT PASS schema=3 safe_mode=1
+PASS  tools/test-optlab-tabbed-ui-source.sh
+      full_screen=1 tabs=6 cards=6 nested_dialogs=0
+      safe_mode=effective_preserve theme=light_dark cp62_unchanged=1
+PASS  tools/test-native-modules-source.sh
+      NATIVE_MODULES_SOURCE_UNIT / BACKUP_PRESERVATION_UNIT /
+      OPTLAB_REGISTRY_UNIT / NATIVE_MODULES_LAUNCHER_GATE
+PASS  tools/test-cp62-apk-wiring.sh
+      source properties=3 features=3 workflows=3; bundle marker=10/9
+PASS  tools/test-optlab-agent-source.sh
+      FEATURE_COMPATIBILITY_UNIT / RUNTIME_UNIT / PREMAIN_PATHFINDING_ONLY
+PASS  tools/test-cp62-exact-jars.sh projectzomboid(2).jar projectzomboid(3).jar
+      CP6_2_EXACT_JAR_BYTECODE PASS versions=42.20,42.20.3
+PASS  tools/test-popman-native-source.sh
+      sha256=eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+PASS  tools/test-pathfinding-native-payload.sh
+      sha256=a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+PASS  tools/test-jassimp-direct.sh
+      sha256=a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4
+PASS  tools/test-mobilegl-default-payload.sh
+      sha256=f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a
+PASS  git diff --check
+
+EXACT INPUTS
+42.20 projectzomboid.jar:
+e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+42.20.3 projectzomboid.jar:
+bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+CP6.2 jars.tar unchanged:
+bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c
+Bundled ZomDroid agent unchanged:
+045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8
+
+NOT RUN - Android Gradle/APK compile
+Reason: Gradle 8.13 distribution is absent from cache. The wrapper attempted
+https://services.gradle.org/distributions/gradle-8.13-bin.zip and the current
+environment rejected network access with java.net.SocketException. This is an
+environment limitation and is deliberately not reported as PASS.
+
+NOT RUN - device/UI instrumentation test
+Reason: no Android device/emulator is attached. No DEVICE PASS is claimed.

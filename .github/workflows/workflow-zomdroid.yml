@@ -29,13 +29,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Prepare and test OPT-LAB agent bundle
+      run: |
+        ./tools/build-optlab-agent.sh
+        ./tools/test-optlab-agent-source.sh
+        ./tools/test-pathfinding-native-payload.sh
+        ./tools/test-popman-native-source.sh
+        ./tools/test-native-modules-source.sh
+        ./tools/test-native-modules-preferences.sh
+        ./tools/test-native-modules-ui-source.sh
+        ./tools/test-optlab-preferences-independence.sh
+        ./tools/test-mobilegl-default-payload.sh
+        ./tools/test-jassimp-direct.sh
+        ./tools/test-cp1-proof-validator.sh
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
     - name: Install NDK
       run: |
-        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;26.1.10909125"
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.3.13750724"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> $GITHUB_ENV
 
     - name: Cache Gradle packages
       uses: actions/cache@v4
@@ -83,6 +97,20 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+
+    - name: Prepare and test OPT-LAB agent bundle
+      run: |
+        ./tools/build-optlab-agent.sh
+        ./tools/test-optlab-agent-source.sh
+        ./tools/test-pathfinding-native-payload.sh
+        ./tools/test-popman-native-source.sh
+        ./tools/test-native-modules-source.sh
+        ./tools/test-native-modules-preferences.sh
+        ./tools/test-native-modules-ui-source.sh
+        ./tools/test-optlab-preferences-independence.sh
+        ./tools/test-mobilegl-default-payload.sh
+        ./tools/test-jassimp-direct.sh
+        ./tools/test-cp1-proof-validator.sh
 
     - name: Run unit tests
       run: ./gradlew test

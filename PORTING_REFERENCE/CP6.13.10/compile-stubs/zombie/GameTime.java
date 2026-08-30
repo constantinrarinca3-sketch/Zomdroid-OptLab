@@ -1,0 +1,1 @@
+package zombie; public class GameTime { public static GameTime instance; public float perObjectMultiplier; public static GameTime getInstance(){return instance;} public float getPhysicsSecondsSinceLastUpdate(){return 0f;} public static long getServerTimeMills(){return 0L;} }

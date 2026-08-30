@@ -1,0 +1,72 @@
+ZOMDROID R11 — CHUNK OPTIMIZATION
+CP-CHUNK-00 — BASELINE SI HARTA TINTELOR
+Data: 2026-08-29
+
+STATUS CHECKPOINT: DONE
+DEVICE TEST: NO
+MODIFICARI FUNCTIONALE: NU
+
+SCOP
+----
+Acest checkpoint fixeaza punctul de plecare reconstructibil pentru integrarea
+CP4.1 V2 in agentul unic ZomDroid. Ramura logica de lucru este:
+
+  ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE
+
+R10 JAssimp Direct ramane baza si nu este inlocuit, eliminat sau separat intr-un
+al doilea agent.
+
+IDENTITATE INPUTURI
+-------------------
+Sursa R10:
+  fisier: ZomDroid-R10-JASSIMP-DIRECT-SOURCE-2026-08-29.tar.zst
+  sha256: 2e3e8d8724a9c88f505252eb5a5fe0271da3fe886defe1d4fc367d720c586bbb
+
+Pachet referinta CP4.1 V2:
+  fisier: MGLPZ-ChunkProfiler-CP4.1-V2-PACK(1).zip
+  sha256: b25a5a74983c6854b18507c03aa00fea144b8830225ee5aba9ec003872e3347e
+
+Project Zomboid Build 42.20:
+  fisier primit: projectzomboid(7).jar
+  sha256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+Project Zomboid Build 42.20.3:
+  fisier primit: projectzomboid(8).jar
+  sha256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+  observatie: corespunde exact tintei declarate de CP4.1 V2.
+
+REGULI DE INTEGRARE
+-------------------
+1. Un singur javaagent ZomDroid; JAR-ul profilerului nu se injecteaza separat.
+2. Compatibilitate per mecanism, nu un gate global pe SHA-ul intregului joc.
+3. 42.20 si 42.20.3 sunt tinte de verificare explicite.
+4. Hotfixurile B42 necunoscute pot trece doar prin verificarea structurala a
+   clasei si metodei cerute de fiecare mecanism.
+5. Orice mecanism incompatibil cade individual pe vanilla (fail-open).
+6. Profilerul greu, ThreadMXBean, sumarizarea periodica si logarea per apel nu
+   intra in calea normala de joc.
+7. Vehicle Zone Index si Neighbour Main V2 sunt incluse: utilizatorul le-a
+   validat separat ca aducand stabilitate.
+8. CP2C ramane experimental si implicit OFF pana la testarea finala pe device.
+9. Toate modificarile se aplica la urmatoarea pornire completa a jocului.
+
+DESTINATIE UI
+-------------
+Overview -> Build 42 -> Chunk Optimization
+
+Sectiunea Build 42 va contine Stream/FBO si o ramura separata Chunk
+Optimization. Native ARM64 ramane separat, imediat dupa Build 42 in Overview.
+
+TINTE CHUNK PLANIFICATE
+----------------------
+- Neighbour Worker V2
+- Neighbour Main V2
+- Vehicle Zone Index
+- Foraging
+- Grid / Load
+- Randomized Buildings
+- Lua MapObjects
+- WorldGen biome
+
+CP-CHUNK-00 fixeaza numai baseline-ul. Implementarea si testele host urmeaza in
+checkpointurile CP-CHUNK-01 si ulterioare.

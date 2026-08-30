@@ -21,15 +21,20 @@ import java.util.List;
 public final class PathfindingWorkaround {
     private static final String LOG_TAG = PathfindingWorkaround.class.getName();
     private static final String OPTION_NAME = "Pathfind.UseNativeCode";
-    private static final String OPTION_LINE = OPTION_NAME + "=false";
-
     private PathfindingWorkaround() {}
 
     public static void forceJavaPathfinderFor4212Plus(GameInstance gameInstance) {
+        selectPathfinder(gameInstance, false);
+    }
+
+    /** Selects PZ's own native or Java implementation and persists it for the next full start. */
+    public static boolean selectPathfinder(GameInstance gameInstance, boolean nativeEnabled) {
         if (!"42".equals(gameInstance.getBuildVersion())
                 || !new File(gameInstance.getGamePath(), "projectzomboid.jar").isFile()) {
-            return;
+            return false;
         }
+
+        String optionLine = OPTION_NAME + "=" + nativeEnabled;
 
         File zomboidDir = new File(gameInstance.getHomePath(), "Zomboid");
         File optionsFile = new File(zomboidDir, "debug-options.ini");
@@ -50,18 +55,19 @@ public final class PathfindingWorkaround {
                 if (equals < 0 || !OPTION_NAME.equals(line.substring(0, equals).trim())) continue;
 
                 found = true;
-                if (!OPTION_LINE.equals(line.trim())) {
-                    lines.set(i, OPTION_LINE);
+                if (!optionLine.equals(line.trim())) {
+                    lines.set(i, optionLine);
                     changed = true;
                 }
             }
             if (!found) {
-                lines.add(OPTION_LINE);
+                lines.add(optionLine);
                 changed = true;
             }
             if (!changed && optionsFile.isFile()) {
-                Log.i(LOG_TAG, "Build 42.12+ Java pathfinder is already selected");
-                return;
+                Log.i(LOG_TAG, "Build 42.12+ pathfinder already selected native="
+                        + nativeEnabled);
+                return true;
             }
 
             if (!zomboidDir.isDirectory() && !zomboidDir.mkdirs()) {
@@ -79,9 +85,12 @@ public final class PathfindingWorkaround {
                         StandardCopyOption.REPLACE_EXISTING);
             }
 
-            Log.i(LOG_TAG, "Build 42.12+ pathfinder switched to the game's Java implementation");
+            Log.i(LOG_TAG, "Build 42.12+ pathfinder selected native=" + nativeEnabled);
+            return true;
         } catch (IOException | RuntimeException e) {
-            Log.e(LOG_TAG, "Failed to select the Build 42.12+ Java pathfinder", e);
+            Log.e(LOG_TAG, "Failed to select Build 42.12+ pathfinder native="
+                    + nativeEnabled, e);
+            return false;
         }
     }
 }

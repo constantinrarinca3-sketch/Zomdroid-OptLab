@@ -1,0 +1,1 @@
+package zombie.core.opengl; import java.util.HashMap; import zombie.core.textures.TextureDraw; public class Shader { public static final HashMap<Integer,Shader> ShaderMap=new HashMap<Integer,Shader>(); public void startRenderThread(TextureDraw d){} }

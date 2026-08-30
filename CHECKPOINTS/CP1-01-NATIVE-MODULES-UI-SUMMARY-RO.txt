@@ -1,0 +1,67 @@
+ZOMDROID OPTLAB - CHECKPOINT 1 / ETAPA 01
+NATIVE MODULES UI + PERSISTENTA
+Data UTC: 2026-08-28
+
+STATUS
+======
+
+SOURCE: COMPLETE PENTRU ETAPA 01
+STATIC REVIEW: PASS
+ANDROID BUILD: BLOCKED DE LIPSA GRADLE 8.13 IN MEDIUL LOCAL
+DEVICE TEST: PENDING
+CP1 OFFICIAL PASS: NU
+
+IMPLEMENTAT
+==========
+
+1. Fereastra separata Native Modules, deschisa prin buton din OPT-LAB.
+
+2. Preferinte persistente restart-scoped, schema 1:
+
+- Lighting64 Native: implicit ON;
+- PZClipper Native: implicit ON;
+- Pathfinding Native: implicit OFF;
+- PopMan Native: permanent OFF / Unavailable pana la Checkpoint 2.
+
+3. Lighting64 si PZClipper controleaza implementarea reala:
+
+- ON instaleaza payload-ul ARM64 auditat si verificat prin SHA256;
+- OFF muta atomic libraria activa intr-un fisier user-disabled si lasa fallback-ul existent;
+- reactivarea ON reinstaleaza payload-ul auditat;
+- esecul de instalare nu este prezentat ca activ.
+
+4. Preflight-ul MobileGL distinge intre un modul cerut care a esuat si un modul oprit explicit.
+Un modul oprit de utilizator nu este raportat fals ca preflight failure.
+
+5. Pathfinding are toggle si persistenta, dar PathfindingWorkaround continua sa forteze fallback-ul
+Java in aceasta etapa intermediara. Activarea efectiva si dovada runtime sunt proprietatea CP1-02.
+
+6. PopMan este vizibil, dezactivat in UI si nu are setter/implementare care sa poata simula ON.
+
+VERIFICARI
+==========
+
+- strings.xml well-formed: PASS;
+- cele patru controale Native Modules sunt prezente: PASS;
+- PopMan disabled + Unavailable: PASS static;
+- valori implicite Lighting/PZClipper ON, Pathfinding OFF: PASS static;
+- Lighting/PZClipper conectate la managerul real: PASS static;
+- build si teste agent CP4 dupa schimbare: PASS;
+- FeatureCompatibilityUnit: PASS;
+- OptLabRuntimeUnit: PASS.
+
+ROLLBACK
+========
+
+Rollback complet: snapshotul persistent ZomDroid-CP4-COMPILE-READY-2026-08-28.tar.zst.
+
+URMATOAREA ETAPA
+================
+
+CP1-02/03:
+
+- includerea payload-ului libPZPathFind64 auditat;
+- gate pe ABI-ul Java si exporturile JNI;
+- selectie reala ON/OFF prin Pathfind.UseNativeCode;
+- fallback la PolygonalMap2;
+- AVAILABLE / ACTIVE / EXERCISED / FALLBACK in opt-proof.log.

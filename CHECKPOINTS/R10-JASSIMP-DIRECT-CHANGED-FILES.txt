@@ -1,0 +1,35 @@
+R10 CHANGED FILES VERSUS R9
+===========================
+
+Modified:
+  .github/workflows/android.yml
+  .github/workflows/build.yml
+  .github/workflows/workflow-zomdroid.yml
+  CHANGELOG.md
+  FIXES-AND-TESTS-TO-DO-AT-END-RO.txt
+  ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt
+  app/build.gradle.kts
+  app/src/main/assets/bundles/libs.tar.xz
+  app/src/main/java/com/zomdroid/GameLauncher.java
+
+Added:
+  .github/workflows/jassimp-direct.yml
+  CHECKPOINTS/CHECKPOINT-3-JASSIMP-DIRECT-FIX-SUMMARY.txt
+  CHECKPOINTS/R10-JASSIMP-DIRECT-SOURCE-IDENTITY.txt
+  CHECKPOINTS/R10-JASSIMP-DIRECT-CHANGED-FILES.txt
+  optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/README.txt
+  optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/payload/libjassimp64.so
+  optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/rollback/libjassimp64-r9-unpatched.so
+  optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/reference/ZomDroidAssimp53Compat-0.1.0.jar
+  optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/patches/assimp/0002.patch
+  tools/build-jassimp-direct.sh
+  tools/install-jassimp-direct.sh
+  tools/rollback-jassimp-r9.sh
+  tools/test-jassimp-direct.sh
+
+Binary delta rule:
+  The R9 and R10 libs bundles contain the same 38 paths. Byte comparison proves that only
+  android-arm64-v8a/libjassimp64.so changed; archive metadata/compression were normalized by the
+  deterministic installer.
+
+No R9 UI, Native Modules, Pathfinding, PopMan, MobileGL or OPT-LAB agent source was changed.

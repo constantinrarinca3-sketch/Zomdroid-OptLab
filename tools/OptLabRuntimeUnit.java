@@ -1,27 +1,46 @@
 import com.zomdroid.agent.optimization.FboRuntime;
-import com.zomdroid.agent.optimization.ModPathRuntime;
+import com.zomdroid.agent.optimization.PathfindingRuntime;
+import com.zomdroid.agent.optimization.RenderOptimizationRuntime;
 import com.zomdroid.agent.optimization.StreamCoreRuntime;
+import gnu.trove.map.hash.TObjectIntHashMap;
+import org.lwjgl.opengl.GL20;
+import zombie.core.DefaultShader;
+import zombie.core.opengl.ShaderProgram;
 import zombie.characters.IsoPlayer;
 import zombie.iso.IsoChunk;
 import zombie.iso.IsoWorld;
 import zombie.iso.fboRenderChunk.FBORenderChunk;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
+import java.nio.file.Files;
 import java.util.Stack;
 
 /** Host unit checks for the pure/fail-open parts of the optimization runtime. */
 public final class OptLabRuntimeUnit {
     public static void main(String[] args) throws Exception {
         testStableLinearSelection();
+        testQueueFallback();
         testWakeSignal();
         testDirtyDedup();
         testFboBudget();
-        testModPathResolver();
+        testFboFallback();
+        testPathfindingProofAndFallback();
+        testChunkDepthUploadAndLookupElision();
+        testChunkDepthLookupOffAndFailureFallback();
+        testRingRenderEmptyClearElision();
         System.out.println("RUNTIME_UNIT PASS");
+    }
+
+    private static void testQueueFallback() {
+        StreamCoreRuntime.configure(false, true, false);
+        StreamCoreRuntime.disableQueueShape(0);
+        Stack<Integer> values = new Stack<>();
+        values.addAll(Arrays.asList(4, 1, 3, 2));
+        StreamCoreRuntime.sortForStreamer(values,
+                (left, right) -> ((Integer) left).compareTo((Integer) right));
+        require(values.equals(Arrays.asList(1, 2, 3, 4)),
+                "disabled queue patch must execute Collections.sort exactly");
     }
 
     private static void testStableLinearSelection() {
@@ -96,72 +115,114 @@ public final class OptLabRuntimeUnit {
         require(decide(manager, deferred, far), "max two deferrals must force admission");
     }
 
-    private static void testModPathResolver() throws Exception {
-        Path temp = Files.createTempDirectory("zomdroid-modpath-unit-");
-        try {
-            Path modsRoot = temp.resolve("Project Zomboid 40.20.3/Zomboid/mods");
-            Path real = modsRoot.resolve(
-                    "AutoTsarTrailers/42.17/media/scripts/vehicles/templates/"
-                            + "template_Earthing.txt");
-            Files.createDirectories(real.getParent());
-            Files.write(real, "unit-ok".getBytes(StandardCharsets.UTF_8));
-
-            // A stale shadow entry must not win over the one authoritative live mod.
-            Path shadow = modsRoot.resolve(
-                    "data/user/0/com.zomdroid.mglpz2/files/instances/"
-                            + "project zomboid 40.20.3/zomboid/mods/autotsartrailers/42.17/"
-                            + "media/scripts/vehicles/templates/template_earthing.txt");
-            Files.createDirectories(shadow.getParent());
-            Files.write(shadow, "stale-shadow".getBytes(StandardCharsets.UTF_8));
-
-            System.setProperty("zomdroid.modpath.fix", "1");
-            System.setProperty("zomdroid.modpath.root", modsRoot.toString());
-            ModPathRuntime.configureFromProperties();
-
-            String repaired = ModPathRuntime.normalize(shadow.toString());
-            require(new File(repaired).getCanonicalFile().equals(real.toFile().getCanonicalFile()),
-                    "duplicated lowercase Android path must resolve to the real cased mod file");
-            require(ModPathRuntime.normalize(real.toString()).equals(real.toString()),
-                    "existing real mod path must remain unchanged");
-            String lowercasedAbsolute = modsRoot.toString().toLowerCase(java.util.Locale.ROOT)
-                    + "/autotsartrailers/42.17/media/scripts/vehicles/templates/"
-                    + "template_earthing.txt";
-            require(new File(ModPathRuntime.normalize(lowercasedAbsolute)).getCanonicalFile()
-                            .equals(real.toFile().getCanonicalFile()),
-                    "lowercased absolute path must restore casing from the live filesystem");
-            require(ModPathRuntime.normalize("media/scripts/relative.txt")
-                            .equals("media/scripts/relative.txt"),
-                    "relative paths must remain unchanged");
-            String traversal = modsRoot.resolve("../outside.txt").toString();
-            require(ModPathRuntime.normalize(traversal).equals(traversal),
-                    "paths that escape the mods root must remain unchanged");
-
-            Path customRoot = temp.resolve("Instanta Mea B42 Experimental/Zomboid/mods");
-            Path customReal = customRoot.resolve(
-                    "73Winnebago/42/media/scripts/vehicles/73Winnebago.txt");
-            Files.createDirectories(customReal.getParent());
-            Files.write(customReal, "custom-instance-ok".getBytes(StandardCharsets.UTF_8));
-            String customBroken = customRoot + "/data/user/0/com.zomdroid.mglpz2/files/"
-                    + "instances/orice alt nume/zomboid/mods/73winnebago/42/media/scripts/"
-                    + "vehicles/73winnebago.txt";
-            System.setProperty("zomdroid.modpath.root", customRoot.toString());
-            ModPathRuntime.configureFromProperties();
-            require(new File(ModPathRuntime.normalize(customBroken)).getCanonicalFile()
-                            .equals(customReal.toFile().getCanonicalFile()),
-                    "resolver must not depend on a fixed game-instance name");
-        } finally {
-            ModPathRuntime.disable();
-            deleteTree(temp.toFile());
-        }
+    private static void testFboFallback() {
+        FboRuntime.configure(true, true, true);
+        FboRuntime.disableBudgetShape(0);
+        require(FboRuntime.allowDirty(true, new Object(), new Object(), 0, 1.0f),
+                "disabled FBO governor must preserve the original dirty=true result");
+        FboRuntime.disableDirtyDedup();
+        require(!FboRuntime.shouldSkipSetDirty(new Object(), 1L),
+                "disabled dirty dedup must execute the original method");
     }
 
-    private static void deleteTree(File file) {
-        if (file == null || !file.exists()) return;
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteTree(child);
+    private static void testPathfindingProofAndFallback() throws Exception {
+        File proof = File.createTempFile("zomdroid-pathfinding-proof", ".log");
+        File home = Files.createTempDirectory("zomdroid-pathfinding-home").toFile();
+        System.setProperty("zomdroid.optlab.proof.path", proof.getAbsolutePath());
+        System.setProperty("zomdroid.optlab.session", "pathfinding-unit");
+        System.setProperty("zomdroid.native.pathfinding.requested", "1");
+        System.setProperty("zomdroid.native.pathfinding.active", "1");
+        System.setProperty("user.home", home.getAbsolutePath());
+        com.zomdroid.agent.optimization.ProofRuntime.configureFromProperties();
+        PathfindingRuntime.configureFromProperties();
+        PathfindingRuntime.exercised();
+        Throwable suppressed = PathfindingRuntime.fallback(new UnsatisfiedLinkError("unit"));
+        require(suppressed == null, "native request failure must fail open");
+        require(new File(home, PathfindingRuntime.FALLBACK_MARKER).isFile(),
+                "runtime failure must leave a restart marker");
+        String log = new String(Files.readAllBytes(proof.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+        require(log.contains("mechanism=pathfinding_native_exercised state=exercised"),
+                "successful request must produce EXERCISED proof");
+        require(log.contains("mechanism=pathfinding_native_fallback state=fallback"),
+                "failed request must produce FALLBACK proof");
+    }
+
+    private static void testChunkDepthUploadAndLookupElision() {
+        GL20.uniform1fCalls = 0;
+        ShaderProgram program = new ShaderProgram();
+        program.uniform = new ShaderProgram.Uniform(7);
+        DefaultShader shader = new DefaultShader();
+        shader.setProgram(program);
+        RenderOptimizationRuntime.configure(true, true, false);
+
+        for (int i = 0; i < 4096; i++) {
+            require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
+                    "ChunkDepth fastpath must handle a valid shader");
         }
-        if (!file.delete()) file.deleteOnExit();
+        require(program.lookups == 1, "stable shader generation must use one uniform lookup");
+        require(GL20.uniform1fCalls == 1, "stable value must use one GL upload");
+
+        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.75f),
+                "changed value must remain handled");
+        require(program.lookups == 1, "value change must not repeat lookup");
+        require(GL20.uniform1fCalls == 2, "changed value must upload exactly once");
+
+        program.uniform = new ShaderProgram.Uniform(9);
+        RenderOptimizationRuntime.afterDefaultShaderCompile();
+        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.75f),
+                "post-compile value must remain handled");
+        require(program.lookups == 2, "successful compile must invalidate uniform lookup cache");
+        require(GL20.uniform1fCalls == 3, "successful compile must force a safe re-upload");
+    }
+
+    private static void testChunkDepthLookupOffAndFailureFallback() {
+        GL20.uniform1fCalls = 0;
+        ShaderProgram program = new ShaderProgram();
+        program.uniform = new ShaderProgram.Uniform(4);
+        DefaultShader shader = new DefaultShader();
+        shader.setProgram(program);
+        RenderOptimizationRuntime.configure(true, false, false);
+        for (int i = 0; i < 64; i++) {
+            require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.25f),
+                    "CP6.1 upload-only route must handle valid input");
+        }
+        require(program.lookups == 64, "lookup OFF must preserve vanilla lookup frequency");
+        require(GL20.uniform1fCalls == 1, "CP6.1 must still suppress redundant upload");
+        program.uniform = new ShaderProgram.Uniform(5);
+        RenderOptimizationRuntime.afterDefaultShaderCompile();
+        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.25f),
+                "upload-only route must survive successful recompile");
+        require(program.lookups == 65 && GL20.uniform1fCalls == 2,
+                "upload-only route must force safe lookup/upload after recompile");
+
+        GL20.uniform1fCalls = 0;
+        GL20.throwNext = true;
+        program.lookups = 0;
+        RenderOptimizationRuntime.configure(true, true, false);
+        require(!RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
+                "GL failure must return control to original PZ code");
+        shader.setChunkDepth(0.5f); // Exact fallback; the one-shot test failure is now cleared.
+        require(GL20.uniform1fCalls == 2,
+                "failed fast upload must not be treated as committed cache state");
+        require(!RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
+                "guard failure must permanently fail open for this session");
+    }
+
+    private static void testRingRenderEmptyClearElision() {
+        TObjectIntHashMap<Object> map = new TObjectIntHashMap<>();
+        RenderOptimizationRuntime.configure(false, false, true);
+        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
+        require(map.clearCalls == 0, "empty modelDrawCounts.clear must be skipped");
+        map.put(new Object(), 1);
+        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
+        require(map.clearCalls == 1 && map.isEmpty(),
+                "non-empty modelDrawCounts must still be cleared exactly once");
+
+        RenderOptimizationRuntime.configure(false, false, false);
+        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
+        require(map.clearCalls == 2,
+                "disabled ring optimization must execute the original clear call");
     }
 
     private static boolean decide(MockManager manager, FBORenderChunk renderChunk,

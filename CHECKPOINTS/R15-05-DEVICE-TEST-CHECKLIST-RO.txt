@@ -1,0 +1,60 @@
+R15-05 — CHECKLIST DEVICE 42.20 / 42.20.3
+Data: 2026-08-30 UTC
+
+STATUS ÎNAINTE DE TEST:
+- SOURCE/HOST: PASS
+- APK COMPILE: NOT RUN
+- DEVICE TEST: NO
+
+REGULĂ:
+Testează 42.20 și 42.20.3 separat. Nu activa două mecanisme experimentale noi
+în același run. Păstrează APK-ul baseline și arhiva R15-04 pentru rollback.
+
+1. BUILD / STARTUP
+[ ] APK compilează din sursa R15-05 fără modificări locale.
+[ ] Instalare/upgrade reușit; jocul ajunge în meniu și în aceeași salvare.
+[ ] Logul conține: [ZD-OPT-LAB-AGENT] version=15 schema=14 loaded
+[ ] Nu există transform_error, VerifyError, NoSuchFieldError sau NoSuchMethodError.
+
+2. BASELINE CONTROL
+[ ] Safe Mode: jocul pornește și funcționează.
+[ ] Build 42 profil Safe/Recommended: 20–30 min mers pe jos prin zone cunoscute
+    și necunoscute; notează frametime/spike-uri, nu doar FPS mediu.
+[ ] Zombi: atrage un grup, schimbă direcția, intră/iese din clădiri.
+[ ] Mașină: traversează chunk-uri, dar rezultatul se notează separat de mersul pe jos.
+[ ] Save + quit + reload: lumea și populația sunt intacte.
+
+3. CP6.13.4 BUILD DIRECT — RTHREAD_BUILD_LOOP
+[ ] Activează numai această funcție experimentală peste baseline.
+[ ] Proof: mechanism=rthread_build_loop state=active și apoi state=exercised.
+[ ] 20–30 min: zoom, ploaie/iluminare dacă există, mulți sprites și UI inventory.
+[ ] Fără corupție vizuală, crash sau fallback.
+
+4. CP6.13.4 FBO INNER LOOP — FBO_INNER_LOOP
+[ ] Activează numai FBO inner-loop peste baseline.
+[ ] Proof: mechanism=fbo_inner_loop state=active și apoi state=exercised.
+[ ] Verifică zi/noapte, interior/exterior, etaje, lumini și cutaway-uri.
+[ ] Traversează chunk-uri dirty; nu trebuie să rămână zone negre sau neactualizate.
+[ ] Fără skip/defer în comportamentul observat și fără fallback.
+
+5. CP6.13.10 SAME-PROGRAM BIND
+[ ] Activează numai same-program bind peste baseline.
+[ ] Proof: mechanism=rthread_same_program_bind state=active și apoi state=exercised.
+[ ] Verifică meniul, lumea, zoom, shader/effects și schimbările de scenă.
+[ ] Nu apar GL errors, shader blocat, ecran negru sau fallback.
+
+6. NATIVE PATHFINDING / POPMAN
+[ ] Pathfinding singur ON: pornește agentul, zombi urmăresc și ocolesc obstacole.
+[ ] PopMan singur ON: load, gameplay, save, quit și reload fără pierdere de populație.
+[ ] Orice fallback native este tratat ca FAIL până la diagnostic și restart sigur.
+
+7. LONG RUN ȘI COMPARAȚIE
+[ ] Minimum 45–60 min pentru configurația candidat.
+[ ] Compară aceeași salvare, traseu, cap FPS și setări cu baseline-ul.
+[ ] Notează median/p95/p99 frametime, maximele și numărul pauzelor perceptibile.
+[ ] Verifică temperatura și throttling-ul; un FPS mai mare cu p99 mai rău nu este PASS.
+
+PROMOVARE:
+- DEVICE PASS cere minimum două run-uri curate pe buildul testat.
+- FBO inner-loop și same-program bind rămân Experimental/OFF până atunci.
+- La crash, corupție vizuală/salvare sau fallback: oprește mecanismul și revino la R15-04.

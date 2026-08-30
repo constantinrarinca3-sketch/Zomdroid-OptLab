@@ -1,0 +1,1 @@
+package zombie.util; public class StringUtils { public static boolean containsIgnoreCase(String s,String q){return false;} }

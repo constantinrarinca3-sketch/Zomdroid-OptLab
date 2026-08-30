@@ -1,0 +1,56 @@
+ZOMDROID R12 CP6.2 - HOST TEST RESULTS
+Data UTC: 2026-08-29
+Checkpoint functional: c9d1ecd
+
+PASS - tools/build-optlab-agent.sh
+PASS - tools/test-optlab-agent-source.sh
+PASS - tools/test-optlab-preferences-independence.sh (schema 7)
+PASS - tools/test-native-modules-source.sh
+PASS - tools/test-native-modules-ui-source.sh
+       4 dialoguri separate; 3 toggle-uri Render; tema light/dark mostenita
+PASS - tools/test-cp62-apk-wiring.sh
+PASS - tools/test-cp62-exact-jars.sh [PZ 42.20] [PZ 42.20.3]
+       2 hook-uri DefaultShader/JAR; 1 rescriere RingBuffer/JAR; class major pastrat
+PASS - tools/test-chunk-optimization-real-jars.sh [PZ 42.20] [PZ 42.20.3]
+PASS - tools/test-pathfinding-real-jars.sh [PZ 42.20] [PZ 42.20.3]
+PASS - tools/test-jassimp-direct.sh
+PASS - tools/test-mobilegl-default-payload.sh
+PASS - tools/test-popman-native-source.sh
+PASS - tools/test-pathfinding-native-payload.sh
+PASS - tools/test-native-modules-preferences.sh
+PASS - tools/test-cp1-proof-validator.sh
+
+SEMANTICA CP6.2
+PASS - 4096 apeluri chunkDepth identice -> 1 lookup, 1 upload
+PASS - schimbare valoare -> 0 lookup-uri noi, exact 1 upload nou
+PASS - recompile reusit -> exact 1 lookup nou, upload fortat
+PASS - lookup OFF -> lookup vanilla, upload redundant eliminat
+PASS - lookup OFF + recompile -> lookup/upload fortat in siguranta
+PASS - eroare GL simulata -> cache necomis, fallback original, fail-open
+PASS - ring map goala -> clear omis
+PASS - ring map ne-goala -> clear executat exact o data
+
+REGRESII PAYLOAD
+PASS - Jassimp SHA256:
+       a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4
+PASS - MobileGL SHA256:
+       f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a
+PASS - PopMan native source SHA256:
+       eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+PASS - Pathfinding native payload SHA256:
+       a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+
+BUNDLE
+PASS - agent marker version=10 / schema=9
+PASS - zomdroid-agent.jar SHA256:
+       045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8
+PASS - app/src/main/assets/bundles/jars.tar SHA256:
+       bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c
+
+NOT RUN - Android Gradle compile
+Motiv: Gradle 8.13 nu exista local; descarcarea services.gradle.org a fost blocata
+       de mediul curent cu java.net.SocketException: Network is unreachable.
+
+NOT RUN / NOT CLAIMED - DEVICE PASS
+Necesita APK construit intr-un mediu Gradle functional si test real pe dispozitiv.
+

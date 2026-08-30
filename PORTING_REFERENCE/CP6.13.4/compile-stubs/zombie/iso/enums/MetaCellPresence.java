@@ -1,0 +1,1 @@
+package zombie.iso.enums; public enum MetaCellPresence { NOT_LOADED, LOADED, EMPTY }
