@@ -1,44 +1,107 @@
-name: Android CI
+name: R15-06 Build APK
 
 on:
-  workflow_dispatch: {}
-  
-  pull_request:
-    branches: [ gamepad-support-patch ]
- 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive  
+  workflow_dispatch:
+  push:
+    branches:
+      - r15-06-final-compile
 
-      - name: Set up JDK
+permissions:
+  contents: read
+
+concurrency:
+  group: r15-06-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-side-by-side-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout R15-06 source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Prepare and test OPT-LAB agent bundle
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required Android toolchain
+        shell: bash
         run: |
-          ./tools/build-optlab-agent.sh
-          ./tools/test-optlab-agent-source.sh
-          ./tools/test-pathfinding-native-payload.sh
-          ./tools/test-popman-native-source.sh
-          ./tools/test-native-modules-source.sh
-          ./tools/test-native-modules-preferences.sh
-          ./tools/test-native-modules-ui-source.sh
-          ./tools/test-optlab-preferences-independence.sh
-          ./tools/test-mobilegl-default-payload.sh
-          ./tools/test-jassimp-direct.sh
-          ./tools/test-cp1-proof-validator.sh
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.3.13750724" \
+            "cmake;3.22.1"
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Prepare executable scripts
+        shell: bash
+        run: |
+          chmod +x gradlew
+          find tools -maxdepth 1 -type f -name '*.sh' -exec chmod +x {} +
 
-      - name: Upload APK artifact
+      - name: Validate R15-06 UI and preset source
+        shell: bash
+        run: |
+          bash tools/test-optlab-tabbed-ui-source.sh
+          bash tools/test-optlab-custom-presets.sh
+
+      - name: Build side-by-side debug APK
+        shell: bash
+        run: ./gradlew :app:assembleSideBySideDebug --stacktrace --no-daemon
+
+      - name: Collect and verify APK
+        id: apk
+        shell: bash
+        run: |
+          apk_dir="app/build/outputs/apk/sideBySide/debug"
+          mapfile -t apks < <(find "$apk_dir" -maxdepth 1 -type f -name '*.apk' -print)
+
+          if [ "${#apks[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one APK in $apk_dir, found ${#apks[@]}"
+            find app/build/outputs -type f -print || true
+            exit 1
+          fi
+
+          mkdir -p artifacts
+          install -m 0644 "${apks[0]}" artifacts/ZomDroid-R15-06-sideBySide-debug.apk
+          (
+            cd artifacts
+            sha256sum ZomDroid-R15-06-sideBySide-debug.apk \
+              > ZomDroid-R15-06-sideBySide-debug.apk.sha256
+          )
+
+          test -s artifacts/ZomDroid-R15-06-sideBySide-debug.apk
+          ls -lh artifacts/
+          cat artifacts/ZomDroid-R15-06-sideBySide-debug.apk.sha256
+
+          {
+            echo "### R15-06 APK ready"
+            echo
+            echo "- Artifact: \`ZomDroid-R15-06-sideBySide-debug\`"
+            echo "- Package: \`com.zomdroid.mglpz2\`"
+            echo "- Files: APK + SHA256"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: app/build/outputs/apk/**/*.apk
+          name: ZomDroid-R15-06-sideBySide-debug
+          path: |
+            artifacts/ZomDroid-R15-06-sideBySide-debug.apk
+            artifacts/ZomDroid-R15-06-sideBySide-debug.apk.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
