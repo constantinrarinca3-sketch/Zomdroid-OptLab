@@ -1,0 +1,1 @@
+package zombie.iso.worldgen.zones; public class ZoneGenerator {}

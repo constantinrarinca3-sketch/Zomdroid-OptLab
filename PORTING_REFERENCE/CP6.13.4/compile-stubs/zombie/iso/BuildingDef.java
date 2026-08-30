@@ -1,0 +1,1 @@
+package zombie.iso; public class BuildingDef { public boolean isFullyStreamedIn(){return false;} }

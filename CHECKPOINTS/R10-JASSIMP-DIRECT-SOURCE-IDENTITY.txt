@@ -1,0 +1,81 @@
+ZOMDROID OPT-LAB R10 — JASSIMP DIRECT SOURCE IDENTITY
+Data: 2026-08-29
+
+Version code: 14752
+Side version: 1.4.7v4-optlab-r10-jassimp-direct-side
+Replace version: 1.4.7v4-optlab-r10-jassimp-direct-replace
+Preferences schema: 5 (unchanged)
+OPT-LAB agent: version 8 / proof schema 7 (unchanged)
+
+Input R9 archive SHA-256:
+5bdfa06e87745cb3716f69d3fa92bac8cf68f1c3a7a2e57f742a25ef72a23ef0
+
+Input R9 source checkpoint:
+work/ZomDroid-R9-OPTLAB-UI-TABS-SOURCE-BASELINE
+
+Direct patch source:
+Assimp tag v5.4.3
+udarmolota/zomdroid-dependencies commit:
+0dbe092850d5cf528dbdfac01603d9d1bb799d04
+patch SHA-256:
+6079b4f5c9482f09a8dca4eb8d0a00f5fe1bf6e759b4a6cd2f037d011f10b1aa
+official v5.4.3 patch apply check: PASS
+
+Direct ARM64 JAssimp payload:
+a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4
+bytes: 2730512
+Build ID: ecc1dfeb0746c29f5983526659d139da433459e3
+SONAME: libjassimp64.so
+
+R9 rollback payload:
+095da5c4acb15cc43270c7f98bde1cf4f83e26abbc9c23bd3352fb97d7dbb849
+bytes: 2730688
+Build ID: 660f4b72d8067f9307a4214bb9ea0867c0e4be42
+
+Reference Assimp53Compat Java Agent:
+af9f00fce0f264e75be6ac5642c63e10b2978aa618fb12ccb463885ae59a954a
+runtime state: REFERENCE ONLY / ABSENT FROM jars.tar / ABSENT FROM JVM ARGS
+
+R10 libs.tar.xz:
+b5c55bde92492f4585d76d5201398e7e7441d061445201e9c5b0edc6bcd8b295
+content comparison versus R9: 38/38 members present; only
+android-arm64-v8a/libjassimp64.so differs.
+second deterministic repack hash: identical / PASS.
+
+OPT-LAB agent JAR:
+3d5be491b0187b8f756a74929d6ad7e0371dcd51b33d29d9435143e053130cf1
+
+jars.tar:
+a064a21ccea34a0f4679bdf6d5a20bd5abe844b17aa6eecfaf8b21a0c69882c4
+
+ABI:
+- direct and rollback exported symbols: 3053 / 3053;
+- symbol-name diff: empty;
+- required Java_jassimp_Jassimp_* exports: 10 / 10.
+
+Rollback round-trip:
+- R9 payload installed and hash verified: PASS;
+- direct R10 payload restored and all gates rerun: PASS;
+- final source/bundle state: DIRECT R10.
+
+Host/static/package QA:
+- complete workflow gate suite: PASS;
+- direct JAssimp gate: PASS;
+- bundle xz/tar integrity: PASS;
+- workflow YAML parse: PASS;
+- shell syntax: PASS;
+- Pathfinding/PopMan/Native/UI/MobileGL/CP4 regressions: PASS;
+- prior real 42.20 and 42.20.3 JAR results: inherited unchanged from R9; agent code/hash unchanged.
+
+Gradle Android compile:
+PENDING — wrapper requires Gradle 8.13; services.gradle.org is unreachable in this environment.
+
+Independent local NDK rebuild:
+PENDING — local NDK/CMake toolchain unavailable. The exact upstream ARM64 output is bundled and
+a pinned NDK r27c rebuild workflow is included.
+
+Device QA:
+PENDING — KI5 B700/F700, hood animation, affected skinned FBX and known-good models.
+
+Official CP3 gameplay PASS:
+NO — source delivery is complete, device result is intentionally not fabricated.

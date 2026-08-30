@@ -1,0 +1,34 @@
+R15-07 — DEVICE VALIDATION CHECKLIST
+
+[ ] Instalează APK-ul sideBySide R15-07; confirmă în Android că versiunea este 14756.
+[ ] Deschide OPT-LAB de 10 ori, inclusiv după creare/ștergere preset; nu trebuie să se închidă.
+[ ] Verifică Back: Build 42 -> World Stream & Chunk -> Experimental -> Back.
+    Rezultat obligatoriu: revine în World Stream & Chunk, apoi Back revine în Build 42.
+
+Pentru fiecare grup: Stream Core, World Chunk, FBO, Render, Shader, Model/RingBuffer:
+[ ] Activează un singur toggle, pornește jocul, apoi Export logs.
+[ ] Confirmă în opt-proof.log requested=1 și ACTIVE/EXERCISED sau fallback explicit.
+[ ] Oprește același toggle, închide complet jocul și launcherul, redeschide și pornește jocul.
+[ ] Export logs din nou.
+[ ] Confirmă state=off detail=not_requested pentru mecanismul oprit.
+[ ] Confirmă că niciun alt toggle nu a fost modificat de profil.
+
+General/Display:
+[ ] Testează fiecare toggle ON/OFF și politicile enum; redeschide OPT-LAB înainte de launch.
+[ ] Valoarea afișată după redeschidere trebuie să fie exact cea aleasă.
+
+Native:
+[ ] Lighting, PZClipper, Pathfinding și PopMan: verifică individual ON, apoi OFF.
+[ ] Pentru Pathfinding/PopMan acceptă fallback explicit; nu declara funcționalitate nativă fără
+    test de gameplay/regresie separat.
+
+Preseturi:
+[ ] Creează două preseturi cu nume diferite.
+[ ] Aplică primul; schimbă un toggle; starea trebuie să devină Modified.
+[ ] Actualizează primul și reaplică-l.
+[ ] Șterge un preset prin cele două apăsări.
+[ ] Nicio operație preset nu trebuie să modifice General sau Native.
+
+VERDICT FINAL DEVICE:
+[ ] PASS — numai dacă toate cazurile OFF sunt not_requested și comportamentul jocului revine.
+[ ] FAIL — atașează ZIP-ul Export logs; acesta conține acum opt-proof.log.

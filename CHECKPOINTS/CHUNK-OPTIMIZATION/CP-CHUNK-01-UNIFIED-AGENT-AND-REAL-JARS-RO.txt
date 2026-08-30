@@ -1,0 +1,80 @@
+ZOMDROID R11 — CHUNK OPTIMIZATION
+CP-CHUNK-01 — AGENT UNIC SI VERIFICARE PE JAR-URI REALE
+Data: 2026-08-29
+
+STATUS CHECKPOINT: DONE
+DEVICE TEST: NO
+UI / LAUNCHER WIRING: NU INCA (urmeaza in CP-CHUNK-02)
+
+REZULTAT
+--------
+Mecanismele de productie CP4.1 V2 au fost portate in javaagentul ZomDroid
+existent. JAR-ul MGLPZ-ChunkProfiler nu este livrat si nu este injectat ca al
+doilea agent.
+
+Agent ZomDroid:
+  version=9
+  proof schema=8
+
+MECANISME INTEGRATE
+-------------------
+- CHUNK_FORAGING
+- CHUNK_NEIGHBOUR_WORKER
+- CHUNK_NEIGHBOUR_MAIN
+- CHUNK_GRID_LOAD
+- CHUNK_VEHICLE_INDEX
+- CHUNK_RANDOMIZED_BUILDINGS
+- CHUNK_LUA_MAPOBJECTS
+- CHUNK_WORLDGEN_BIOME
+- CHUNK_CP2C_DIRTY_CLEAR (experimental, destinat sa ramana implicit OFF)
+
+MODIFICARI FATA DE PROFILERUL CP4.1
+----------------------------------
+1. Eliminat din runtime-ul normal:
+   - System.nanoTime pe fiecare metoda;
+   - ThreadMXBean / deep split;
+   - thread de sumarizare periodica;
+   - stderr sincronizat si flush per linie;
+   - wrapping general pe 33 clase / 89 metode.
+2. Sunt transformate numai clasele si metodele cerute de toggle-urile active.
+3. Fiecare mecanism are gate propriu si fallback propriu la metoda vanilla.
+4. Contoarele de diagnostic ramase sunt non-atomice si nu controleaza semantica.
+5. Proof-ul EXERCISED este limitat la prima lovire a fiecarui fast path.
+
+HARDENING SUPLIMENTAR
+---------------------
+- Neighbour: orice RecalcProperties real invalideaza conservator toate perechile
+  din scope. Astfel o modificare a unui al treilea patrat consultat de
+  CalculateCollide / CalculateVisionBlocked nu poate lasa un hit invechit.
+- Vehicles: indexul verifica exact identitatea si geometria fiecarei zone. O
+  mutatie in-place cu aceeasi dimensiune a listei reconstruieste indexul.
+- Advice scope exit ruleaza si pe exceptii, deci contextul ThreadLocal nu ramane
+  armat dupa o eroare vanilla.
+
+COMPATIBILITATE B42
+-------------------
+- 42.20: hashuri de clasa cunoscute si acceptate per mecanism.
+- 42.20.3: hashuri de clasa cunoscute si acceptate per mecanism.
+- alte hotfixuri B42: PROBE structural per mecanism; nu exista kill-switch global
+  dupa SHA-ul intregului projectzomboid.jar.
+
+TESTE HOST
+----------
+PASS — build-optlab-agent.sh
+PASS — test-optlab-agent-source.sh
+PASS — transformare bytecode reala pe projectzomboid 42.20
+PASS — transformare bytecode reala pe projectzomboid 42.20.3
+PASS — toate cele 9 decizii ajung ACTIVE separat pe ambele JAR-uri
+PASS — niciun UNSUPPORTED / BLOCKED_INSTALL pe cele doua tinte
+
+Observatie: clasele jocului sunt Java classfile 69 (Java 25), iar hostul este
+Java 17. Testul real foloseste exact transformerul instalat de Main.premain pe
+bytes-ii claselor din fiecare JAR, fara sa incerce executarea claselor Java 25 pe
+host. Verificarea efectiva a semanticii in joc ramane DEVICE TEST = NO.
+
+RECONSTRUCTIE
+-------------
+Aplicarea patchului cumulativ CP-CHUNK-01 peste arhiva R10 identificata in
+CP-CHUNK-00, apoi rularea tools/build-optlab-agent.sh, reconstruieste agentul si
+jars.tar. JAR-urile Project Zomboid sunt doar inputuri de test si nu intra in
+sursa livrata.

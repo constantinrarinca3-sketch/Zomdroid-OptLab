@@ -1,0 +1,44 @@
+ZomDroid R15-05 FINAL QA — source identity
+Date: 2026-08-30 UTC
+
+STATUS: DONE (SOURCE/HOST)
+APK COMPILE: NOT RUN
+DEVICE TEST: NO
+
+Authoritative input archive:
+ZomDroid-R15-04-CP6.13.10-SAME-PROGRAM-BIND-FULL-SOURCE-2026-08-30.tar.zst
+SHA-256: d78382f198f0e956a7e7c17740f4510b15a2c8c630ea8bf950470860cf1202f5
+
+Exact Project Zomboid inputs:
+42.20   projectzomboid(7).jar
+SHA-256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+42.20.3 projectzomboid(8).jar
+SHA-256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Integrated artifacts:
+zomdroid-agent.jar
+SHA-256: 22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3
+
+app/src/main/assets/bundles/jars.tar
+SHA-256: 6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5
+
+app/src/main/assets/bundles/jre21.tar.xz
+SHA-256: 2861c337a21f4145c21e1ffd00a3fd334efba10786d112772cb2bff2ed850a14
+
+app/src/main/assets/bundles/jre25.tar.xz
+SHA-256: c1240538db496c8dfbc95cd5c6bbd9e649e15702128ed169c690d036f8618ca0
+
+app/src/main/assets/bundles/libs.tar.xz
+SHA-256: b5c55bde92492f4585d76d5201398e7e7441d061445201e9c5b0edc6bcd8b295
+
+CHECKPOINTS/R15-05-CUMULATIVE-SOURCE-CODE.patch
+SHA-256: 72d1a34d45fc851ccd4ad2dae6b807a43a45bd162e41ab8b1a51a6985661c942
+
+Agent marker: version=15 schema=14
+Proof schema: 14
+Preferences schema: 11 (unchanged)
+
+Final full-source archive SHA-256 is calculated after packaging and is reported
+beside the delivered archive; it cannot be embedded inside that same archive
+without invalidating itself.

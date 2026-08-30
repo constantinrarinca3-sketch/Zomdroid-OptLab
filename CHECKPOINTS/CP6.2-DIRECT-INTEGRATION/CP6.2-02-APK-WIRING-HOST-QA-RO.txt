@@ -1,0 +1,82 @@
+ZOMDROID R12 - CHECKPOINT PERSISTENT CP6.2-02
+Data UTC: 2026-08-29
+Stadiu: integrare directa in agentul unic + cablare APK/UI + host QA.
+
+ROLLBACK / ISTORIC
+- R11 baseline: 925bf720334079bb3ad462ff27173e99ec9497a6
+- Metadata baseline: 9969eb5
+- Agent/runtime CP6.2-01: b5d2364
+- Ramura curenta: r12-cp6.2-direct-integration
+
+INTEGRARE APK
+- Preferinte schema 7, independente de masterul general Runtime/Display:
+  1) Render ChunkDepth upload elimination (CP6.1)
+  2) Render ChunkDepth lookup elimination (CP6.2; cere upload)
+  3) RingBuffer render empty-clear elimination (CP6.2)
+- GameLauncher transmite exact trei proprietati catre agent.
+- OptLabFeatureRegistry expune trei mecanisme BUILD42 independente.
+- Profilul CP6.2 demonstrat activeaza numai cele trei mecanisme validate.
+- Fereastra separata Build 42 -> Render Hotpaths, cu layout/culori mostenite din
+  tema existenta (light si dark); nu aglomereaza Chunk Optimization.
+- Oprirea uploadului opreste atomic lookup-ul dependent; activarea lookup-ului
+  activeaza atomic uploadul necesar.
+- Master general OFF nu modifica Build 42/Chunk/Render/Native.
+
+POLITICI PASTRATE
+- CP4.1 complet ramane in acelasi agent.
+- Nu exista al doilea javaagent CP6.2 in bundle.
+- RingBuffer bulk packing nu este integrat si ramane implicit OFF; UI explica
+  lipsa unui castig CPU device demonstrat.
+- CP6.0 rthreadProfileFast nu este reintrodus.
+- 42.20 si 42.20.3 sunt VERIFIED prin hash de clasa + transformare offline.
+- Alte versiuni Build 42 intra numai prin PROBE structural si fallback per feature.
+
+FIX DE SIGURANTA GASIT IN QA
+- Hook-ul onCompileSuccess este obligatoriu si pentru CP6.1 upload-only, nu doar
+  pentru lookup-elision. Astfel, recompile forteaza lookup/upload chiar daca PZ
+  ar reutiliza identitatea obiectului Uniform cu o locatie noua.
+
+HOST QA PASS
+- build-optlab-agent.sh
+- test-optlab-agent-source.sh
+- test-optlab-preferences-independence.sh (schema 7)
+- test-native-modules-source.sh
+- test-native-modules-ui-source.sh (4 dialoguri separate; theme inherited)
+- test-cp62-apk-wiring.sh
+- test-cp62-exact-jars.sh pe 42.20 + 42.20.3
+- test-chunk-optimization-real-jars.sh pe 42.20 + 42.20.3
+- test-pathfinding-real-jars.sh pe 42.20 + 42.20.3
+- test-jassimp-direct.sh
+- test-mobilegl-default-payload.sh
+- test-popman-native-source.sh
+- test-pathfinding-native-payload.sh
+- test-native-modules-preferences.sh
+- test-cp1-proof-validator.sh
+
+REZULTATE SEMANTICE CP6.2
+- 4096 setChunkDepth identice: 1 getUniform, 1 glUniform1f.
+- Schimbare valoare: fara lookup nou, exact un upload nou.
+- Recompile reusit: lookup nou + upload fortat.
+- Lookup OFF: lookup vanilla la fiecare apel, upload redundant eliminat.
+- Lookup OFF + recompile: lookup/upload fortat in siguranta.
+- Eroare GL simulata: cache necomis, fallback original, mecanism fail-open.
+- modelDrawCounts gol: clear omis; ne-gol: clear executat exact o data.
+- Transformare reala Java 25: cele doua hook-uri DefaultShader si o singura
+  rescriere RingBuffer.render in fiecare dintre 42.20 si 42.20.3.
+
+BUNDLE ACTUAL
+- Agent marker: version=10 / schema=9
+- zomdroid-agent.jar SHA256:
+  045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8
+- app/src/main/assets/bundles/jars.tar SHA256:
+  bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c
+
+LIMITARI DECLARATE CORECT
+- Android Gradle compile: NOT RUN. Wrapperul Gradle 8.13 nu este in cache, iar
+  mediul curent blocheaza descarcarea services.gradle.org (Network unreachable).
+- DEVICE PASS: NU ESTE DECLARAT. Este necesar build APK intr-un mediu Gradle
+  functional si test real pe dispozitiv.
+
+URMATORUL PAS
+- Commit checkpoint #2, patch persistent, apoi final source archive + manifest,
+  SHA256, rollback si handoff CP6.3+.

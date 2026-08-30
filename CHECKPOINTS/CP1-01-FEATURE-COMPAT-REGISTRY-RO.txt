@@ -1,0 +1,41 @@
+ZomDroid OptLab — CHECKPOINT PERSISTENT INTERN CP1-01
+Checkpoint oficial urmărit: CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
+Data UTC: 2026-08-28
+
+SCOP SALVAT
+- registru launcher explicit: GENERAL / BUILD42 / NATIVE;
+- identitate B42 transmisă agentului fără blocare globală pe SHA-ul întregului JAR;
+- registru agent per mecanism: VERIFIED / PROBE / COMPATIBLE / UNSUPPORTED;
+- fallback independent: o nepotrivire oprește doar patch-ul afectat;
+- probe structurale pregătite pentru Pacing, Stream Core și FBO;
+- schema de diagnostic ridicată la 4;
+- stările runtime sunt ACTIVE și EXERCISED, nu un fals PASS.
+
+FIȘIERE MODIFICATE/ADĂUGATE
+- app/src/main/java/com/zomdroid/GameLauncher.java
+- app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java (nou)
+- app/src/main/java/com/zomdroid/OptLabPreferences.java
+- optlab_deps/.../zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+- optlab_deps/.../zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java (nou)
+- optlab_deps/.../zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+- optlab_deps/.../zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java
+- optlab_deps/.../zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java
+- tools/build-optlab-agent.sh
+
+VERIFICARE LA ACEST PUNCT
+- compilare izolată a tuturor surselor agentului cu --release 17: PASS;
+- binarul jars.tar: NEATINS (utilizatorul va compila sursa);
+- build Android complet: NOT RUN — USER WILL COMPILE;
+- test pe dispozitiv: PENDING.
+
+STARE CHECKPOINT OFICIAL 4
+IMPLEMENTATION: IN PROGRESS
+STATIC REVIEW: IN PROGRESS
+BUILD: NOT RUN — USER WILL COMPILE
+DEVICE TEST: PENDING
+CHECKPOINT STATUS: RECOVERABLE WORK-IN-PROGRESS
+
+RECUPERARE
+Se pornește de la arhiva originală cu SHA256:
+1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
+și se aplică patch-ul cumulativ CP1-01-FEATURE-COMPAT-REGISTRY.patch din rădăcina sursei.

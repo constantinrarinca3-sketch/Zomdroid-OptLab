@@ -1,0 +1,613 @@
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/CHECKPOINTS/CP1-00-PATHFINDING-ABI-AUDIT-RO.txt b/CHECKPOINTS/CP1-00-PATHFINDING-ABI-AUDIT-RO.txt
+--- a/CHECKPOINTS/CP1-00-PATHFINDING-ABI-AUDIT-RO.txt	1970-01-01 02:00:00.000000000 +0200
++++ b/CHECKPOINTS/CP1-00-PATHFINDING-ABI-AUDIT-RO.txt	2026-08-28 18:23:02.195664962 +0300
+@@ -0,0 +1,145 @@
++ZOMDROID OPTLAB - CHECKPOINT 1 / ETAPA 00
++PATHFINDING ARM64 ABI AUDIT
++Data UTC: 2026-08-28
++
++STATUS
++======
++
++AUDIT STATIC: PASS
++IMPLEMENTARE: NU A INCEPUT IN ACEASTA ETAPA
++BUILD ANDROID: NU SE APLICA
++DEVICE TEST: PENDING
++
++INTRARI AUDITATE
++================
++
++Project Zomboid 42.20 projectzomboid.jar
++SHA256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
++
++Project Zomboid 42.20.3 projectzomboid.jar
++SHA256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
++
++libPZPathFind64.so furnizata pentru 42.20
++libPZPathFind64.so furnizata pentru 42.20.3
++
++Cele doua librarii sunt identice byte-for-byte.
++SHA256 comun: a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
++Build ID comun: 03bab6801bb4639deda24d8b5674b0be9b49639e
++Dimensiune: 11995392 bytes
++Format: ELF64 little-endian, AArch64, shared object, debug_info prezent, not stripped
++SONAME: libPZPathFind64.so
++Dependente dinamice: libm.so, libdl.so, libc.so
++Aliniere segmente LOAD: 4096 bytes
++
++CONTRACT JAVA STABIL 42.20 -> 42.20.3
++=====================================
++
++Clasele centrale au acelasi SHA256 in ambele JAR-uri:
++
++zombie/pathfind/nativeCode/PathfindNative.class
++7fbc06c9757083c318dcc136cfcb31c2ad4941d15926c9de6f7792dcef3d6022
++
++zombie/pathfind/nativeCode/PathfindNativeRenderer.class
++070c67fcaa68c63f20a6d7d52967e334f38c5b1bfb9b3f7f09e3fc0383cc8c08
++
++zombie/pathfind/nativeCode/PathfindNativeThread.class
++bbf51396746b4047a9f5c3a53d484d61b5a05a6a5eb3c6286dcf90864bc21d20
++
++In pachetul nativeCode difera numai:
++
++- ChunkUpdateTask.class;
++- SquareUpdateTask.class.
++
++Aceste diferente nu schimba lista metodelor JNI. Faptul ca TIS livreaza aceeasi librarie nativa
++in 42.20 si 42.20.3 confirma acelasi ABI nativ pentru ambele patch-uri. Diferentele de serializare
++Java raman proprietatea fiecarui projectzomboid.jar si nu vor fi inlocuite de ZomDroid.
++
++JNI EXPORTS VERIFICATE
++======================
++
++Java_zombie_pathfind_nativeCode_PathfindNative_initWorld
++Java_zombie_pathfind_nativeCode_PathfindNative_destroyWorld
++Java_zombie_pathfind_nativeCode_PathfindNative_freeMemoryAtExit
++Java_zombie_pathfind_nativeCode_PathfindNative_update
++Java_zombie_pathfind_nativeCode_PathfindNative_updateChunk
++Java_zombie_pathfind_nativeCode_PathfindNative_removeChunk
++Java_zombie_pathfind_nativeCode_PathfindNative_updateSquare
++Java_zombie_pathfind_nativeCode_PathfindNative_addVehicle
++Java_zombie_pathfind_nativeCode_PathfindNative_removeVehicle
++Java_zombie_pathfind_nativeCode_PathfindNative_teleportVehicle
++Java_zombie_pathfind_nativeCode_PathfindNative_findPath
++Java_zombie_pathfind_nativeCode_PathfindNativeRenderer_renderNative
++Java_zombie_pathfind_nativeCode_PathfindNativeRenderer_setDebugOption
++
++RUTA REALA DIN JOC
++==================
++
++1. PathfindNative.init() incarca System.loadLibrary("PZPathFind64").
++2. DebugOptions.pathfindUseNativeCode controleaza selectia dintre PathfindNative si
++   PolygonalMap2, fallback-ul Java original al jocului.
++3. PathfindNative.useNativeCode este implicit true in clasa jocului.
++4. PathfindNative.checkUseNativeCode() opreste ruta curenta, initializeaza ruta selectata si
++   reincarca chunk-urile si vehiculele active.
++5. PathfindNativeThread proceseaza task-urile de chunk/square/vehicle si cererile de pathfinding.
++6. Ruta exercitata poate fi demonstrata pe iesirea normala din metoda Java wrapper
++   PathfindNative.findPath(PathFindRequest, ByteBuffer, boolean), care apeleaza JNI findPath.
++
++STAREA ZOMDROID INAINTE DE CP1
++==============================
++
++PathfindingWorkaround scrie neconditionat Pathfind.UseNativeCode=false pentru Build 42 cu
++projectzomboid.jar. Din acest motiv libraria ARM64 poate fi prezenta si valida, dar ruta nativa
++ramane dezactivata la fiecare lansare.
++
++Agentul zomdroid-agent este deja incarcat de presetul Build 42, inclusiv cand mecanismele CP4 sunt
++OFF. Poate fi folosit pentru dovada EXERCISED si pentru detectarea fail-open fara un agent nou.
++
++DECIZIE DE IMPLEMENTARE
++=======================
++
++Nu se rescrie algoritmul Pathfinding in C++. Se integreaza libraria oficiala TIS identica pentru
++42.20 si 42.20.3.
++
++Gate-uri inainte de activare:
++
++- familie Build 42;
++- projectzomboid.jar prezent;
++- hash exact pentru clasele PathfindNative, PathfindNativeRenderer si PathfindNativeThread;
++- payload ELF64 AArch64 cu dimensiunea si SHA256 auditate;
++- toate cele 13 exporturi JNI prezente;
++- copiere atomica si verificare SHA256 dupa copiere.
++
++Fallback:
++
++- toggle OFF -> Pathfind.UseNativeCode=false;
++- orice gate/copie esuata -> Pathfind.UseNativeCode=false si ruta Java originala;
++- exceptie runtime din wrapperul findPath sau thread loop -> se cere false in DebugOptions,
++  se inregistreaza PATHFINDING_NATIVE_FALLBACK si urmatorul checkUseNativeCode trece pe Java;
++- eroarea unui request este suprimata numai dupa cererea fallback-ului, cu rezultat de path gol,
++  pentru a evita crash-ul jocului.
++
++DIAGNOSTIC PLANIFICAT
++=====================
++
++PATHFINDING_NATIVE_AVAILABLE
++PATHFINDING_NATIVE_ACTIVE
++PATHFINDING_NATIVE_EXERCISED
++PATHFINDING_NATIVE_FALLBACK
++
++ACTIVE nu va fi prezentat ca EXERCISED. EXERCISED va fi scris numai dupa terminarea normala a unei
++cereri reale prin wrapperul nativ.
++
++URMATOAREA ETAPA
++================
++
++CP1-01 - Native Modules UI si preferinte persistente:
++
++- Lighting64 Native: toggle real, implicit ON pentru pastrarea baseline-ului stabil;
++- PZClipper Native: toggle real, implicit ON;
++- Pathfinding Native: toggle real, implicit OFF;
++- PopMan Native: vizibil, OFF / Unavailable.
++
++ROLLBACK
++========
++
++Snapshotul CP4 COMPILE-READY este baza de rollback pentru toate modificarile CP1.
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/CHECKPOINTS/CP1-01-NATIVE-MODULES-UI-SUMMARY-RO.txt b/CHECKPOINTS/CP1-01-NATIVE-MODULES-UI-SUMMARY-RO.txt
+--- a/CHECKPOINTS/CP1-01-NATIVE-MODULES-UI-SUMMARY-RO.txt	1970-01-01 02:00:00.000000000 +0200
++++ b/CHECKPOINTS/CP1-01-NATIVE-MODULES-UI-SUMMARY-RO.txt	2026-08-28 18:25:53.387075346 +0300
+@@ -0,0 +1,67 @@
++ZOMDROID OPTLAB - CHECKPOINT 1 / ETAPA 01
++NATIVE MODULES UI + PERSISTENTA
++Data UTC: 2026-08-28
++
++STATUS
++======
++
++SOURCE: COMPLETE PENTRU ETAPA 01
++STATIC REVIEW: PASS
++ANDROID BUILD: BLOCKED DE LIPSA GRADLE 8.13 IN MEDIUL LOCAL
++DEVICE TEST: PENDING
++CP1 OFFICIAL PASS: NU
++
++IMPLEMENTAT
++==========
++
++1. Fereastra separata Native Modules, deschisa prin buton din OPT-LAB.
++
++2. Preferinte persistente restart-scoped, schema 1:
++
++- Lighting64 Native: implicit ON;
++- PZClipper Native: implicit ON;
++- Pathfinding Native: implicit OFF;
++- PopMan Native: permanent OFF / Unavailable pana la Checkpoint 2.
++
++3. Lighting64 si PZClipper controleaza implementarea reala:
++
++- ON instaleaza payload-ul ARM64 auditat si verificat prin SHA256;
++- OFF muta atomic libraria activa intr-un fisier user-disabled si lasa fallback-ul existent;
++- reactivarea ON reinstaleaza payload-ul auditat;
++- esecul de instalare nu este prezentat ca activ.
++
++4. Preflight-ul MobileGL distinge intre un modul cerut care a esuat si un modul oprit explicit.
++Un modul oprit de utilizator nu este raportat fals ca preflight failure.
++
++5. Pathfinding are toggle si persistenta, dar PathfindingWorkaround continua sa forteze fallback-ul
++Java in aceasta etapa intermediara. Activarea efectiva si dovada runtime sunt proprietatea CP1-02.
++
++6. PopMan este vizibil, dezactivat in UI si nu are setter/implementare care sa poata simula ON.
++
++VERIFICARI
++==========
++
++- strings.xml well-formed: PASS;
++- cele patru controale Native Modules sunt prezente: PASS;
++- PopMan disabled + Unavailable: PASS static;
++- valori implicite Lighting/PZClipper ON, Pathfinding OFF: PASS static;
++- Lighting/PZClipper conectate la managerul real: PASS static;
++- build si teste agent CP4 dupa schimbare: PASS;
++- FeatureCompatibilityUnit: PASS;
++- OptLabRuntimeUnit: PASS.
++
++ROLLBACK
++========
++
++Rollback complet: snapshotul persistent ZomDroid-CP4-COMPILE-READY-2026-08-28.tar.zst.
++
++URMATOAREA ETAPA
++================
++
++CP1-02/03:
++
++- includerea payload-ului libPZPathFind64 auditat;
++- gate pe ABI-ul Java si exporturile JNI;
++- selectie reala ON/OFF prin Pathfind.UseNativeCode;
++- fallback la PolygonalMap2;
++- AVAILABLE / ACTIVE / EXERCISED / FALLBACK in opt-proof.log.
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/java/com/zomdroid/GameLauncher.java b/app/src/main/java/com/zomdroid/GameLauncher.java
+--- a/app/src/main/java/com/zomdroid/GameLauncher.java	2026-08-28 19:00:00.000000000 +0300
++++ b/app/src/main/java/com/zomdroid/GameLauncher.java	2026-08-28 18:25:06.562141916 +0300
+@@ -23,6 +23,7 @@
+     public static void launch(GameInstance gameInstance, Context context) throws ErrnoException {
+ 
+         OptLabPreferences optLab = OptLabPreferences.from(context);
++        NativeModulesPreferences nativeModules = NativeModulesPreferences.from(context);
+         String home = AppStorage.requireSingleton().getHomePath();
+         LauncherPreferences.Renderer selectedRenderer =
+                 LauncherPreferences.requireSingleton().getRenderer();
+@@ -52,7 +53,8 @@
+         // disabled Lighting below. Restore the exact audited payloads before the generic native
+         // workarounds run. MobileGL on the target device requires this path.
+         com.zomdroid.patch.LightingArm64AbManager.InstallResult arm64Native =
+-                com.zomdroid.patch.LightingArm64AbManager.installRequired(gameInstance);
++                com.zomdroid.patch.LightingArm64AbManager.installRequired(
++                        gameInstance, nativeModules);
+         // Select safe native implementations after the class-level patches are known to be ready.
+         com.zomdroid.patch.NativeLibraryWorkarounds.disableIncompleteNativeLibraries(gameInstance);
+         if (selectedRenderer == LauncherPreferences.Renderer.MOBILEGL_PZCOMPAT
+@@ -367,6 +369,7 @@
+         Log.i("ZD-OPT-LAB", "[ZD-OPT-LAB] pkg=" + BuildConfig.APPLICATION_ID
+                 + " version=" + BuildConfig.VERSION_NAME
+                 + " " + optLab.machineReadable()
++                + " " + nativeModules.machineReadable()
+                 + " " + compatibility.identityMachineReadable()
+                 + " optProofSession=" + optLabSession
+                 + " optProofPath=" + optProofFile.getAbsolutePath()
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+--- a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java	1970-01-01 02:00:00.000000000 +0200
++++ b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java	2026-08-28 18:25:02.642063626 +0300
+@@ -0,0 +1,88 @@
++package com.zomdroid;
++
++import android.content.Context;
++import android.content.SharedPreferences;
++
++import androidx.annotation.NonNull;
++
++/** Restart-scoped ownership switches for native game modules. */
++public final class NativeModulesPreferences {
++    public static final int SCHEMA = 1;
++
++    private static final String PREFS_NAME = "zomdroid_native_modules_v1";
++    private static final String K_LIGHTING64 = "lighting64_native";
++    private static final String K_PZCLIPPER = "pzclipper_native";
++    private static final String K_PATHFINDING = "pathfinding_native";
++
++    private final SharedPreferences prefs;
++
++    private NativeModulesPreferences(SharedPreferences prefs) {
++        this.prefs = prefs;
++    }
++
++    @NonNull
++    public static NativeModulesPreferences from(@NonNull Context context) {
++        return new NativeModulesPreferences(context.getApplicationContext()
++                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE));
++    }
++
++    /** Existing audited CP4 behavior remains the default baseline. */
++    public boolean isLighting64Enabled() {
++        return prefs.getBoolean(K_LIGHTING64, true);
++    }
++
++    /** Existing audited CP4 behavior remains the default baseline. */
++    public boolean isPzClipperEnabled() {
++        return prefs.getBoolean(K_PZCLIPPER, true);
++    }
++
++    /** Pathfinding stays opt-in until device A/B validation is complete. */
++    public boolean isPathfindingEnabled() {
++        return prefs.getBoolean(K_PATHFINDING, false);
++    }
++
++    public boolean isPopManEnabled() {
++        return false;
++    }
++
++    public void setLighting64Enabled(boolean enabled) {
++        commit(prefs.edit().putBoolean(K_LIGHTING64, enabled));
++    }
++
++    public void setPzClipperEnabled(boolean enabled) {
++        commit(prefs.edit().putBoolean(K_PZCLIPPER, enabled));
++    }
++
++    public void setPathfindingEnabled(boolean enabled) {
++        commit(prefs.edit().putBoolean(K_PATHFINDING, enabled));
++    }
++
++    public String machineReadable() {
++        return "nativeModulesSchema=" + SCHEMA
++                + " lighting64=" + bit(isLighting64Enabled())
++                + " pzClipper=" + bit(isPzClipperEnabled())
++                + " pathfinding=" + bit(isPathfindingEnabled())
++                + " popMan=0";
++    }
++
++    public String summary() {
++        return "Lighting=" + onOff(isLighting64Enabled())
++                + " · PZClipper=" + onOff(isPzClipperEnabled())
++                + " · Pathfinding=" + onOff(isPathfindingEnabled())
++                + " · PopMan=Unavailable";
++    }
++
++    private static void commit(SharedPreferences.Editor editor) {
++        if (!editor.commit()) {
++            throw new IllegalStateException("Could not persist Native Modules settings");
++        }
++    }
++
++    private static int bit(boolean value) {
++        return value ? 1 : 0;
++    }
++
++    private static String onOff(boolean value) {
++        return value ? "ON" : "OFF";
++    }
++}
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java b/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java
+--- a/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java	1970-01-01 02:00:00.000000000 +0200
++++ b/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java	2026-08-28 18:25:03.290076610 +0300
+@@ -0,0 +1,94 @@
++package com.zomdroid.fragments;
++
++import android.content.Context;
++import android.graphics.Typeface;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++import androidx.appcompat.app.AlertDialog;
++import androidx.appcompat.widget.SwitchCompat;
++
++import com.zomdroid.NativeModulesPreferences;
++import com.zomdroid.R;
++
++/** Separate restart-scoped panel for ARM64 game modules. */
++public final class NativeModulesDialog {
++    private NativeModulesDialog() {}
++
++    public static void show(Context context, Runnable onClosed) {
++        NativeModulesPreferences prefs = NativeModulesPreferences.from(context);
++        int pad = dp(context, 16);
++
++        LinearLayout content = new LinearLayout(context);
++        content.setOrientation(LinearLayout.VERTICAL);
++        content.setPadding(pad, dp(context, 4), pad, pad);
++
++        TextView intro = text(context, context.getString(R.string.native_modules_intro), false);
++        intro.setPadding(0, 0, 0, dp(context, 10));
++        content.addView(intro);
++
++        SwitchCompat lighting = toggle(context,
++                context.getString(R.string.native_modules_lighting),
++                prefs.isLighting64Enabled());
++        SwitchCompat clipper = toggle(context,
++                context.getString(R.string.native_modules_clipper),
++                prefs.isPzClipperEnabled());
++        SwitchCompat pathfinding = toggle(context,
++                context.getString(R.string.native_modules_pathfinding),
++                prefs.isPathfindingEnabled());
++        SwitchCompat popMan = toggle(context,
++                context.getString(R.string.native_modules_popman), false);
++        popMan.setEnabled(false);
++        content.addView(lighting);
++        content.addView(clipper);
++        content.addView(pathfinding);
++        content.addView(popMan);
++
++        TextView unavailable = text(context,
++                context.getString(R.string.native_modules_popman_unavailable), true);
++        unavailable.setPadding(0, dp(context, 2), 0, dp(context, 8));
++        content.addView(unavailable);
++
++        TextView restart = text(context,
++                context.getString(R.string.native_modules_restart), false);
++        restart.setPadding(0, dp(context, 10), 0, 0);
++        content.addView(restart);
++
++        lighting.setOnCheckedChangeListener((view, checked) ->
++                prefs.setLighting64Enabled(checked));
++        clipper.setOnCheckedChangeListener((view, checked) ->
++                prefs.setPzClipperEnabled(checked));
++        pathfinding.setOnCheckedChangeListener((view, checked) ->
++                prefs.setPathfindingEnabled(checked));
++
++        ScrollView scroll = new ScrollView(context);
++        scroll.addView(content);
++        new AlertDialog.Builder(context)
++                .setTitle(R.string.native_modules_title)
++                .setView(scroll)
++                .setPositiveButton(R.string.dialog_button_ok, null)
++                .setOnDismissListener(dialog -> onClosed.run())
++                .show();
++    }
++
++    private static SwitchCompat toggle(Context context, String label, boolean checked) {
++        SwitchCompat toggle = new SwitchCompat(context);
++        toggle.setText(label);
++        toggle.setChecked(checked);
++        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
++        return toggle;
++    }
++
++    private static TextView text(Context context, String value, boolean bold) {
++        TextView view = new TextView(context);
++        view.setText(value);
++        view.setTextSize(13);
++        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
++        return view;
++    }
++
++    private static int dp(Context context, int value) {
++        return Math.round(value * context.getResources().getDisplayMetrics().density);
++    }
++}
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java	2026-08-28 19:00:00.000000000 +0300
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java	2026-08-28 18:25:04.118093167 +0300
+@@ -15,6 +15,7 @@
+ import androidx.appcompat.widget.SwitchCompat;
+ 
+ import com.zomdroid.OptLabPreferences;
++import com.zomdroid.NativeModulesPreferences;
+ import com.zomdroid.R;
+ 
+ /** Compact runtime-built UI so every lab switch lives in one restart-scoped panel. */
+@@ -49,6 +50,15 @@
+                 prefs.isMasterEnabled());
+         content.addView(master);
+ 
++        addSection(content, context, context.getString(R.string.native_modules_section));
++        Button nativeModulesButton = new Button(context);
++        nativeModulesButton.setText(R.string.native_modules_open);
++        content.addView(nativeModulesButton);
++        TextView nativeModulesSummary = text(context,
++                NativeModulesPreferences.from(context).summary(), false);
++        nativeModulesSummary.setPadding(0, dp(context, 2), 0, dp(context, 8));
++        content.addView(nativeModulesSummary);
++
+         addSection(content, context, context.getString(R.string.opt_lab_runtime_section));
+         SwitchCompat quiet = toggle(context, context.getString(R.string.opt_lab_quiet),
+                 prefs.isQuietRuntime());
+@@ -110,6 +120,7 @@
+             quiet.setChecked(now.isQuietRuntime());
+             buffered.setChecked(now.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
+             sqlite.setChecked(now.isSqliteAndroidNative());
++            nativeModulesSummary.setText(NativeModulesPreferences.from(context).summary());
+             build42Summary.setText(now.build42Summary());
+             box64.setSelection(now.getBox64Policy().ordinal());
+             surface.setChecked(now.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
+@@ -173,6 +184,8 @@
+         sqlite.setOnCheckedChangeListener((v, checked) -> {
+             if (!updating[0]) { prefs.setSqliteAndroidNative(checked); showCustomProfile.run(); }
+         });
++        nativeModulesButton.setOnClickListener(v -> NativeModulesDialog.show(context, () ->
++                nativeModulesSummary.setText(NativeModulesPreferences.from(context).summary())));
+         build42Button.setOnClickListener(v -> Build42OptLabDialog.show(context, () -> {
+             updating[0] = true;
+             sync.run();
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/java/com/zomdroid/patch/LightingArm64AbManager.java b/app/src/main/java/com/zomdroid/patch/LightingArm64AbManager.java
+--- a/app/src/main/java/com/zomdroid/patch/LightingArm64AbManager.java	2026-08-28 19:00:00.000000000 +0300
++++ b/app/src/main/java/com/zomdroid/patch/LightingArm64AbManager.java	2026-08-28 18:25:05.754125795 +0300
+@@ -5,6 +5,7 @@
+ import android.util.Log;
+ 
+ import com.zomdroid.AppStorage;
++import com.zomdroid.NativeModulesPreferences;
+ import com.zomdroid.game.GameInstance;
+ 
+ import java.io.File;
+@@ -57,14 +58,19 @@
+ 
+     public static final class InstallResult {
+         public final boolean applicable;
++        public final boolean lightingRequested;
++        public final boolean clipperRequested;
+         public final boolean lightingActive;
+         public final boolean clipperActive;
+         public final String lightingSha256;
+         public final String clipperSha256;
+ 
+-        private InstallResult(boolean applicable, boolean lightingActive, boolean clipperActive,
++        private InstallResult(boolean applicable, boolean lightingRequested,
++                              boolean clipperRequested, boolean lightingActive, boolean clipperActive,
+                               String lightingSha256, String clipperSha256) {
+             this.applicable = applicable;
++            this.lightingRequested = lightingRequested;
++            this.clipperRequested = clipperRequested;
+             this.lightingActive = lightingActive;
+             this.clipperActive = clipperActive;
+             this.lightingSha256 = lightingSha256;
+@@ -72,40 +78,69 @@
+         }
+ 
+         public boolean isComplete() {
+-            return !applicable || (lightingActive && clipperActive);
++            return !applicable
++                    || ((!lightingRequested || lightingActive)
++                    && (!clipperRequested || clipperActive));
+         }
+ 
+         public String machineReadable() {
+             return "arm64NativeApplicable=" + bit(applicable)
++                    + " arm64LightingRequested=" + bit(lightingRequested)
+                     + " arm64Lighting=" + bit(lightingActive)
+                     + " arm64LightingSha256=" + lightingSha256
++                    + " arm64PzClipperRequested=" + bit(clipperRequested)
+                     + " arm64PzClipper=" + bit(clipperActive)
+                     + " arm64PzClipperSha256=" + clipperSha256;
+         }
+     }
+ 
+     /** Installs the exact AB3 Lighting and PZClipper path for Build 42. */
+-    public static InstallResult installRequired(GameInstance gameInstance) {
++    public static InstallResult installRequired(GameInstance gameInstance,
++                                                NativeModulesPreferences preferences) {
+         if (!"42".equals(gameInstance.getBuildVersion())) {
+-            return new InstallResult(false, false, false, "NOT_APPLICABLE", "NOT_APPLICABLE");
++            return new InstallResult(false, false, false, false, false,
++                    "NOT_APPLICABLE", "NOT_APPLICABLE");
+         }
+ 
+         File nativeDirectory = nativeDirectory(gameInstance);
+-        boolean lightingActive = installLighting(nativeDirectory);
+-        boolean clipperActive = installClipper(nativeDirectory);
++        boolean lightingRequested = preferences.isLighting64Enabled();
++        boolean clipperRequested = preferences.isPzClipperEnabled();
++        boolean lightingActive = lightingRequested
++                ? installLighting(nativeDirectory)
++                : disableForUser(nativeDirectory, LIGHTING_ACTIVE_NAME,
++                        LIGHTING_MARKER_NAME, LIGHT_LOG_TAG);
++        boolean clipperActive = clipperRequested
++                ? installClipper(nativeDirectory)
++                : disableForUser(nativeDirectory, CLIPPER_ACTIVE_NAME,
++                        CLIPPER_MARKER_NAME, CLIPPER_LOG_TAG);
+         File lighting = new File(nativeDirectory, LIGHTING_ACTIVE_NAME);
+         File clipper = new File(nativeDirectory, CLIPPER_ACTIVE_NAME);
+         String lightingHash = hashOrState(lighting);
+         String clipperHash = hashOrState(clipper);
+ 
+-        InstallResult result = new InstallResult(true, lightingActive, clipperActive,
+-                lightingHash, clipperHash);
++        InstallResult result = new InstallResult(true, lightingRequested, clipperRequested,
++                lightingActive, clipperActive, lightingHash, clipperHash);
+         Log.i("ZD-ARM64-NATIVE", result.machineReadable()
+                 + " lightingPath=" + lighting.getAbsolutePath()
+                 + " clipperPath=" + clipper.getAbsolutePath());
+         return result;
+     }
+ 
++    private static boolean disableForUser(File nativeDirectory, String activeName,
++                                          String markerName, String logTag) {
++        File active = new File(nativeDirectory, activeName);
++        File disabled = new File(nativeDirectory, activeName + ".zomdroid-user-disabled");
++        File marker = new File(nativeDirectory, markerName);
++        try {
++            if (active.isFile()) moveReplacing(active, disabled);
++            deleteMarker(marker, logTag);
++            Log.i(logTag, "INACTIVE: disabled by Native Modules setting; fallback selected");
++        } catch (IOException error) {
++            Log.e(logTag, "Could not disable native module", error);
++        }
++        return false;
++    }
++
+     /** True only when the active Lighting library is the packaged R2 shim. */
+     public static boolean isManagedLightingActive(GameInstance gameInstance) {
+         File source = new File(AppStorage.requireSingleton().getLibraryPath(), LIGHTING_SHIM_NAME);
+diff -ruN '--exclude=jars.tar' '--exclude=CP1-01-NATIVE-MODULES-UI.patch' a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+--- a/app/src/main/res/values/strings.xml	2026-08-28 19:00:00.000000000 +0300
++++ b/app/src/main/res/values/strings.xml	2026-08-28 18:25:05.042111598 +0300
+@@ -602,6 +602,16 @@
+     <string name="opt_lab_intro" translatable="false">Un singur APK, cu baseline și mecanisme independente. Valorile se aplică la următoarea pornire completă a jocului; linia [ZD-OPT-LAB] confirmă configurația efectivă.</string>
+     <string name="opt_lab_profile" translatable="false">Profil</string>
+     <string name="opt_lab_master" translatable="false">Master switch OPT-LAB</string>
++    <string name="native_modules_section" translatable="false">Module native ARM64</string>
++    <string name="native_modules_open" translatable="false">Deschide Native Modules</string>
++    <string name="native_modules_title" translatable="false">Native Modules</string>
++    <string name="native_modules_intro" translatable="false">Fiecare modul controlează implementarea folosită la următoarea pornire a jocului. OFF păstrează fallback-ul original.</string>
++    <string name="native_modules_lighting" translatable="false">Lighting64 Native</string>
++    <string name="native_modules_clipper" translatable="false">PZClipper Native</string>
++    <string name="native_modules_pathfinding" translatable="false">Pathfinding Native</string>
++    <string name="native_modules_popman" translatable="false">PopMan Native</string>
++    <string name="native_modules_popman_unavailable" translatable="false">PopMan Native: OFF / Unavailable până la Checkpoint 2</string>
++    <string name="native_modules_restart" translatable="false">Restart game required. Pentru test A/B schimbă un singur modul între două porniri complete.</string>
+     <string name="opt_lab_runtime_section" translatable="false">Runtime / JVM</string>
+     <string name="opt_lab_build42_section" translatable="false">Build 42</string>
+     <string name="opt_lab_build42_open" translatable="false">Deschide modulele Build 42</string>
+

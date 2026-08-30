@@ -40,12 +40,28 @@ public final class StreamCoreRuntime {
 
     public static void disableWakeShape(int replacements) {
         wakeEnabled = false;
-        ProofRuntime.state("STREAM_WAKE", "BLOCKED_SHAPE", "sleep_replacements=" + replacements);
+        FeatureCompatibility.fallback("STREAM_WAKE",
+                "sleep_replacements=" + replacements);
     }
 
     public static void disableQueueShape(int replacements) {
         queueFastEnabled = false;
-        ProofRuntime.state("STREAM_QUEUE_FAST", "BLOCKED_SHAPE", "sort_replacements=" + replacements);
+        FeatureCompatibility.fallback("STREAM_QUEUE_FAST",
+                "sort_replacements=" + replacements);
+    }
+
+    public static void disableWake() {
+        wakeEnabled = false;
+        Thread target = streamerThread;
+        if (target != null) LockSupport.unpark(target);
+    }
+
+    public static void disableQueueFast() {
+        queueFastEnabled = false;
+    }
+
+    public static void disableLookahead() {
+        lookaheadEnabled = false;
     }
 
     public static void idleWait(long millis) throws InterruptedException {
@@ -137,7 +153,8 @@ public final class StreamCoreRuntime {
             }
         } catch (Throwable error) {
             lookaheadEnabled = false;
-            ProofRuntime.state("STREAM_VELOCITY_ETA", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
+            FeatureCompatibility.fallback("STREAM_VELOCITY_ETA",
+                    "runtime=" + error.getClass().getSimpleName());
         }
     }
 

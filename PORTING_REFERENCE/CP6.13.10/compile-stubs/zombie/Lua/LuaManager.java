@@ -1,0 +1,1 @@
+package zombie.Lua; import se.krka.kahlua.integration.LuaCaller; import se.krka.kahlua.vm.KahluaThread; public class LuaManager { public static LuaCaller caller; public static KahluaThread thread; }

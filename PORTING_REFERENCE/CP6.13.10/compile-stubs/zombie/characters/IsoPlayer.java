@@ -1,0 +1,1 @@
+package zombie.characters; public class IsoPlayer { public static int numPlayers; public static IsoPlayer getInstance(){return null;} }

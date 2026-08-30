@@ -1,0 +1,901 @@
+diff --git a/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-01-AGENT-RUNTIME-RO.txt b/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-01-AGENT-RUNTIME-RO.txt
+new file mode 100644
+index 0000000..b17ecd6
+--- /dev/null
++++ b/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-01-AGENT-RUNTIME-RO.txt
+@@ -0,0 +1,68 @@
++ZOMDROID R12 - CHECKPOINT PERSISTENT CP6.2-01
++Data UTC: 2026-08-29
++Stadiu: integrare agent/runtime demonstrata pe host; cablarea APK/UI urmeaza.
++
++ROLLBACK
++- Baseline R11 neatins: commit 925bf720334079bb3ad462ff27173e99ec9497a6
++- Metadata baseline: commit 9969eb5
++- Ramura: r12-cp6.2-direct-integration
++
++SURSE DE ADEVAR
++- Pachet CP6.2 SHA256:
++  69d81ac09ba031928c5c090ce469c648c6e3245588856dfe785df0dc562c2bd1
++- PZ 42.20 SHA256:
++  e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
++- PZ 42.20.3 SHA256:
++  bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
++
++COMPATIBILITATE CONFIRMATA
++- DefaultShader.class este identic in 42.20 si 42.20.3:
++  2a4231d4059687d285a6d460eff78643f18a7d596186ba3f6fa64b52e0e04273
++- ShaderProgram.class este identic:
++  062a78360dab7245283099312d88d09c216da5ae5c0b4deb5edd3f4a08afb621
++- ShaderProgram$Uniform.class este identic:
++  f5f17a0bfe4510a7b9964410facaadc083ff14c0316796e8ec277061aa8595c9
++- SpriteRenderer$RingBuffer.class este identic:
++  c50a46274331398ba2168a33f9b87d2d164301cc239c238830f6bd8588dfc8c3
++- Model.class este identic:
++  3dd5e7b618cecf3c27e216a386e07937b1be694a7fc083b1bc2f7c993cbee3d9
++
++IMPLEMENTAT IN ACEST CHECKPOINT
++1. CP6.1: elimina uploadurile glUniform1f redundante pentru chunkDepth folosind
++   comparatie Float.floatToRawIntBits si identitatea Uniform.
++2. CP6.2: elimina getUniform("chunkDepth") pe generatia stabila; cache-ul este
++   invalidat numai dupa onCompileSuccess terminat fara exceptie.
++3. CP6.2: in RingBuffer.render rescrie numai apelul final
++   Model.modelDrawCounts.clear() catre un helper care il omite daca mapa e goala.
++   Restul metodei PZ nu este duplicat.
++4. Orice eroare de linkage/forma dezactiveaza doar mecanismul implicat si revine
++   la codul original PZ.
++5. Agent marker actualizat la version=10 / schema=9; bundle-ul este reconstruit
++   automat prin tools/build-optlab-agent.sh.
++6. RingBuffer bulk packing NU este integrat/activat: ramane cercetare experimentala
++   deoarece device run-ul din handoff nu a demonstrat castig CPU suficient.
++7. CP6.0 rthreadProfileFast NU a fost reintrodus.
++
++REZULTATE HOST
++- tools/build-optlab-agent.sh: PASS
++- tools/test-optlab-agent-source.sh: PASS
++- FeatureCompatibilityUnit: PASS
++- OptLabRuntimeUnit: PASS
++- OptLabPremainPathfindingOnlyUnit: PASS
++- ChunkDepth 4096 apeluri identice: 1 lookup, 1 upload
++- Schimbare valoare: fara lookup nou, exact 1 upload nou
++- Recompile reusit: exact 1 lookup nou si upload fortat
++- Lookup OFF: frecventa lookup vanilla, upload redundant eliminat
++- Eroare GL simulata: fallback original, cache necomis, mecanism fail-open
++- Ring map goala: clear omis; map ne-goala: clear executat exact o data
++- DEVICE PASS: NU ESTE DECLARAT (necesita test real pe dispozitiv).
++
++BUNDLE RECONSTRUIT
++- zomdroid-agent.jar SHA256:
++  cc3a2f331661dd2a7f225c51675d1ca8a54d01ee0cadcac5fabdd098fcf1576c
++- app/src/main/assets/bundles/jars.tar SHA256:
++  94954002fc44d197451aed0511acc763cddc959b05680a71c204c99444aac2be
++
++URMATORUL PAS
++- Cablare proprietati/preferinte/registry/launcher/proof/UI in APK.
++- Validare offline a transformarii reale pe JAR-urile 42.20 si 42.20.3.
+diff --git a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+index ef63896..60aad82 100644
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+@@ -8,6 +8,7 @@ import com.zomdroid.agent.optimization.PacingRuntime;
+ import com.zomdroid.agent.optimization.PathfindingRuntime;
+ import com.zomdroid.agent.optimization.PopManRuntime;
+ import com.zomdroid.agent.optimization.ProofRuntime;
++import com.zomdroid.agent.optimization.RenderOptimizationRuntime;
+ import com.zomdroid.agent.optimization.StreamCoreRuntime;
+
+ import net.bytebuddy.ByteBuddy;
+@@ -15,6 +16,7 @@ import net.bytebuddy.agent.builder.AgentBuilder;
+ import net.bytebuddy.asm.Advice;
+ import net.bytebuddy.asm.AsmVisitorWrapper;
+ import net.bytebuddy.description.method.MethodDescription;
++import net.bytebuddy.description.field.FieldDescription;
+ import net.bytebuddy.description.type.TypeDescription;
+ import net.bytebuddy.dynamic.ClassFileLocator;
+ import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
+@@ -69,6 +71,17 @@ public final class Main {
+             "e64f53da69877398e1715b79df4cefc881fa7571844887569cfce3b4a64daea3";
+     private static final String VEHICLE_ZONE_SHA256 =
+             "6bd45f0a288b6a179201b2e93d0a8258425b943d00835a29886e65eed18f0bd7";
++    // Identical in the exact 42.20 and 42.20.3 jars supplied for this checkpoint.
++    private static final String DEFAULT_SHADER_4220_42203_SHA256 =
++            "2a4231d4059687d285a6d460eff78643f18a7d596186ba3f6fa64b52e0e04273";
++    private static final String SHADER_PROGRAM_4220_42203_SHA256 =
++            "062a78360dab7245283099312d88d09c216da5ae5c0b4deb5edd3f4a08afb621";
++    private static final String SHADER_UNIFORM_4220_42203_SHA256 =
++            "f5f17a0bfe4510a7b9964410facaadc083ff14c0316796e8ec277061aa8595c9";
++    private static final String RING_BUFFER_4220_42203_SHA256 =
++            "c50a46274331398ba2168a33f9b87d2d164301cc239c238830f6bd8588dfc8c3";
++    private static final String MODEL_4220_42203_SHA256 =
++            "3dd5e7b618cecf3c27e216a386e07937b1be694a7fc083b1bc2f7c993cbee3d9";
+
+     private Main() {}
+
+@@ -77,7 +90,7 @@ public final class Main {
+         FeatureCompatibility.configureFromProperties();
+         PathfindingRuntime.configureFromProperties();
+         PopManRuntime.configureFromProperties();
+-        System.out.println("[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded");
++        System.out.println("[ZD-OPT-LAB-AGENT] version=10 schema=9 loaded");
+
+         String renderer = System.getProperty("zomdroid.renderer", "");
+         if ("GL4ES".equals(renderer)) installLegacyShaderPatch(instrumentation);
+@@ -101,6 +114,9 @@ public final class Main {
+         boolean chunkLuaRequested = flag("zomdroid.optlab.chunk.lua.mapobjects");
+         boolean chunkWorldgenRequested = flag("zomdroid.optlab.chunk.worldgen.biome");
+         boolean chunkCp2cRequested = flag("zomdroid.optlab.chunk.cp2c.dirty.clear");
++        boolean chunkDepthRequested = flag("zomdroid.optlab.render.chunk.depth.upload");
++        boolean chunkDepthLookupRequested = flag("zomdroid.optlab.render.chunk.depth.lookup");
++        boolean ringRenderClearRequested = flag("zomdroid.optlab.render.ring.empty.clear");
+         boolean pathfindingProofRequested = PathfindingRuntime.isProofEnabled();
+         boolean popManProofRequested = PopManRuntime.isProofEnabled();
+         boolean anyRequested = pacingRequested || wakeRequested || queueRequested
+@@ -109,6 +125,8 @@ public final class Main {
+                 || chunkNeighbourWorkerRequested || chunkNeighbourMainRequested
+                 || chunkGridRequested || chunkVehiclesRequested || chunkBuildingsRequested
+                 || chunkLuaRequested || chunkWorldgenRequested || chunkCp2cRequested
++                || chunkDepthRequested || chunkDepthLookupRequested
++                || ringRenderClearRequested
+                 || pathfindingProofRequested || popManProofRequested;
+
+         if (!anyRequested) {
+@@ -135,6 +153,12 @@ public final class Main {
+         String worldGenChunkHash = resourceSha256(
+                 "zombie/iso/worldgen/WorldGenChunk.class");
+         String vehicleZoneHash = resourceSha256("zombie/iso/zones/VehicleZone.class");
++        String defaultShaderHash = resourceSha256("zombie/core/DefaultShader.class");
++        String shaderProgramHash = resourceSha256("zombie/core/opengl/ShaderProgram.class");
++        String shaderUniformHash = resourceSha256(
++                "zombie/core/opengl/ShaderProgram$Uniform.class");
++        String ringBufferHash = resourceSha256("zombie/core/SpriteRenderer$RingBuffer.class");
++        String modelHash = resourceSha256("zombie/core/skinnedmodel/model/Model.class");
+
+         FeatureCompatibility.Requirement mainThread = requirement(
+                 "main_thread", MAIN_THREAD_SHA256, mainThreadHash);
+@@ -167,6 +191,16 @@ public final class Main {
+                 "world_gen_chunk", WORLD_GEN_CHUNK_SHA256, worldGenChunkHash);
+         FeatureCompatibility.Requirement vehicleZone = requirement(
+                 "vehicle_zone", VEHICLE_ZONE_SHA256, vehicleZoneHash);
++        FeatureCompatibility.Requirement defaultShader = requirement(
++                "default_shader", DEFAULT_SHADER_4220_42203_SHA256, defaultShaderHash);
++        FeatureCompatibility.Requirement shaderProgram = requirement(
++                "shader_program", SHADER_PROGRAM_4220_42203_SHA256, shaderProgramHash);
++        FeatureCompatibility.Requirement shaderUniform = requirement(
++                "shader_uniform", SHADER_UNIFORM_4220_42203_SHA256, shaderUniformHash);
++        FeatureCompatibility.Requirement ringBuffer = requirement(
++                "ring_buffer", RING_BUFFER_4220_42203_SHA256, ringBufferHash);
++        FeatureCompatibility.Requirement model = requirement(
++                "model", MODEL_4220_42203_SHA256, modelHash);
+
+         final FeatureCompatibility.Decision pacing = FeatureCompatibility.evaluate(
+                 "PACING", pacingRequested, 2, mainThread, gameWindow);
+@@ -206,6 +240,29 @@ public final class Main {
+         final FeatureCompatibility.Decision chunkCp2c = FeatureCompatibility.evaluate(
+                 "CHUNK_CP2C_DIRTY_CLEAR", chunkCp2cRequested, 3,
+                 isoChunk, isoGridSquare);
++        final FeatureCompatibility.Decision chunkDepth = FeatureCompatibility.evaluate(
++                "RTHREAD_CHUNK_DEPTH_UPLOAD", chunkDepthRequested, 1,
++                defaultShader, shaderProgram, shaderUniform);
++        final FeatureCompatibility.Decision chunkDepthLookup = chunkDepthRequested
++                ? FeatureCompatibility.evaluate("RTHREAD_CHUNK_DEPTH_LOOKUP",
++                        chunkDepthLookupRequested, 2,
++                        defaultShader, shaderProgram, shaderUniform)
++                : FeatureCompatibility.unsupported("RTHREAD_CHUNK_DEPTH_LOOKUP",
++                        chunkDepthLookupRequested, "requires_chunk_depth_upload");
++        final FeatureCompatibility.Decision ringRenderClear = FeatureCompatibility.evaluate(
++                "RTHREAD_RING_RENDER_CLEAR", ringRenderClearRequested, 1,
++                ringBuffer, model);
++
++        // Unknown B42 hashes may proceed only after an out-of-load structural inspection. This
++        // also validates the exact jars without loading game classes early from premain.
++        if ((chunkDepth.isCandidate() || chunkDepthLookup.isCandidate())
++                && !shaderUniformSupportShape()) {
++            chunkDepth.fallback("shader_program_or_uniform_structural_probe_failed");
++            chunkDepthLookup.fallback("shader_program_or_uniform_structural_probe_failed");
++        }
++        if (ringRenderClear.isCandidate() && !modelDrawCountsSupportShape()) {
++            ringRenderClear.fallback("model_draw_counts_structural_probe_failed");
++        }
+
+         if (!(pacing.isCandidate() || wake.isCandidate() || queueFast.isCandidate()
+                 || lookahead.isCandidate() || dirtyDedup.isCandidate()
+@@ -214,7 +271,8 @@ public final class Main {
+                 || chunkNeighbourMain.isCandidate() || chunkGrid.isCandidate()
+                 || chunkVehicles.isCandidate() || chunkBuildings.isCandidate()
+                 || chunkLua.isCandidate() || chunkWorldgen.isCandidate()
+-                || chunkCp2c.isCandidate()
++                || chunkCp2c.isCandidate() || chunkDepth.isCandidate()
++                || chunkDepthLookup.isCandidate() || ringRenderClear.isCandidate()
+                 || pathfindingProofRequested || popManProofRequested)) return;
+
+         try {
+@@ -228,6 +286,8 @@ public final class Main {
+                     chunkGrid.isCandidate(), chunkVehicles.isCandidate(),
+                     chunkBuildings.isCandidate(), chunkLua.isCandidate(),
+                     chunkWorldgen.isCandidate(), chunkCp2c.isCandidate());
++            RenderOptimizationRuntime.configure(chunkDepth.isCandidate(),
++                    chunkDepthLookup.isCandidate(), ringRenderClear.isCandidate());
+
+             AgentBuilder builder = new AgentBuilder.Default()
+                     .disableClassFormatChanges()
+@@ -355,6 +415,56 @@ public final class Main {
+                                                 .and(returns(void.class))));
+                         });
+             }
++            if (chunkDepth.isCandidate() || chunkDepthLookup.isCandidate()) {
++                builder = builder.type(named("zombie.core.DefaultShader"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int setters = methodCount(type, "setChunkDepth", "(F)V");
++                            int compileHooks = methodCount(type, "onCompileSuccess",
++                                    "(Lzombie/core/opengl/ShaderProgram;)V");
++                            if (setters != 1) {
++                                RenderOptimizationRuntime.disableChunkDepth(
++                                        "default_shader_shape_setChunkDepth=" + setters);
++                                return target;
++                            }
++
++                            target = target.visit(Advice.to(ChunkDepthAdvice.class).on(
++                                    named("setChunkDepth").and(takesArguments(float.class))
++                                            .and(returns(void.class))));
++                            chunkDepth.passPart("default_shader_set_chunk_depth");
++
++                            if (chunkDepthLookup.isCandidate()) {
++                                if (compileHooks != 1) {
++                                    RenderOptimizationRuntime.disableChunkDepthLookup(
++                                            "default_shader_shape_onCompileSuccess="
++                                                    + compileHooks);
++                                } else {
++                                    target = target.visit(Advice.to(DefaultShaderCompileAdvice.class)
++                                            .on(named("onCompileSuccess").and(takesArguments(1))
++                                                    .and(returns(void.class))));
++                                    chunkDepthLookup.passPart(
++                                            "default_shader_set_chunk_depth");
++                                    chunkDepthLookup.passPart(
++                                            "default_shader_compile_invalidation");
++                                }
++                            }
++                            return target;
++                        });
++            }
++            if (ringRenderClear.isCandidate()) {
++                builder = builder.type(named("zombie.core.SpriteRenderer$RingBuffer"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int renders = methodCount(type, "render", "()V");
++                            if (renders != 1) {
++                                RenderOptimizationRuntime.disableRingRenderClear(
++                                        "ring_buffer_shape_render=" + renders);
++                                return target;
++                            }
++                            return target.visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
++                                    named("render").and(takesArguments(0))
++                                            .and(returns(void.class)),
++                                    new RingRenderClearVisitor(ringRenderClear)));
++                        });
++            }
+             if (chunkForage.isCandidate()) {
+                 builder = builder.type(named("zombie.iso.worldgen.zones.ZoneGenerator"))
+                         .transform((target, type, loader, module, domain) -> {
+@@ -641,6 +751,7 @@ public final class Main {
+             FboRuntime.configure(false, false, false);
+             ChunkOptimizationRuntime.configure(false, false, false, false, false,
+                     false, false, false, false);
++            RenderOptimizationRuntime.configure(false, false, false);
+             ProofRuntime.state("PACK", "BLOCKED_INSTALL", error.getClass().getSimpleName());
+             System.err.println("[ZD-OPT-LAB-AGENT] install failed: " + error);
+             error.printStackTrace(System.err);
+@@ -673,6 +784,43 @@ public final class Main {
+         return count;
+     }
+
++    private static boolean shaderUniformSupportShape() {
++        try {
++            TypePool pool = TypePool.Default.of(Main.class.getClassLoader());
++            TypeDescription program = pool.describe(
++                    "zombie.core.opengl.ShaderProgram").resolve();
++            TypeDescription uniform = pool.describe(
++                    "zombie.core.opengl.ShaderProgram$Uniform").resolve();
++            if (methodCount(program, "getUniform",
++                    "(Ljava/lang/String;I)Lzombie/core/opengl/ShaderProgram$Uniform;") != 1) {
++                return false;
++            }
++            int fields = 0;
++            for (FieldDescription.InDefinedShape field : uniform.getDeclaredFields()) {
++                if ("loc".equals(field.getName()) && "I".equals(field.getDescriptor())) fields++;
++            }
++            return fields == 1;
++        } catch (Throwable ignored) {
++            return false;
++        }
++    }
++
++    private static boolean modelDrawCountsSupportShape() {
++        try {
++            TypeDescription model = TypePool.Default.of(Main.class.getClassLoader())
++                    .describe("zombie.core.skinnedmodel.model.Model").resolve();
++            int fields = 0;
++            for (FieldDescription.InDefinedShape field : model.getDeclaredFields()) {
++                if ("modelDrawCounts".equals(field.getName()) && field.isStatic()
++                        && "Lgnu/trove/map/hash/TObjectIntHashMap;"
++                                .equals(field.getDescriptor())) fields++;
++            }
++            return fields == 1;
++        } catch (Throwable ignored) {
++            return false;
++        }
++    }
++
+     private static boolean vehicleHelperShape(TypeDescription type) {
+         String zone = "Lzombie/iso/zones/Zone;";
+         String vehicleZone = "Lzombie/iso/zones/VehicleZone;";
+@@ -824,6 +972,21 @@ public final class Main {
+         }
+     }
+
++    public static final class ChunkDepthAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object shader,
++                                    @Advice.Argument(0) float value) {
++            return RenderOptimizationRuntime.handleChunkDepth(shader, value);
++        }
++    }
++
++    public static final class DefaultShaderCompileAdvice {
++        @Advice.OnMethodExit(onThrowable = Throwable.class)
++        public static void exit(@Advice.Thrown Throwable error) {
++            if (error == null) RenderOptimizationRuntime.afterDefaultShaderCompile();
++        }
++    }
++
+     public static final class ChunkWorkerScopeAdvice {
+         @Advice.OnMethodEnter public static void enter() {
+             ChunkOptimizationRuntime.workerEnter();
+@@ -1117,6 +1280,51 @@ public final class Main {
+         }
+     }
+
++    private static final class RingRenderClearVisitor
++            implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
++        private final FeatureCompatibility.Decision decision;
++
++        RingRenderClearVisitor(FeatureCompatibility.Decision decision) {
++            this.decision = decision;
++        }
++
++        @Override
++        public MethodVisitor wrap(TypeDescription instrumentedType,
++                                  MethodDescription instrumentedMethod,
++                                  MethodVisitor methodVisitor,
++                                  Implementation.Context implementationContext,
++                                  TypePool typePool, int writerFlags, int readerFlags) {
++            return new MethodVisitor(Opcodes.ASM9, methodVisitor) {
++                private int replacements;
++
++                @Override public void visitMethodInsn(int opcode, String owner, String name,
++                                                      String descriptor, boolean isInterface) {
++                    if (opcode == Opcodes.INVOKEVIRTUAL
++                            && "gnu/trove/map/hash/TObjectIntHashMap".equals(owner)
++                            && "clear".equals(name) && "()V".equals(descriptor)) {
++                        super.visitMethodInsn(Opcodes.INVOKESTATIC,
++                                "com/zomdroid/agent/optimization/RenderOptimizationRuntime",
++                                "clearModelDrawCountsIfNotEmpty",
++                                "(Lgnu/trove/map/hash/TObjectIntHashMap;)V", false);
++                        replacements++;
++                    } else {
++                        super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
++                    }
++                }
++
++                @Override public void visitEnd() {
++                    if (replacements != 1) {
++                        RenderOptimizationRuntime.disableRingRenderClear(
++                                "ring_render_clear_replacements=" + replacements);
++                    } else {
++                        decision.passPart("ring_render_model_clear_tail");
++                    }
++                    super.visitEnd();
++                }
++            };
++        }
++    }
++
+     private static final class TransformFailureListener extends AgentBuilder.Listener.Adapter {
+         @Override
+         public void onError(String typeName, ClassLoader classLoader, JavaModule module,
+@@ -1143,6 +1351,10 @@ public final class Main {
+             } else if ("zombie.iso.fboRenderChunk.FBORenderLevels$NLevels".equals(typeName)) {
+                 FboRuntime.disableDirtyDedup();
+                 FeatureCompatibility.fallback("FBO_DIRTY_DEDUP", reason);
++            } else if ("zombie.core.DefaultShader".equals(typeName)) {
++                RenderOptimizationRuntime.disableChunkDepth(reason);
++            } else if ("zombie.core.SpriteRenderer$RingBuffer".equals(typeName)) {
++                RenderOptimizationRuntime.disableRingRenderClear(reason);
+             }
+             System.err.println("[ZD-OPT-LAB-AGENT] " + typeName + " " + reason);
+         }
+diff --git a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+index 7f8706b..c50acf0 100644
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+@@ -23,7 +23,7 @@ public final class ProofRuntime {
+     public static void configureFromProperties() {
+         path = System.getProperty("zomdroid.optlab.proof.path", "").trim();
+         session = System.getProperty("zomdroid.optlab.session", "unknown").trim();
+-        emit("SESSION", "START", "schema=8 path=" + clean(path));
++        emit("SESSION", "START", "schema=9 path=" + clean(path));
+     }
+
+     public static void state(String mechanism, String state, String detail) {
+diff --git a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
+new file mode 100644
+index 0000000..1437f0a
+--- /dev/null
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
+@@ -0,0 +1,184 @@
++package com.zomdroid.agent.optimization;
++
++import gnu.trove.map.hash.TObjectIntHashMap;
++import org.lwjgl.opengl.GL20;
++import zombie.core.DefaultShader;
++import zombie.core.opengl.ShaderProgram;
++
++/**
++ * Direct APK port of the CP6.1/CP6.2 render-thread optimizations.
++ *
++ * <p>The hot path keeps its state in a ThreadLocal: no per-call atomics, locks, reflection or
++ * allocation. A shader compile advances a rare global epoch only after the vanilla compile hook
++ * returns successfully. Any linkage/shape failure disables only ChunkDepth and returns control to
++ * the original PZ method.</p>
++ */
++public final class RenderOptimizationRuntime {
++    private static final Object COMPILE_LOCK = new Object();
++    private static final ThreadLocal<ChunkDepthCache> CHUNK_DEPTH =
++            ThreadLocal.withInitial(ChunkDepthCache::new);
++
++    private static volatile boolean chunkDepthEnabled;
++    private static volatile boolean chunkDepthLookupEnabled;
++    private static volatile boolean ringRenderClearEnabled;
++    private static volatile boolean chunkDepthFailed;
++    private static volatile long compileEpoch = 1L;
++
++    // Render-thread counters are deliberately plain longs. They are diagnostic snapshots, not
++    // synchronization primitives, and therefore do not add CAS traffic to the hot path.
++    private static long ringClearSkipped;
++    private static long ringClearExecuted;
++
++    private RenderOptimizationRuntime() {}
++
++    public static void configure(boolean chunkDepth, boolean lookup, boolean ringRenderClear) {
++        chunkDepthEnabled = chunkDepth;
++        chunkDepthLookupEnabled = chunkDepth && lookup;
++        ringRenderClearEnabled = ringRenderClear;
++        chunkDepthFailed = false;
++        CHUNK_DEPTH.remove();
++        ProofRuntime.state("CP6_2_RENDER", "CONFIGURED",
++                "chunk_depth=" + bit(chunkDepthEnabled)
++                        + " lookup=" + bit(chunkDepthLookupEnabled)
++                        + " ring_empty_clear=" + bit(ringRenderClearEnabled)
++                        + " ring_bulk_pack=0_experimental_not_integrated");
++    }
++
++    public static void disableChunkDepth(String reason) {
++        chunkDepthEnabled = false;
++        chunkDepthLookupEnabled = false;
++        FeatureCompatibility.fallback("RTHREAD_CHUNK_DEPTH_UPLOAD", reason);
++        FeatureCompatibility.fallback("RTHREAD_CHUNK_DEPTH_LOOKUP", reason);
++    }
++
++    public static void disableChunkDepthLookup(String reason) {
++        chunkDepthLookupEnabled = false;
++        FeatureCompatibility.fallback("RTHREAD_CHUNK_DEPTH_LOOKUP", reason);
++    }
++
++    public static void disableRingRenderClear(String reason) {
++        ringRenderClearEnabled = false;
++        FeatureCompatibility.fallback("RTHREAD_RING_RENDER_CLEAR", reason);
++    }
++
++    /**
++     * Returns true only when this method fully replaces DefaultShader.setChunkDepth(float).
++     * False means Byte Buddy must execute the untouched PZ implementation.
++     */
++    public static boolean handleChunkDepth(Object receiver, float value) {
++        if (!chunkDepthEnabled || chunkDepthFailed) return false;
++
++        ChunkDepthCache cache = CHUNK_DEPTH.get();
++        cache.calls++;
++        try {
++            DefaultShader shader = (DefaultShader) receiver;
++            ShaderProgram program = shader.getProgram();
++            if (program == null) return false; // Preserve vanilla NPE/failure behavior.
++
++            long epoch = compileEpoch;
++            boolean generationValid = cache.program == program && cache.epoch == epoch;
++            ShaderProgram.Uniform uniform;
++            if (chunkDepthLookupEnabled && generationValid && cache.uniform != null) {
++                uniform = cache.uniform;
++                cache.lookupSkips++;
++                ProofRuntime.appliedOnce("RTHREAD_CHUNK_DEPTH_LOOKUP",
++                        "cp6_2_program_and_compile_epoch_cache_hit");
++            } else {
++                uniform = program.getUniform("chunkDepth", 5126); // GL_FLOAT
++                cache.uniformLookups++;
++                cache.program = program;
++                cache.epoch = epoch;
++                cache.uniform = uniform;
++            }
++
++            // ShaderProgram.setValue(String,float) is a no-op for an absent uniform.
++            if (uniform == null) return true;
++
++            int bits = Float.floatToRawIntBits(value);
++            if (generationValid && cache.lastUploadedUniform == uniform
++                    && cache.bitsValid && cache.bits == bits) {
++                cache.uploadSkips++;
++                ProofRuntime.appliedOnce("RTHREAD_CHUNK_DEPTH_UPLOAD",
++                        "cp6_1_redundant_gluniform1f_elided");
++                return true;
++            }
++
++            // Commit cache state only after the GL call succeeds.
++            GL20.glUniform1f(uniform.loc, value);
++            cache.uploads++;
++            cache.program = program;
++            cache.epoch = epoch;
++            cache.uniform = uniform;
++            cache.lastUploadedUniform = uniform;
++            cache.bits = bits;
++            cache.bitsValid = true;
++            return true;
++        } catch (Throwable error) {
++            chunkDepthFailed = true;
++            String reason = "runtime_guard=" + error.getClass().getSimpleName();
++            disableChunkDepth(reason);
++            ProofRuntime.state("RTHREAD_CHUNK_DEPTH", "FALLBACK",
++                    "original_game_code " + reason);
++            return false;
++        }
++    }
++
++    /** Called by Advice only after DefaultShader.onCompileSuccess completed without throwing. */
++    public static void afterDefaultShaderCompile() {
++        if (!chunkDepthLookupEnabled) return;
++        synchronized (COMPILE_LOCK) {
++            compileEpoch++;
++        }
++        ProofRuntime.appliedOnce("RTHREAD_CHUNK_DEPTH_INVALIDATION",
++                "successful_shader_compile_epoch_advanced");
++    }
++
++    /**
++     * Replaces only Model.modelDrawCounts.clear() at the tail of RingBuffer.render(). The rest of
++     * the game method remains byte-for-byte controlled by PZ.
++     */
++    public static void clearModelDrawCountsIfNotEmpty(TObjectIntHashMap<?> map) {
++        if (!ringRenderClearEnabled) {
++            map.clear();
++            return;
++        }
++        if (map.isEmpty()) {
++            ringClearSkipped++;
++            ProofRuntime.appliedOnce("RTHREAD_RING_RENDER_CLEAR",
++                    "cp6_2_empty_model_draw_counts_clear_elided");
++        } else {
++            map.clear();
++            ringClearExecuted++;
++        }
++    }
++
++    public static String diagnosticSnapshot() {
++        ChunkDepthCache cache = CHUNK_DEPTH.get();
++        return "chunk_calls=" + cache.calls
++                + " chunk_lookups=" + cache.uniformLookups
++                + " chunk_lookup_skips=" + cache.lookupSkips
++                + " chunk_uploads=" + cache.uploads
++                + " chunk_upload_skips=" + cache.uploadSkips
++                + " compile_epoch=" + compileEpoch
++                + " ring_clear_skipped=" + ringClearSkipped
++                + " ring_clear_executed=" + ringClearExecuted;
++    }
++
++    private static int bit(boolean value) {
++        return value ? 1 : 0;
++    }
++
++    private static final class ChunkDepthCache {
++        ShaderProgram program;
++        ShaderProgram.Uniform uniform;
++        ShaderProgram.Uniform lastUploadedUniform;
++        long epoch;
++        int bits;
++        boolean bitsValid;
++        long calls;
++        long uniformLookups;
++        long lookupSkips;
++        long uploads;
++        long uploadSkips;
++    }
++}
+diff --git a/tools/OptLabRuntimeUnit.java b/tools/OptLabRuntimeUnit.java
+index 12206da..4b44b6c 100644
+--- a/tools/OptLabRuntimeUnit.java
++++ b/tools/OptLabRuntimeUnit.java
+@@ -1,6 +1,11 @@
+ import com.zomdroid.agent.optimization.FboRuntime;
+ import com.zomdroid.agent.optimization.PathfindingRuntime;
++import com.zomdroid.agent.optimization.RenderOptimizationRuntime;
+ import com.zomdroid.agent.optimization.StreamCoreRuntime;
++import gnu.trove.map.hash.TObjectIntHashMap;
++import org.lwjgl.opengl.GL20;
++import zombie.core.DefaultShader;
++import zombie.core.opengl.ShaderProgram;
+ import zombie.characters.IsoPlayer;
+ import zombie.iso.IsoChunk;
+ import zombie.iso.IsoWorld;
+@@ -21,6 +26,9 @@ public final class OptLabRuntimeUnit {
+         testFboBudget();
+         testFboFallback();
+         testPathfindingProofAndFallback();
++        testChunkDepthUploadAndLookupElision();
++        testChunkDepthLookupOffAndFailureFallback();
++        testRingRenderEmptyClearElision();
+         System.out.println("RUNTIME_UNIT PASS");
+     }
+
+@@ -140,6 +148,77 @@ public final class OptLabRuntimeUnit {
+                 "failed request must produce FALLBACK proof");
+     }
+
++    private static void testChunkDepthUploadAndLookupElision() {
++        GL20.uniform1fCalls = 0;
++        ShaderProgram program = new ShaderProgram();
++        program.uniform = new ShaderProgram.Uniform(7);
++        DefaultShader shader = new DefaultShader();
++        shader.setProgram(program);
++        RenderOptimizationRuntime.configure(true, true, false);
++
++        for (int i = 0; i < 4096; i++) {
++            require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
++                    "ChunkDepth fastpath must handle a valid shader");
++        }
++        require(program.lookups == 1, "stable shader generation must use one uniform lookup");
++        require(GL20.uniform1fCalls == 1, "stable value must use one GL upload");
++
++        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.75f),
++                "changed value must remain handled");
++        require(program.lookups == 1, "value change must not repeat lookup");
++        require(GL20.uniform1fCalls == 2, "changed value must upload exactly once");
++
++        program.uniform = new ShaderProgram.Uniform(9);
++        RenderOptimizationRuntime.afterDefaultShaderCompile();
++        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.75f),
++                "post-compile value must remain handled");
++        require(program.lookups == 2, "successful compile must invalidate uniform lookup cache");
++        require(GL20.uniform1fCalls == 3, "successful compile must force a safe re-upload");
++    }
++
++    private static void testChunkDepthLookupOffAndFailureFallback() {
++        GL20.uniform1fCalls = 0;
++        ShaderProgram program = new ShaderProgram();
++        program.uniform = new ShaderProgram.Uniform(4);
++        DefaultShader shader = new DefaultShader();
++        shader.setProgram(program);
++        RenderOptimizationRuntime.configure(true, false, false);
++        for (int i = 0; i < 64; i++) {
++            require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.25f),
++                    "CP6.1 upload-only route must handle valid input");
++        }
++        require(program.lookups == 64, "lookup OFF must preserve vanilla lookup frequency");
++        require(GL20.uniform1fCalls == 1, "CP6.1 must still suppress redundant upload");
++
++        GL20.uniform1fCalls = 0;
++        GL20.throwNext = true;
++        program.lookups = 0;
++        RenderOptimizationRuntime.configure(true, true, false);
++        require(!RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
++                "GL failure must return control to original PZ code");
++        shader.setChunkDepth(0.5f); // Exact fallback; the one-shot test failure is now cleared.
++        require(GL20.uniform1fCalls == 2,
++                "failed fast upload must not be treated as committed cache state");
++        require(!RenderOptimizationRuntime.handleChunkDepth(shader, 0.5f),
++                "guard failure must permanently fail open for this session");
++    }
++
++    private static void testRingRenderEmptyClearElision() {
++        TObjectIntHashMap<Object> map = new TObjectIntHashMap<>();
++        RenderOptimizationRuntime.configure(false, false, true);
++        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
++        require(map.clearCalls == 0, "empty modelDrawCounts.clear must be skipped");
++        map.put(new Object(), 1);
++        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
++        require(map.clearCalls == 1 && map.isEmpty(),
++                "non-empty modelDrawCounts must still be cleared exactly once");
++
++        RenderOptimizationRuntime.configure(false, false, false);
++        RenderOptimizationRuntime.clearModelDrawCountsIfNotEmpty(map);
++        require(map.clearCalls == 2,
++                "disabled ring optimization must execute the original clear call");
++    }
++
+     private static boolean decide(MockManager manager, FBORenderChunk renderChunk,
+                                   IsoChunk chunk) {
+         manager.renderChunk = renderChunk;
+diff --git a/tools/build-optlab-agent.sh b/tools/build-optlab-agent.sh
+index e3671ee..81b3e29 100755
+--- a/tools/build-optlab-agent.sh
++++ b/tools/build-optlab-agent.sh
+@@ -30,6 +30,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PathfindingRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PopManRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java"
+
+@@ -59,6 +60,8 @@ unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
+   | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
+ unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
+   | grep -qx 'com/zomdroid/agent/optimization/ChunkOptimizationRuntime.class'
++unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/RenderOptimizationRuntime.class'
+ unzip -p "$WORK_DIR/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
+-  | grep -aFq '[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded'
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=10 schema=9 loaded'
+ sha256sum "$WORK_DIR/zomdroid-agent.jar" "$BUNDLE_PATH"
+diff --git a/tools/chunk-optimization-stubs/gnu/trove/map/hash/TObjectIntHashMap.java b/tools/chunk-optimization-stubs/gnu/trove/map/hash/TObjectIntHashMap.java
+new file mode 100644
+index 0000000..8520ed1
+--- /dev/null
++++ b/tools/chunk-optimization-stubs/gnu/trove/map/hash/TObjectIntHashMap.java
+@@ -0,0 +1,26 @@
++package gnu.trove.map.hash;
++
++import java.util.IdentityHashMap;
++
++/** Compile/test subset of Trove's object-to-int map. */
++public class TObjectIntHashMap<K> {
++    private final IdentityHashMap<K, Integer> values = new IdentityHashMap<>();
++    public int clearCalls;
++
++    public boolean isEmpty() {
++        return values.isEmpty();
++    }
++
++    public void clear() {
++        clearCalls++;
++        values.clear();
++    }
++
++    public void put(K key, int value) {
++        values.put(key, value);
++    }
++
++    public int size() {
++        return values.size();
++    }
++}
+diff --git a/tools/chunk-optimization-stubs/org/lwjgl/opengl/GL20.java b/tools/chunk-optimization-stubs/org/lwjgl/opengl/GL20.java
+new file mode 100644
+index 0000000..5f0739c
+--- /dev/null
++++ b/tools/chunk-optimization-stubs/org/lwjgl/opengl/GL20.java
+@@ -0,0 +1,17 @@
++package org.lwjgl.opengl;
++
++/** Compile/test stub for the single GL entrypoint used by CP6.2. */
++public final class GL20 {
++    public static int uniform1fCalls;
++    public static boolean throwNext;
++
++    private GL20() {}
++
++    public static void glUniform1f(int location, float value) {
++        uniform1fCalls++;
++        if (throwNext) {
++            throwNext = false;
++            throw new RuntimeException("test GL failure");
++        }
++    }
++}
+diff --git a/tools/chunk-optimization-stubs/zombie/core/DefaultShader.java b/tools/chunk-optimization-stubs/zombie/core/DefaultShader.java
+new file mode 100644
+index 0000000..257bd0a
+--- /dev/null
++++ b/tools/chunk-optimization-stubs/zombie/core/DefaultShader.java
+@@ -0,0 +1,24 @@
++package zombie.core;
++
++import zombie.core.opengl.ShaderProgram;
++
++/** Compile-only subset matching PZ Build 42 DefaultShader. */
++public class DefaultShader {
++    private ShaderProgram program;
++
++    public ShaderProgram getProgram() {
++        return program;
++    }
++
++    public void setProgram(ShaderProgram value) {
++        program = value;
++    }
++
++    public void onCompileSuccess(ShaderProgram value) {
++        program = value;
++    }
++
++    public void setChunkDepth(float value) {
++        getProgram().setValue("chunkDepth", value);
++    }
++}
+diff --git a/tools/chunk-optimization-stubs/zombie/core/opengl/ShaderProgram.java b/tools/chunk-optimization-stubs/zombie/core/opengl/ShaderProgram.java
+new file mode 100644
+index 0000000..4ea10db
+--- /dev/null
++++ b/tools/chunk-optimization-stubs/zombie/core/opengl/ShaderProgram.java
+@@ -0,0 +1,27 @@
++package zombie.core.opengl;
++
++import org.lwjgl.opengl.GL20;
++
++/** Compile/test subset matching the B42 uniform API used by CP6.2. */
++public class ShaderProgram {
++    public Uniform uniform;
++    public int lookups;
++
++    public Uniform getUniform(String name, int type) {
++        lookups++;
++        return uniform;
++    }
++
++    public void setValue(String name, float value) {
++        Uniform current = getUniform(name, 5126);
++        if (current != null) GL20.glUniform1f(current.loc, value);
++    }
++
++    public static class Uniform {
++        public int loc;
++
++        public Uniform(int location) {
++            loc = location;
++        }
++    }
++}
+diff --git a/tools/test-optlab-agent-source.sh b/tools/test-optlab-agent-source.sh
+index c7d42e7..ddda77c 100755
+--- a/tools/test-optlab-agent-source.sh
++++ b/tools/test-optlab-agent-source.sh
+@@ -18,7 +18,9 @@ unzip -tq "$WORK_DIR/bundle/zomdroid-agent.jar"
+ unzip -Z1 "$WORK_DIR/bundle/zomdroid-agent.jar" \
+   | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
+ unzip -p "$WORK_DIR/bundle/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
+-  | grep -aFq '[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded'
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=10 schema=9 loaded'
++unzip -Z1 "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/RenderOptimizationRuntime.class'
+
+ mapfile -d '' CHUNK_STUBS < <(find "$PROJECT_DIR/tools/chunk-optimization-stubs" \
+   -type f -name '*.java' -print0 | LC_ALL=C sort -z)
+@@ -38,6 +40,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PathfindingRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PopManRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java"
+
+@@ -45,14 +48,14 @@ mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/optlab-stubs" -type f -name '*.
+   -print0 | LC_ALL=C sort -z)
+ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+-  -cp "$WORK_DIR/classes:$WORK_DIR/bundle/zomdroid-agent.jar" \
++  -cp "$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes:$WORK_DIR/bundle/zomdroid-agent.jar" \
+   -d "$WORK_DIR/tests" \
+   "${STUBS[@]}" \
+   "$PROJECT_DIR/tools/FeatureCompatibilityUnit.java" \
+   "$PROJECT_DIR/tools/OptLabRuntimeUnit.java" \
+   "$PROJECT_DIR/tools/OptLabPremainPathfindingOnlyUnit.java"
+
+-java -cp "$WORK_DIR/tests:$WORK_DIR/classes" FeatureCompatibilityUnit
+-java -cp "$WORK_DIR/tests:$WORK_DIR/classes" OptLabRuntimeUnit
++java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" FeatureCompatibilityUnit
++java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" OptLabRuntimeUnit
+ java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/bundle/zomdroid-agent.jar" \
+   OptLabPremainPathfindingOnlyUnit

@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Premain-Class: mglpz.chunkagent.Agent
+Agent-Class: mglpz.chunkagent.Agent
+Can-Redefine-Classes: false
+Can-Retransform-Classes: false
+Implementation-Title: MGLPZ Performance CP6.13.4 Hotpath CPU Alloc
+Implementation-Version: CP6.13.4-HOTPATH-CPU-ALLOC-2026-08-29

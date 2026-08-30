@@ -1,0 +1,2033 @@
+From 5f472cceeeaa1a976443f62b1f8b8ba7c8df0feb Mon Sep 17 00:00:00 2001
+From: Codex Checkpoint <codex-checkpoint@local>
+Date: Sun, 30 Aug 2026 23:44:09 +0300
+Subject: [PATCH] R15-07-01 repair settings arming navigation and presets
+
+---
+ .github/workflows/android.yml                 |   1 +
+ .github/workflows/build.yml                   |   1 +
+ .github/workflows/workflow-zomdroid.yml       |   2 +
+ CHECKPOINTS/R15-07-01-HOST-TEST-RESULTS.txt   |  33 ++
+ ...-07-01-SETTINGS-ARMING-AND-UI-REPAIR-RO.md |  56 +++
+ .../main/java/com/zomdroid/GameLauncher.java  |  36 +-
+ .../java/com/zomdroid/InstallerService.java   |  10 +-
+ .../zomdroid/NativeModulesPreferences.java    |  15 +-
+ .../com/zomdroid/OptLabCustomPresetStore.java |  28 +-
+ .../com/zomdroid/OptLabFeatureRegistry.java   |  31 +-
+ .../com/zomdroid/OptLabLaunchContract.java    | 101 +++++
+ .../java/com/zomdroid/OptLabPreferences.java  |  55 ++-
+ .../zomdroid/fragments/OptLabFragment.java    | 369 +++++++++++++-----
+ .../patch/PathfindingNativeManager.java       |   8 +-
+ .../zomdroid/patch/PopManNativeManager.java   |   7 +-
+ tools/NativeModulesPreferencesUnit.java       |  10 +-
+ tools/OptLabCustomPresetStoreUnit.java        |  14 +
+ tools/OptLabLaunchContractUnit.java           |  47 +++
+ tools/OptLabPreferencesIndependenceUnit.java  | 103 ++++-
+ tools/OptLabRegistryIntegrityUnit.java        |  25 +-
+ .../android/content/SharedPreferences.java    |   1 +
+ tools/test-cp62-apk-wiring.sh                 |   6 +
+ tools/test-native-modules-source.sh           |   1 +
+ tools/test-optlab-custom-presets.sh           |   1 +
+ tools/test-optlab-launch-contract.sh          |  54 +++
+ tools/test-optlab-registry-integrity.sh       |   1 +
+ tools/test-optlab-tabbed-ui-source.sh         |  27 +-
+ tools/test-r15-final-qa.sh                    |   2 +
+ tools/ui-stubs/android/view/KeyEvent.java     |   9 +
+ tools/ui-stubs/android/view/MotionEvent.java  |   6 +
+ tools/ui-stubs/android/view/View.java         |   4 +
+ tools/ui-stubs/android/widget/Toast.java      |  11 +
+ .../activity/OnBackPressedCallback.java       |   7 +
+ .../activity/OnBackPressedDispatcher.java     |   6 +
+ .../androidx/fragment/app/Fragment.java       |   3 +
+ .../fragment/app/FragmentActivity.java        |   9 +
+ .../android/material/tabs/TabLayout.java      |   1 +
+ .../com/zomdroid/OptLabPreferences.java       |   1 +
+ 38 files changed, 978 insertions(+), 124 deletions(-)
+ create mode 100644 CHECKPOINTS/R15-07-01-HOST-TEST-RESULTS.txt
+ create mode 100644 CHECKPOINTS/R15-07-01-SETTINGS-ARMING-AND-UI-REPAIR-RO.md
+ create mode 100644 app/src/main/java/com/zomdroid/OptLabLaunchContract.java
+ create mode 100644 tools/OptLabLaunchContractUnit.java
+ create mode 100755 tools/test-optlab-launch-contract.sh
+ create mode 100644 tools/ui-stubs/android/view/KeyEvent.java
+ create mode 100644 tools/ui-stubs/android/view/MotionEvent.java
+ create mode 100644 tools/ui-stubs/android/widget/Toast.java
+ create mode 100644 tools/ui-stubs/androidx/activity/OnBackPressedCallback.java
+ create mode 100644 tools/ui-stubs/androidx/activity/OnBackPressedDispatcher.java
+ create mode 100644 tools/ui-stubs/androidx/fragment/app/FragmentActivity.java
+
+diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
+index 2f0e18b..e54a50b 100644
+--- a/.github/workflows/android.yml
++++ b/.github/workflows/android.yml
+@@ -24,6 +24,7 @@ jobs:
+         run: |
+           ./tools/build-optlab-agent.sh
+           ./tools/test-optlab-agent-source.sh
++          ./tools/test-optlab-launch-contract.sh
+           ./tools/test-pathfinding-native-payload.sh
+           ./tools/test-popman-native-source.sh
+           ./tools/test-native-modules-source.sh
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index ab4f65a..bef083f 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -24,6 +24,7 @@ jobs:
+         run: |
+           ./tools/build-optlab-agent.sh
+           ./tools/test-optlab-agent-source.sh
++          ./tools/test-optlab-launch-contract.sh
+           ./tools/test-pathfinding-native-payload.sh
+           ./tools/test-popman-native-source.sh
+           ./tools/test-native-modules-source.sh
+diff --git a/.github/workflows/workflow-zomdroid.yml b/.github/workflows/workflow-zomdroid.yml
+index a31aee8..5c04e07 100644
+--- a/.github/workflows/workflow-zomdroid.yml
++++ b/.github/workflows/workflow-zomdroid.yml
+@@ -33,6 +33,7 @@ jobs:
+       run: |
+         ./tools/build-optlab-agent.sh
+         ./tools/test-optlab-agent-source.sh
++        ./tools/test-optlab-launch-contract.sh
+         ./tools/test-pathfinding-native-payload.sh
+         ./tools/test-popman-native-source.sh
+         ./tools/test-native-modules-source.sh
+@@ -102,6 +103,7 @@ jobs:
+       run: |
+         ./tools/build-optlab-agent.sh
+         ./tools/test-optlab-agent-source.sh
++        ./tools/test-optlab-launch-contract.sh
+         ./tools/test-pathfinding-native-payload.sh
+         ./tools/test-popman-native-source.sh
+         ./tools/test-native-modules-source.sh
+diff --git a/CHECKPOINTS/R15-07-01-HOST-TEST-RESULTS.txt b/CHECKPOINTS/R15-07-01-HOST-TEST-RESULTS.txt
+new file mode 100644
+index 0000000..3d554d9
+--- /dev/null
++++ b/CHECKPOINTS/R15-07-01-HOST-TEST-RESULTS.txt
+@@ -0,0 +1,33 @@
++R15-07-01 HOST TEST RESULTS
++Date: 2026-08-30 UTC
++
++PASS  tools/test-optlab-launch-contract.sh
++      stale ON removed; explicit OFF authoritative; shorthand -Dkey removed
++PASS  tools/test-optlab-preferences-independence.sh
++      General/Runtime/Display round-trip; profile independence; all-off restart
++PASS  tools/test-optlab-registry-integrity.sh
++      48 registry entries; every configurable feature ON/OFF through restart
++PASS  tools/test-native-modules-preferences.sh
++      Lighting/PZClipper/Pathfinding/PopMan OFF survives restart
++PASS  tools/test-optlab-custom-presets.sh
++      lifecycle, dependency repair, scope isolation, corruption recovery
++PASS  tools/test-optlab-tabbed-ui-compile.sh
++      Java UI compile, six tabs
++PASS  tools/test-optlab-tabbed-ui-source.sh
++      route history, four-action compact preset UI, light/dark resources
++PASS  tools/test-native-modules-source.sh
++      payload selection/fallback and launch gate
++PASS  tools/test-r15-final-qa.sh 42.20.jar 42.20.3.jar
++      source host QA, registry-agent 1:1, agent rebuild, exact JAR transforms,
++      CP6.13.4 parity, FBO parity, CP6.6 hotpaths, Chunk paths, Jassimp,
++      Pathfinding and PopMan source/payload checks
++
++Exact input SHA-256:
++e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8  projectzomboid 42.20
++bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227  projectzomboid 42.20.3
++
++Integrated bundle after deterministic rebuild:
++6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5  app/src/main/assets/bundles/jars.tar
++
++APK_COMPILE: NOT RUN in R15-07-01
++DEVICE_TEST: NO
+diff --git a/CHECKPOINTS/R15-07-01-SETTINGS-ARMING-AND-UI-REPAIR-RO.md b/CHECKPOINTS/R15-07-01-SETTINGS-ARMING-AND-UI-REPAIR-RO.md
+new file mode 100644
+index 0000000..0a7449f
+--- /dev/null
++++ b/CHECKPOINTS/R15-07-01-SETTINGS-ARMING-AND-UI-REPAIR-RO.md
+@@ -0,0 +1,56 @@
++# R15-07-01 — repararea armării setărilor și a navigării OPT-LAB
++
++Data: 2026-08-30 UTC
++
++Baseline autoritativ: arhiva `ZomDroid-R15-06-FINAL-COMPILE-SOURCE-2026-08-30.tar.zst`.
++Commit local de rollback baseline: `948c9f30a61c1af1b824396194424915b6dbe815`.
++
++## Probleme reproduse în sursă
++
++1. Un callback întârziat al spinnerului de profil putea reaplica un profil complet după
++   modificarea unui toggle individual. Efectul vizibil era că un `OFF` din Stream/FBO/Chunk
++   putea reveni la valoarea profilului.
++2. Argumentele salvate în instanță și câmpul JVM liber puteau conține proprietăți
++   `-Dzomdroid.optlab.*` vechi. Lansarea adăuga apoi snapshotul curent fără să impună o singură
++   valoare pentru fiecare cheie.
++3. Navigarea Back era legată de pagini fixe, nu de ruta reală de origine.
++4. Managerul de preseturi completa automat câmpul pentru un preset nou cu numele selecției.
++   Crearea putea eșua astfel ca nume duplicat, iar cele șase acțiuni erau greu de diferențiat.
++5. Catalogul de preseturi corupt era fail-closed, dar nu avea o recuperare simplă în UI.
++
++## Reparații implementate
++
++- `OptLabLaunchContract` elimină toate valorile OPT-LAB/native gestionate din argumentele vechi,
++  scrie fiecare proprietate exact o dată și verifică snapshotul final imediat înainte de JNI.
++  Sunt eliminate și formele JVM prescurtate `-Dcheie`, nu doar `-Dcheie=valoare`.
++- Registrul emite toate proprietățile de feature, inclusiv `0`, iar launcherul verifică valoarea
++  fiecărei proprietăți plus starea requested/active pentru Pathfinding și PopMan.
++- Fiecare scriere SharedPreferences critică folosește `commit()` sincron și read-back; o
++  nepotrivire oprește lansarea/setarea cu eroare explicită în loc să pretindă succes.
++- Profilele General, Build 42 și politica Box64 se aplică numai după o interacțiune reală a
++  utilizatorului; callbackurile programatice nu mai pot rescrie toggle-uri.
++- Back folosește istoric de rute. Exemplu verificat structural:
++  `Build 42 → World Stream & Chunk → Experimental → Back → World Stream & Chunk → Back → Build 42`.
++- Managerul de preseturi vizibil are patru operații clare: creare nouă, aplicare, actualizare și
++  ștergere. API-urile rename/duplicate rămân în motor pentru compatibilitate, dar nu aglomerează UI.
++- Câmpul de nume rămâne exclusiv pentru un preset nou și nu mai este suprascris la selectare.
++- Dacă lista este coruptă apare o acțiune de reparare în doi pași. Ea șterge numai catalogul și
++  ID-ul activ; nu modifică niciun toggle curent.
++- `opt-proof.log` este inclus în Export logs pentru verificare fără ADB.
++
++## Acoperire
++
++- toate cele 48 de intrări ale registrului;
++- toate feature-urile configurabile Build 42 și Experimental: ON → restart logic → OFF → restart;
++- toate controalele General/Runtime/Display în ambele direcții;
++- Lighting, PZClipper, Pathfinding și PopMan în ambele direcții;
++- profilele independente, Safe Mode, dependențele și dependenții;
++- snapshotul JVM fără proprietăți duplicate;
++- agentul integrat `version=15 / schema=14`;
++- JAR-urile exacte 42.20 și 42.20.3.
++
++## Limită de verdict
++
++Host QA este PASS. APK compile și testul pe dispozitiv nu fac parte din acest checkpoint.
++Nu declara DEVICE PASS înainte de un APK instalat și de compararea `opt-proof.log` pentru ON/OFF.
++
+diff --git a/app/src/main/java/com/zomdroid/GameLauncher.java b/app/src/main/java/com/zomdroid/GameLauncher.java
+index 50f63a2..5aa63d8 100755
+--- a/app/src/main/java/com/zomdroid/GameLauncher.java
++++ b/app/src/main/java/com/zomdroid/GameLauncher.java
+@@ -242,6 +242,9 @@ public class GameLauncher {
+                 jvmArgs.add(arg);
+             }
+         }
++        // The instance and free-form field survive APK upgrades.  Never let an old OPT-LAB
++        // property compete with the current preference snapshot; OFF must be authoritative too.
++        OptLabLaunchContract.clearManagedProperties(jvmArgs);
+         if (optLab.isQuietRuntime()) {
+             for (Iterator<String> it = jvmArgs.iterator(); it.hasNext();) {
+                 String value = it.next();
+@@ -280,14 +283,18 @@ public class GameLauncher {
+         compatibility.addAgentFeatureProperties(jvmArgs);
+         pathfindingNative.addAgentProperties(jvmArgs);
+         popManNative.addAgentProperties(jvmArgs);
+-        jvmArgs.add("-Dzomdroid.optlab.session=" + optLabSession);
+-        jvmArgs.add("-Dzomdroid.optlab.proof.path=" + optProofFile.getAbsolutePath());
+-        jvmArgs.add("-Dzomdroid.optlab.fbo.budget=6");
+-        jvmArgs.add("-Dzomdroid.optlab.fbo.urgent.budget=2");
+-        jvmArgs.add("-Dzomdroid.optlab.fbo.max.defer.frames=2");
++        OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.session", optLabSession);
++        OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.proof.path",
++                optProofFile.getAbsolutePath());
++        OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.fbo.budget", "6");
++        OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.fbo.urgent.budget", "2");
++        OptLabLaunchContract.putProperty(jvmArgs,
++                "zomdroid.optlab.fbo.max.defer.frames", "2");
+         if (optLab.isMainloopPacing()) {
+-            jvmArgs.add("-Dzomdroid.optlab.pacing.spin.us=150");
+-            jvmArgs.add("-Dzomdroid.optlab.pacing.max.park.us=500");
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.optlab.pacing.spin.us", "150");
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.optlab.pacing.max.park.us", "500");
+         }
+         boolean agentWorkRequested = optLab.isAnyAgentOptimizationEnabled()
+                 || pathfindingNative.active || popManNative.active;
+@@ -399,6 +406,21 @@ public class GameLauncher {
+         }
+         jvmArgs.add("-Dzomdroid.jassimp.mode=" + jassimpMode);
+         jvmArgs.add("-Dzomdroid.jassimp.sha256=" + jassimpSha);
++        // This is deliberately the last validation before JNI receives the array.  A saved ON
++        // value, a duplicate free-form -D flag, or any later launcher mutation must not make an
++        // explicit OFF ambiguous inside the new game JVM.
++        OptLabLaunchContract.requireUniqueManagedProperties(jvmArgs);
++        compatibility.requireAgentFeatureProperties(jvmArgs);
++        OptLabLaunchContract.requireValue(jvmArgs,
++                "zomdroid.native.pathfinding.requested",
++                pathfindingNative.requested ? "1" : "0");
++        OptLabLaunchContract.requireValue(jvmArgs,
++                "zomdroid.native.pathfinding.active",
++                pathfindingNative.active ? "1" : "0");
++        OptLabLaunchContract.requireValue(jvmArgs,
++                "zomdroid.native.popman.requested", popManNative.requested ? "1" : "0");
++        OptLabLaunchContract.requireValue(jvmArgs,
++                "zomdroid.native.popman.active", popManNative.active ? "1" : "0");
+         Log.i("ZD-OPT-LAB", "[ZD-OPT-LAB] pkg=" + BuildConfig.APPLICATION_ID
+                 + " version=" + BuildConfig.VERSION_NAME
+                 + " " + optLab.machineReadable()
+diff --git a/app/src/main/java/com/zomdroid/InstallerService.java b/app/src/main/java/com/zomdroid/InstallerService.java
+index c602b6d..01b70d2 100755
+--- a/app/src/main/java/com/zomdroid/InstallerService.java
++++ b/app/src/main/java/com/zomdroid/InstallerService.java
+@@ -887,7 +887,10 @@ public class InstallerService extends Service implements TaskProgressListener {
+         File launcherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LOG_FILE_NAME);
+         File lastLauncherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LAST_LOG_FILE_NAME);
+         File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
+-        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists() || mobileGlLog.exists();
++        File optLabProof = new File(AppStorage.requireSingleton().getHomePath()
++                + "/opt-proof.log");
++        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists()
++                || mobileGlLog.exists() || optLabProof.exists();
+     }
+ 
+     // Builds the same diagnostic zip (report.txt + crash/native/shader/console/launcher logs) used
+@@ -911,6 +914,10 @@ public class InstallerService extends Service implements TaskProgressListener {
+         // MobileGL-PZCompat writes its backend/context/shader decisions here.  Keeping it in
+         // the standard report makes the first failed device run diagnosable without ADB.
+         File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
++        // The authoritative requested/effective per-feature snapshot plus agent ACTIVE/FALLBACK
++        // events.  Exporting it makes device verification possible without ADB.
++        File optLabProof = new File(AppStorage.requireSingleton().getHomePath()
++                + "/opt-proof.log");
+         // PZ's own per-session debug log. It is the ONLY place Java-side link/load failures are
+         // recorded — an UnsatisfiedLinkError for a native game method never reaches console.txt,
+         // which is why a broken game lib could go unnoticed across every report we ever received.
+@@ -956,6 +963,7 @@ public class InstallerService extends Service implements TaskProgressListener {
+             addFileToZip(zos, failedShaders, "failed_shaders.txt");
+             addFileToZip(zos, glTrace, "gl_trace.txt");
+             addFileToZip(zos, mobileGlLog, "mobilegl-pzcompat.log");
++            addFileToZip(zos, optLabProof, "opt-proof.log");
+             addFileToZip(zos, consoleFile, "console.txt");
+             addFileToZip(zos, launcherLog, "log.txt");
+             addFileToZip(zos, lastLauncherLog, "lastlog.txt");
+diff --git a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+index 92a9ae8..b4700b7 100644
+--- a/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
++++ b/app/src/main/java/com/zomdroid/NativeModulesPreferences.java
+@@ -51,20 +51,20 @@ public final class NativeModulesPreferences {
+     }
+ 
+     public void setLighting64Enabled(boolean enabled) {
+-        commit(prefs.edit().putBoolean(K_LIGHTING64, enabled));
++        writeBoolean(K_LIGHTING64, enabled);
+     }
+ 
+     public void setPzClipperEnabled(boolean enabled) {
+-        commit(prefs.edit().putBoolean(K_PZCLIPPER, enabled));
++        writeBoolean(K_PZCLIPPER, enabled);
+     }
+ 
+     public void setPathfindingEnabled(boolean enabled) {
+-        commit(prefs.edit().putBoolean(K_PATHFINDING, enabled));
++        writeBoolean(K_PATHFINDING, enabled);
+     }
+ 
+     /** PopMan remains opt-in because it changes persistent zombie-population state. */
+     public void setPopManEnabled(boolean enabled) {
+-        commit(prefs.edit().putBoolean(K_POPMAN, enabled));
++        writeBoolean(K_POPMAN, enabled);
+     }
+ 
+     public String machineReadable() {
+@@ -89,6 +89,13 @@ public final class NativeModulesPreferences {
+         }
+     }
+ 
++    private void writeBoolean(String key, boolean value) {
++        commit(prefs.edit().putBoolean(key, value));
++        if (prefs.getBoolean(key, !value) != value) {
++            throw new IllegalStateException("Native Modules setting read-back mismatch for " + key);
++        }
++    }
++
+     private boolean enabled(String key, boolean fallback) {
+         return !optLab.isSafeModeEnabled() && prefs.getBoolean(key, fallback);
+     }
+diff --git a/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java b/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
+index c3a3ff1..c6519eb 100644
+--- a/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
++++ b/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
+@@ -77,7 +77,12 @@ public final class OptLabCustomPresetStore {
+     }
+ 
+     public Preset active() {
+-        String activeId = prefs.getString(K_ACTIVE_ID, "");
++        final String activeId;
++        try {
++            activeId = prefs.getString(K_ACTIVE_ID, "");
++        } catch (RuntimeException error) {
++            return null;
++        }
+         if (activeId == null || activeId.isEmpty()) return null;
+         for (Preset preset : list()) {
+             if (preset.id.equals(activeId)) return preset;
+@@ -190,11 +195,22 @@ public final class OptLabCustomPresetStore {
+         ArrayList<Preset> next = new ArrayList<>(result.presets);
+         next.remove(index);
+         SharedPreferences.Editor editor = prefs.edit().putString(K_CATALOG, encode(next));
+-        String activeId = prefs.getString(K_ACTIVE_ID, "");
++        String activeId;
++        try {
++            activeId = prefs.getString(K_ACTIVE_ID, "");
++        } catch (RuntimeException ignored) {
++            activeId = "";
++            editor.remove(K_ACTIVE_ID);
++        }
+         if (id.equals(activeId)) editor.putString(K_ACTIVE_ID, "");
+         commit(editor);
+     }
+ 
++    /** Explicit recovery that removes only the custom catalog, never launch feature values. */
++    public void resetCatalog() {
++        commit(prefs.edit().remove(K_CATALOG).remove(K_ACTIVE_ID));
++    }
++
+     void clearActive(SharedPreferences.Editor editor) {
+         editor.putString(K_ACTIVE_ID, "");
+     }
+@@ -208,7 +224,13 @@ public final class OptLabCustomPresetStore {
+     }
+ 
+     private LoadResult load() {
+-        String raw = prefs.getString(K_CATALOG, "");
++        final String raw;
++        try {
++            raw = prefs.getString(K_CATALOG, "");
++        } catch (RuntimeException error) {
++            return new LoadResult(Collections.emptyList(),
++                    "catalog storage type mismatch: " + error.getClass().getSimpleName());
++        }
+         if (raw == null || raw.isEmpty()) {
+             return new LoadResult(Collections.emptyList(), null);
+         }
+diff --git a/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java b/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+index 14daa8b..94b4c28 100644
+--- a/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
++++ b/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+@@ -439,11 +439,16 @@ public final class OptLabFeatureRegistry {
+         }
+ 
+         public void addAgentIdentityProperties(@NonNull java.util.List<String> jvmArgs) {
+-            jvmArgs.add("-Dzomdroid.optlab.pz.build.family=" + propertyValue(buildFamily));
+-            jvmArgs.add("-Dzomdroid.optlab.pz.version.hint=" + propertyValue(versionHint));
+-            jvmArgs.add("-Dzomdroid.optlab.jar.sha256=" + propertyValue(jarSha256));
+-            jvmArgs.add("-Dzomdroid.optlab.jar.known=" + bit(knownJar));
+-            jvmArgs.add("-Dzomdroid.optlab.only.build42=" + bit(onlyBuild42));
++            OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.pz.build.family",
++                    propertyValue(buildFamily));
++            OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.pz.version.hint",
++                    propertyValue(versionHint));
++            OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.jar.sha256",
++                    propertyValue(jarSha256));
++            OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.jar.known",
++                    Integer.toString(bit(knownJar)));
++            OptLabLaunchContract.putProperty(jvmArgs, "zomdroid.optlab.only.build42",
++                    Integer.toString(bit(onlyBuild42)));
+         }
+ 
+         /** Emits every feature property from the registry; no launcher-side duplicate table. */
+@@ -453,7 +458,21 @@ public final class OptLabFeatureRegistry {
+                 Entry entry = get(feature);
+                 boolean enabled = entry.requested
+                         && entry.compatibility != Compatibility.UNSUPPORTED;
+-                jvmArgs.add("-D" + feature.agentProperty + "=" + bit(enabled));
++                OptLabLaunchContract.putProperty(jvmArgs, feature.agentProperty,
++                        Integer.toString(bit(enabled)));
++            }
++        }
++
++        /** Confirms the exact requested snapshot immediately before JNI starts the game JVM. */
++        public void requireAgentFeatureProperties(
++                @NonNull java.util.List<String> jvmArgs) {
++            for (Feature feature : Feature.values()) {
++                if (feature.agentProperty == null) continue;
++                Entry entry = get(feature);
++                boolean enabled = entry.requested
++                        && entry.compatibility != Compatibility.UNSUPPORTED;
++                OptLabLaunchContract.requireValue(jvmArgs, feature.agentProperty,
++                        Integer.toString(bit(enabled)));
+             }
+         }
+ 
+diff --git a/app/src/main/java/com/zomdroid/OptLabLaunchContract.java b/app/src/main/java/com/zomdroid/OptLabLaunchContract.java
+new file mode 100644
+index 0000000..7cabe5e
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/OptLabLaunchContract.java
+@@ -0,0 +1,101 @@
++package com.zomdroid;
++
++import androidx.annotation.NonNull;
++
++import java.util.HashSet;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Set;
++
++/**
++ * Owns the complete set of JVM properties written by OPT-LAB.
++ *
++ * <p>Game instances and the free-form JVM field can outlive an APK upgrade.  They must never be
++ * allowed to retain an older requested state beside the current registry snapshot.  Every launch
++ * therefore removes the complete managed namespace first and writes each property exactly once.</p>
++ */
++public final class OptLabLaunchContract {
++    private static final String PROPERTY_PREFIX = "-D";
++    private static final String[] MANAGED_PREFIXES = {
++            "zomdroid.optlab.",
++            "zomdroid.native.pathfinding.",
++            "zomdroid.native.popman."
++    };
++
++    private OptLabLaunchContract() {}
++
++    /** Removes every persisted/free-form value owned by OPT-LAB before a fresh snapshot is added. */
++    public static void clearManagedProperties(@NonNull List<String> jvmArgs) {
++        for (Iterator<String> iterator = jvmArgs.iterator(); iterator.hasNext();) {
++            String argument = iterator.next();
++            String key = propertyKey(argument);
++            if (key != null && isManagedKey(key)) iterator.remove();
++        }
++    }
++
++    /** Replaces one property rather than relying on JVM duplicate-option precedence. */
++    public static void putProperty(@NonNull List<String> jvmArgs,
++                                   @NonNull String key, @NonNull String value) {
++        if (!isManagedKey(key)) {
++            throw new IllegalArgumentException("Property is outside OPT-LAB contract: " + key);
++        }
++        for (Iterator<String> iterator = jvmArgs.iterator(); iterator.hasNext();) {
++            String existing = propertyKey(iterator.next());
++            if (key.equals(existing)) iterator.remove();
++        }
++        jvmArgs.add(PROPERTY_PREFIX + key + "=" + value);
++    }
++
++    /** Fails before JNI/JVM startup if the authoritative contract contains a duplicate. */
++    public static void requireUniqueManagedProperties(@NonNull List<String> jvmArgs) {
++        Set<String> seen = new HashSet<>();
++        for (String argument : jvmArgs) {
++            String key = propertyKey(argument);
++            if (key != null && isManagedKey(key) && !seen.add(key)) {
++                throw new IllegalStateException("Duplicate OPT-LAB JVM property: " + key);
++            }
++        }
++    }
++
++    public static String valueOf(@NonNull List<String> jvmArgs, @NonNull String key) {
++        String prefix = PROPERTY_PREFIX + key + "=";
++        String value = null;
++        for (String argument : jvmArgs) {
++            if (!argument.startsWith(prefix)) continue;
++            if (value != null) {
++                throw new IllegalStateException("Duplicate OPT-LAB JVM property: " + key);
++            }
++            value = argument.substring(prefix.length());
++        }
++        return value;
++    }
++
++    public static void requireValue(@NonNull List<String> jvmArgs, @NonNull String key,
++                                    @NonNull String expected) {
++        String actual = valueOf(jvmArgs, key);
++        if (!expected.equals(actual)) {
++            throw new IllegalStateException("OPT-LAB launch value mismatch for " + key
++                    + ": expected=" + expected + " actual=" + actual);
++        }
++    }
++
++    private static boolean isManagedKey(String key) {
++        for (String prefix : MANAGED_PREFIXES) {
++            if (key.startsWith(prefix)) return true;
++        }
++        return false;
++    }
++
++    private static String propertyKey(String argument) {
++        if (argument == null || !argument.startsWith(PROPERTY_PREFIX)) return null;
++        int equals = argument.indexOf('=', PROPERTY_PREFIX.length());
++        // The JVM also accepts -Dkey without an equals sign.  Treat it as managed too so a
++        // persisted shorthand flag cannot survive beside the explicit current -Dkey=0 value.
++        if (equals < 0) {
++            return argument.length() > PROPERTY_PREFIX.length()
++                    ? argument.substring(PROPERTY_PREFIX.length()) : null;
++        }
++        if (equals == PROPERTY_PREFIX.length()) return null;
++        return argument.substring(PROPERTY_PREFIX.length(), equals);
++    }
++}
+diff --git a/app/src/main/java/com/zomdroid/OptLabPreferences.java b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+index cb32160..b2e94e9 100644
+--- a/app/src/main/java/com/zomdroid/OptLabPreferences.java
++++ b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+@@ -276,6 +276,7 @@ public final class OptLabPreferences {
+                     EnumSet.noneOf(OptLabFeatureRegistry.Feature.class));
+         }
+         commit(editor);
++        requireStoredBoolean(feature.preferenceKey, value);
+     }
+ 
+     /** Compatibility alias retained for R14 launcher callers. */
+@@ -303,6 +304,7 @@ public final class OptLabPreferences {
+                     .putBoolean(K_MGL_LOG, false);
+         }
+         commit(editor);
++        requireStoredString(K_GENERAL_PROFILE, profile.name());
+     }
+ 
+     /** Build 42 profile; General Runtime/Display, Native and Experimental remain untouched. */
+@@ -326,6 +328,22 @@ public final class OptLabPreferences {
+             }
+         }
+         commit(editor);
++        requireStoredString(K_BUILD42_PROFILE, profile.name());
++        if (profile != LabProfile.CUSTOM) {
++            for (OptLabFeatureRegistry.Feature feature
++                    : OptLabFeatureRegistry.Feature.values()) {
++                if (feature.category != OptLabFeatureRegistry.Category.BUILD42
++                        || feature.preferenceKey == null || !feature.isVisible()) continue;
++                boolean expected;
++                switch (profile) {
++                    case SAFE: expected = feature.safeProfile; break;
++                    case RECOMMENDED: expected = feature.recommendedProfile; break;
++                    case AGGRESSIVE: expected = feature.aggressiveProfile; break;
++                    default: throw new AssertionError(profile);
++                }
++                requireStoredBoolean(feature.preferenceKey, expected);
++            }
++        }
+     }
+ 
+     /** Named snapshots cover all visible registry-owned BUILD42 features only. */
+@@ -382,9 +400,13 @@ public final class OptLabPreferences {
+         customPresets.delete(id);
+     }
+ 
++    public void resetCustomBuild42PresetCatalog() {
++        customPresets.resetCatalog();
++    }
++
+     /** UI disclosure only; it never changes the effective launch configuration. */
+     public void setAdvancedControls(boolean enabled) {
+-        commit(prefs.edit().putBoolean(K_ADVANCED_CONTROLS, enabled));
++        writeBoolean(K_ADVANCED_CONTROLS, enabled);
+     }
+ 
+     public void setProfile(Profile profile) {
+@@ -447,6 +469,7 @@ public final class OptLabPreferences {
+                 break;
+         }
+         commit(editor);
++        requireStoredString(K_PROFILE, profile.name());
+     }
+ 
+     public void setMasterEnabled(boolean value) {
+@@ -458,10 +481,11 @@ public final class OptLabPreferences {
+         commit(prefs.edit().putBoolean(K_MASTER, true)
+                 .putString(K_PROFILE, Profile.CUSTOM.name())
+                 .putString(K_GENERAL_PROFILE, LabProfile.CUSTOM.name()));
++        requireStoredBoolean(K_MASTER, true);
+     }
+ 
+     public void setSafeModeEnabled(boolean value) {
+-        commit(prefs.edit().putBoolean(K_SAFE_MODE, value));
++        writeBoolean(K_SAFE_MODE, value);
+     }
+ 
+     public void setQuietRuntime(boolean value) { editCustom(K_QUIET, value); }
+@@ -583,7 +607,7 @@ public final class OptLabPreferences {
+     }
+ 
+     public void setOnlyBuild42(boolean value) {
+-        commit(prefs.edit().putBoolean(K_ONLY_BUILD42, value));
++        writeBoolean(K_ONLY_BUILD42, value);
+     }
+ 
+     public String build42Summary() {
+@@ -745,10 +769,12 @@ public final class OptLabPreferences {
+     private void editBuild42(String key, boolean value) {
+         commit(prefs.edit().putBoolean(key, value)
+                 .putString(K_BUILD42_PROFILE, LabProfile.CUSTOM.name()));
++        requireStoredBoolean(key, value);
++        requireStoredString(K_BUILD42_PROFILE, LabProfile.CUSTOM.name());
+     }
+ 
+     private void editExperimental(String key, boolean value) {
+-        commit(prefs.edit().putBoolean(key, value));
++        writeBoolean(key, value);
+     }
+ 
+     private static boolean isRenderModule(OptLabFeatureRegistry.Module module) {
+@@ -785,12 +811,33 @@ public final class OptLabPreferences {
+         commit(prefs.edit().putBoolean(key, value)
+                 .putString(K_PROFILE, Profile.CUSTOM.name())
+                 .putString(K_GENERAL_PROFILE, LabProfile.CUSTOM.name()));
++        requireStoredBoolean(key, value);
+     }
+ 
+     private void editCustom(String key, String value) {
+         commit(prefs.edit().putString(key, value)
+                 .putString(K_PROFILE, Profile.CUSTOM.name())
+                 .putString(K_GENERAL_PROFILE, LabProfile.CUSTOM.name()));
++        requireStoredString(key, value);
++    }
++
++    private void writeBoolean(String key, boolean value) {
++        commit(prefs.edit().putBoolean(key, value));
++        requireStoredBoolean(key, value);
++    }
++
++    private void requireStoredBoolean(String key, boolean expected) {
++        boolean actual = prefs.getBoolean(key, !expected);
++        if (actual != expected) {
++            throw new IllegalStateException("OPT-LAB setting read-back mismatch for " + key);
++        }
++    }
++
++    private void requireStoredString(String key, String expected) {
++        String actual = prefs.getString(key, null);
++        if (!expected.equals(actual)) {
++            throw new IllegalStateException("OPT-LAB setting read-back mismatch for " + key);
++        }
+     }
+ 
+     private static void commit(SharedPreferences.Editor editor) {
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+index 0caf2fb..9688ece 100644
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+@@ -2,14 +2,18 @@ package com.zomdroid.fragments;
+ 
+ import android.os.Bundle;
+ import android.view.LayoutInflater;
++import android.view.KeyEvent;
++import android.view.MotionEvent;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.AdapterView;
+ import android.widget.FrameLayout;
+ import android.widget.TextView;
++import android.widget.Toast;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
++import androidx.activity.OnBackPressedCallback;
+ import androidx.fragment.app.Fragment;
+ 
+ import com.google.android.material.button.MaterialButton;
+@@ -21,6 +25,8 @@ import com.zomdroid.OptLabPreferences;
+ import com.zomdroid.R;
+ 
+ import java.util.ArrayList;
++import java.util.ArrayDeque;
++import java.util.Deque;
+ import java.util.EnumMap;
+ import java.util.List;
+ import java.util.Locale;
+@@ -57,6 +63,14 @@ public final class OptLabFragment extends Fragment {
+     private View[] pages;
+     private boolean updating;
+     private boolean uiReady;
++    // Spinner callbacks can be delivered after a programmatic setSelection().  Profiles rewrite
++    // whole modules, so only a real user gesture is allowed to apply one.
++    private boolean generalProfileGesture;
++    private boolean build42ProfileGesture;
++    private boolean box64Gesture;
++    private boolean internalTabSelection;
++    private Route currentRoute;
++    private final Deque<Route> routeHistory = new ArrayDeque<>();
+ 
+     private OptLabUi.SpinnerCard<OptLabPreferences.LabProfile> generalProfileCard;
+     private OptLabUi.NavCard overviewRuntime;
+@@ -92,11 +106,11 @@ public final class OptLabFragment extends Fragment {
+     private MaterialButton customPresetCreate;
+     private MaterialButton customPresetApply;
+     private MaterialButton customPresetUpdate;
+-    private MaterialButton customPresetRename;
+-    private MaterialButton customPresetDuplicate;
+     private MaterialButton customPresetDelete;
++    private MaterialButton customPresetReset;
+     private String presetUiSelectedId;
+     private String pendingPresetDeleteId;
++    private boolean pendingPresetReset;
+     private String presetUiMessage = "";
+     private final EnumMap<OptLabFeatureRegistry.Module, View> modulePages =
+             new EnumMap<>(OptLabFeatureRegistry.Module.class);
+@@ -149,21 +163,37 @@ public final class OptLabFragment extends Fragment {
+         }
+         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+             @Override public void onTabSelected(TabLayout.Tab tab) {
+-                showPage(tab.getPosition());
++                if (internalTabSelection) {
++                    internalTabSelection = false;
++                    return;
++                }
++                navigateTopLevel(tab.getPosition());
+             }
+             @Override public void onTabUnselected(TabLayout.Tab tab) {}
+             @Override public void onTabReselected(TabLayout.Tab tab) {
+-                if (tab.getPosition() == TAB_BUILD42) showBuild42Home();
+-                else if (tab.getPosition() == TAB_EXPERIMENTAL) showExperimentalHome();
+-                else pages[tab.getPosition()].scrollTo(0, 0);
++                navigateTopLevel(tab.getPosition());
+             }
+         });
+         bindListeners();
+         uiReady = true;
+         syncAll();
++        currentRoute = Route.root(TAB_OVERVIEW);
+         return root;
+     }
+ 
++    @Override public void onViewCreated(@NonNull View view,
++                                        @Nullable Bundle savedInstanceState) {
++        super.onViewCreated(view, savedInstanceState);
++        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(),
++                new OnBackPressedCallback(true) {
++                    @Override public void handleOnBackPressed() {
++                        if (navigateBack()) return;
++                        setEnabled(false);
++                        requireActivity().getOnBackPressedDispatcher().onBackPressed();
++                    }
++                });
++    }
++
+     @Override public void onResume() {
+         super.onResume();
+         if (uiReady) syncAll();
+@@ -207,12 +237,18 @@ public final class OptLabFragment extends Fragment {
+         customPresetCreate = null;
+         customPresetApply = null;
+         customPresetUpdate = null;
+-        customPresetRename = null;
+-        customPresetDuplicate = null;
+         customPresetDelete = null;
++        customPresetReset = null;
+         presetUiSelectedId = null;
+         pendingPresetDeleteId = null;
++        pendingPresetReset = false;
+         presetUiMessage = "";
++        generalProfileGesture = false;
++        build42ProfileGesture = false;
++        box64Gesture = false;
++        internalTabSelection = false;
++        currentRoute = null;
++        routeHistory.clear();
+         clipper = null;
+         experimentalHost = null;
+         experimentalHome = null;
+@@ -266,10 +302,8 @@ public final class OptLabFragment extends Fragment {
+     }
+ 
+     private OptLabUi.NavCard overviewCard(int icon, int title, int tab) {
+-        return OptLabUi.navCard(requireContext(), icon, getString(title), "", view -> {
+-            if (tab == TAB_BUILD42) showBuild42Home();
+-            selectTab(tab);
+-        });
++        return OptLabUi.navCard(requireContext(), icon, getString(title), "",
++                view -> navigateTopLevel(tab));
+     }
+ 
+     private View buildRuntimePage() {
+@@ -333,13 +367,13 @@ public final class OptLabFragment extends Fragment {
+                 "Afișează controalele individuale; nu modifică singur nicio optimizare");
+         customPresetCard = OptLabUi.navCard(requireContext(),
+                 R.drawable.optlab_ic_profile, "Preseturi custom Build 42", "",
+-                view -> showCustomPresetManager());
++                view -> navigate(Route.build42Presets(), true));
+         OptLabUi.addCard(home.content, customPresetCard.root);
+         home.content.addView(OptLabUi.section(requireContext(), "Module Build 42"));
+         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
+             OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
+                     R.drawable.optlab_ic_build42, module.label, "",
+-                    view -> showBuild42Module(module));
++                    view -> navigate(Route.build42Module(module), true));
+             moduleCards.put(module, card);
+             OptLabUi.addCard(home.content, card.root);
+         }
+@@ -369,7 +403,7 @@ public final class OptLabFragment extends Fragment {
+     private View buildModulePage(OptLabFeatureRegistry.Module module) {
+         OptLabUi.Page page = OptLabUi.page(requireContext());
+         MaterialButton back = OptLabUi.actionButton(requireContext(), "← Build 42");
+-        back.setOnClickListener(view -> showBuild42Home());
++        back.setOnClickListener(view -> navigateBackOr(Route.build42Home()));
+         page.content.addView(back);
+         page.content.addView(OptLabUi.section(requireContext(), module.label));
+         OptLabUi.NavCard status = OptLabUi.navCard(requireContext(),
+@@ -390,8 +424,7 @@ public final class OptLabFragment extends Fragment {
+                     R.drawable.optlab_ic_experimental,
+                     getString(R.string.opt_lab_experimental_card),
+                     getString(R.string.opt_lab_experimental_module_link), view -> {
+-                        selectTab(TAB_EXPERIMENTAL);
+-                        showExperimentalModule(module);
++                        navigate(Route.experimentalModule(module), true);
+                     });
+             OptLabUi.addCard(page.content, experimental.root);
+         }
+@@ -422,7 +455,7 @@ public final class OptLabFragment extends Fragment {
+     private View buildCustomPresetManagerPage() {
+         OptLabUi.Page page = OptLabUi.page(requireContext());
+         MaterialButton back = OptLabUi.actionButton(requireContext(), "← Build 42");
+-        back.setOnClickListener(view -> showBuild42Home());
++        back.setOnClickListener(view -> navigateBackOr(Route.build42Home()));
+         page.content.addView(back);
+         page.content.addView(OptLabUi.section(requireContext(),
+                 "Preseturi custom · Build 42"));
+@@ -435,33 +468,34 @@ public final class OptLabFragment extends Fragment {
+                 new OptLabCustomPresetStore.Preset[0]);
+         OptLabUi.addCard(page.content, customPresetSpinner.root);
+         customPresetName = OptLabUi.textFieldCard(requireContext(),
+-                "Nume pentru creare, redenumire sau duplicare",
++                "Nume pentru un preset nou",
+                 "Ex.: Telefon, Oraș, Exterior");
+         OptLabUi.addCard(page.content, customPresetName.root);
+ 
+         customPresetCreate = OptLabUi.actionButton(requireContext(),
+                 "Creează din configurația curentă");
+-        customPresetApply = OptLabUi.actionButton(requireContext(), "Aplică");
+-        customPresetUpdate = OptLabUi.actionButton(requireContext(), "Actualizează");
+-        customPresetRename = OptLabUi.actionButton(requireContext(), "Redenumește");
+-        customPresetDuplicate = OptLabUi.actionButton(requireContext(), "Duplică");
+-        customPresetDelete = OptLabUi.actionButton(requireContext(), "Șterge");
++        customPresetApply = OptLabUi.actionButton(requireContext(), "Aplică presetul selectat");
++        customPresetUpdate = OptLabUi.actionButton(requireContext(),
++                "Salvează starea curentă în preset");
++        customPresetDelete = OptLabUi.actionButton(requireContext(),
++                "Șterge presetul selectat");
++        customPresetReset = OptLabUi.actionButton(requireContext(),
++                "Repară lista de preseturi");
+         customPresetCreate.setOnClickListener(view -> createCustomPreset());
+         customPresetApply.setOnClickListener(view -> applyCustomPreset());
+         customPresetUpdate.setOnClickListener(view -> updateCustomPreset());
+-        customPresetRename.setOnClickListener(view -> renameCustomPreset());
+-        customPresetDuplicate.setOnClickListener(view -> duplicateCustomPreset());
+         customPresetDelete.setOnClickListener(view -> deleteCustomPreset());
++        customPresetReset.setOnClickListener(view -> resetCustomPresetCatalog());
+         page.content.addView(customPresetCreate);
+         page.content.addView(OptLabUi.actionRow(requireContext(),
+                 customPresetApply, customPresetUpdate));
+-        page.content.addView(OptLabUi.actionRow(requireContext(),
+-                customPresetRename, customPresetDuplicate));
+         page.content.addView(customPresetDelete);
++        page.content.addView(customPresetReset);
+         page.content.addView(OptLabUi.note(requireContext(),
+                 "Presetul salvează toate controalele Build 42 vizibile, inclusiv Internal și "
+                         + "Experimental Build 42. General, Native și Experimental independent "
+-                        + "rămân neatinse. Ștergerea cere două apăsări."));
++                        + "rămân neatinse. Aplică încarcă valorile, iar Salvează actualizează "
++                        + "presetul selectat. Ștergerea cere două apăsări."));
+         return page.root;
+     }
+ 
+@@ -496,10 +530,8 @@ public final class OptLabFragment extends Fragment {
+                 R.drawable.optlab_ic_experimental,
+                 getString(R.string.opt_lab_experimental_card),
+                 getString(R.string.opt_lab_native_experimental_link),
+-                view -> {
+-                    selectTab(TAB_EXPERIMENTAL);
+-                    showExperimentalNative();
+-                });
++                view -> navigate(Route.experimentalModule(
++                        OptLabFeatureRegistry.Module.NATIVE_ARM64), true));
+         OptLabUi.addCard(page.content, experimentalLink.root);
+         page.content.addView(OptLabUi.note(requireContext(),
+                 getString(R.string.native_modules_restart)));
+@@ -519,13 +551,14 @@ public final class OptLabFragment extends Fragment {
+         experimentalNativeCard = OptLabUi.navCard(requireContext(),
+                 R.drawable.optlab_ic_native,
+                 getString(R.string.opt_lab_experimental_native), "",
+-                view -> showExperimentalNative());
++                view -> navigate(Route.experimentalModule(
++                        OptLabFeatureRegistry.Module.NATIVE_ARM64), true));
+         OptLabUi.addCard(home.content, experimentalNativeCard.root);
+         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
+             if (!hasExperimentalFeatures(module)) continue;
+             OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
+                     R.drawable.optlab_ic_experimental, module.label, "",
+-                    view -> showExperimentalModule(module));
++                    view -> navigate(Route.experimentalModule(module), true));
+             experimentalModuleCards.put(module, card);
+             OptLabUi.addCard(home.content, card.root);
+         }
+@@ -588,7 +621,7 @@ public final class OptLabFragment extends Fragment {
+         OptLabUi.Page page = OptLabUi.page(requireContext());
+         MaterialButton back = OptLabUi.actionButton(requireContext(),
+                 getString(R.string.opt_lab_experimental_back));
+-        back.setOnClickListener(view -> showExperimentalHome());
++        back.setOnClickListener(view -> navigateBackOr(Route.experimentalHome()));
+         page.content.addView(back);
+         page.content.addView(OptLabUi.section(requireContext(), title));
+         return page;
+@@ -598,9 +631,17 @@ public final class OptLabFragment extends Fragment {
+         generalProfileCard.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+             @Override public void onItemSelected(AdapterView<?> parent, View view,
+                                                   int position, long id) {
+-                if (!uiReady || updating) return;
+-                prefs.setGeneralProfile((OptLabPreferences.LabProfile)
+-                        parent.getItemAtPosition(position));
++                OptLabPreferences.LabProfile selected = (OptLabPreferences.LabProfile)
++                        parent.getItemAtPosition(position);
++                boolean userGesture = generalProfileGesture;
++                generalProfileGesture = false;
++                if (!uiReady || updating || !userGesture
++                        || selected == prefs.getGeneralProfile()) return;
++                try {
++                    prefs.setGeneralProfile(selected);
++                } catch (RuntimeException error) {
++                    showSettingsError(error);
++                }
+                 syncAll();
+             }
+             @Override public void onNothingSelected(AdapterView<?> parent) {}
+@@ -609,13 +650,24 @@ public final class OptLabFragment extends Fragment {
+                 new AdapterView.OnItemSelectedListener() {
+                     @Override public void onItemSelected(AdapterView<?> parent, View view,
+                                                           int position, long id) {
+-                        if (!uiReady || updating) return;
+-                        prefs.setBuild42LabProfile((OptLabPreferences.LabProfile)
+-                                parent.getItemAtPosition(position));
++                        OptLabPreferences.LabProfile selected =
++                                (OptLabPreferences.LabProfile)
++                                        parent.getItemAtPosition(position);
++                        boolean userGesture = build42ProfileGesture;
++                        build42ProfileGesture = false;
++                        if (!uiReady || updating || !userGesture
++                                || selected == prefs.getBuild42LabProfile()) return;
++                        try {
++                            prefs.setBuild42LabProfile(selected);
++                        } catch (RuntimeException error) {
++                            showSettingsError(error);
++                        }
+                         syncAll();
+                     }
+                     @Override public void onNothingSelected(AdapterView<?> parent) {}
+                 });
++        armProfileGesture(generalProfileCard, true);
++        armProfileGesture(build42ProfileCard, false);
+         customPresetSpinner.spinner.setOnItemSelectedListener(
+                 new AdapterView.OnItemSelectedListener() {
+                     @Override public void onItemSelected(AdapterView<?> parent, View view,
+@@ -627,8 +679,8 @@ public final class OptLabFragment extends Fragment {
+                                 (OptLabCustomPresetStore.Preset) item;
+                         presetUiSelectedId = preset.getId();
+                         pendingPresetDeleteId = null;
++                        pendingPresetReset = false;
+                         presetUiMessage = "";
+-                        customPresetName.input.setText(preset.getName());
+                         updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+                                 prefs.getCustomBuild42Presets(), preset);
+                     }
+@@ -637,13 +689,22 @@ public final class OptLabFragment extends Fragment {
+         box64.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+             @Override public void onItemSelected(AdapterView<?> parent, View view,
+                                                   int position, long id) {
+-                if (!uiReady || updating) return;
+-                prefs.setBox64Policy((OptLabPreferences.Box64Policy)
+-                        parent.getItemAtPosition(position));
++                OptLabPreferences.Box64Policy selected = (OptLabPreferences.Box64Policy)
++                        parent.getItemAtPosition(position);
++                boolean userGesture = box64Gesture;
++                box64Gesture = false;
++                if (!uiReady || updating || !userGesture
++                        || selected == prefs.getBox64Policy()) return;
++                try {
++                    prefs.setBox64Policy(selected);
++                } catch (RuntimeException error) {
++                    showSettingsError(error);
++                }
+                 syncAll();
+             }
+             @Override public void onNothingSelected(AdapterView<?> parent) {}
+         });
++        armBox64Gesture();
+         bind(safeMode, prefs::setSafeModeEnabled);
+         bind(generalMaster, prefs::setMasterEnabled);
+         bind(quiet, prefs::setQuietRuntime);
+@@ -819,10 +880,8 @@ public final class OptLabFragment extends Fragment {
+                 customPresetSpinner.spinner.setSelection(position, false);
+             }
+             presetUiSelectedId = selected.getId();
+-            customPresetName.input.setText(selected.getName());
+         } else {
+             presetUiSelectedId = null;
+-            customPresetName.input.setText("");
+         }
+         updateSelectedPresetControls(safe, presets, selected);
+     }
+@@ -838,12 +897,14 @@ public final class OptLabFragment extends Fragment {
+         customPresetCreate.setEnabled(mutable);
+         customPresetApply.setEnabled(mutable && hasSelection);
+         customPresetUpdate.setEnabled(mutable && hasSelection);
+-        customPresetRename.setEnabled(mutable && hasSelection);
+-        customPresetDuplicate.setEnabled(mutable && hasSelection);
+         customPresetDelete.setEnabled(mutable && hasSelection);
++        customPresetReset.setVisibility(storageProblem ? View.VISIBLE : View.GONE);
++        customPresetReset.setEnabled(!safe && storageProblem);
+         customPresetDelete.setText(hasSelection
+                 && selected.getId().equals(pendingPresetDeleteId)
+-                ? "Confirmă ștergerea" : "Șterge");
++                ? "Confirmă ștergerea" : "Șterge presetul selectat");
++        customPresetReset.setText(pendingPresetReset
++                ? "Confirmă repararea listei" : "Repară lista de preseturi");
+ 
+         String state;
+         if (storageProblem) {
+@@ -872,6 +933,7 @@ public final class OptLabFragment extends Fragment {
+         try {
+             OptLabCustomPresetStore.Preset preset = prefs.createCustomBuild42Preset(
+                     requestedPresetName());
++            customPresetName.input.setText("");
+             completePresetAction(preset, "Preset creat");
+         } catch (RuntimeException error) {
+             failPresetAction(error);
+@@ -906,52 +968,45 @@ public final class OptLabFragment extends Fragment {
+         }
+     }
+ 
+-    private void renameCustomPreset() {
++    private void deleteCustomPreset() {
+         OptLabCustomPresetStore.Preset selected = selectedPreset();
+         if (selected == null) {
+             failPresetAction("Selectează un preset");
+             return;
+         }
+-        try {
+-            completePresetAction(prefs.renameCustomBuild42Preset(selected.getId(),
+-                    requestedPresetName()), "Preset redenumit");
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void duplicateCustomPreset() {
+-        OptLabCustomPresetStore.Preset selected = selectedPreset();
+-        if (selected == null) {
+-            failPresetAction("Selectează un preset");
++        if (!selected.getId().equals(pendingPresetDeleteId)) {
++            pendingPresetDeleteId = selected.getId();
++            presetUiMessage = "Apasă din nou pentru ștergerea definitivă";
++            updateSelectedPresetControls(prefs.isSafeModeEnabled(),
++                    prefs.getCustomBuild42Presets(), selected);
+             return;
+         }
+         try {
+-            completePresetAction(prefs.duplicateCustomBuild42Preset(selected.getId(),
+-                    requestedPresetName()), "Preset duplicat · nu este încă aplicat");
++            prefs.deleteCustomBuild42Preset(selected.getId());
++            presetUiSelectedId = null;
++            pendingPresetDeleteId = null;
++            presetUiMessage = "Preset șters";
++            syncAll();
+         } catch (RuntimeException error) {
+             failPresetAction(error);
+         }
+     }
+ 
+-    private void deleteCustomPreset() {
+-        OptLabCustomPresetStore.Preset selected = selectedPreset();
+-        if (selected == null) {
+-            failPresetAction("Selectează un preset");
+-            return;
+-        }
+-        if (!selected.getId().equals(pendingPresetDeleteId)) {
+-            pendingPresetDeleteId = selected.getId();
+-            presetUiMessage = "Apasă din nou pentru ștergerea definitivă";
++    private void resetCustomPresetCatalog() {
++        if (!prefs.hasCustomBuild42PresetStorageProblem()) return;
++        if (!pendingPresetReset) {
++            pendingPresetReset = true;
++            presetUiMessage = "Repararea șterge numai lista coruptă, nu setările active";
+             updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+-                    prefs.getCustomBuild42Presets(), selected);
++                    prefs.getCustomBuild42Presets(), selectedPreset());
+             return;
+         }
+         try {
+-            prefs.deleteCustomBuild42Preset(selected.getId());
++            prefs.resetCustomBuild42PresetCatalog();
+             presetUiSelectedId = null;
+             pendingPresetDeleteId = null;
+-            presetUiMessage = "Preset șters";
++            pendingPresetReset = false;
++            presetUiMessage = "Lista de preseturi a fost reparată; setările active au rămas intacte";
+             syncAll();
+         } catch (RuntimeException error) {
+             failPresetAction(error);
+@@ -962,6 +1017,7 @@ public final class OptLabFragment extends Fragment {
+                                       String message) {
+         presetUiSelectedId = preset.getId();
+         pendingPresetDeleteId = null;
++        pendingPresetReset = false;
+         presetUiMessage = message;
+         syncAll();
+     }
+@@ -974,6 +1030,7 @@ public final class OptLabFragment extends Fragment {
+ 
+     private void failPresetAction(String message) {
+         pendingPresetDeleteId = null;
++        pendingPresetReset = false;
+         presetUiMessage = "Eroare: " + message;
+         updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+                 prefs.getCustomBuild42Presets(), selectedPreset());
+@@ -1175,25 +1232,163 @@ public final class OptLabFragment extends Fragment {
+     private void bind(OptLabUi.ToggleCard card, BooleanSetter setter) {
+         card.toggle.setOnCheckedChangeListener((view, checked) -> {
+             if (!uiReady || updating) return;
+-            setter.set(checked);
++            try {
++                setter.set(checked);
++            } catch (RuntimeException error) {
++                showSettingsError(error);
++            }
+             syncAll();
+         });
+     }
+ 
++    private void armProfileGesture(OptLabUi.SpinnerCard<?> card, boolean general) {
++        card.spinner.setOnTouchListener((view, event) -> {
++            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
++                if (general) generalProfileGesture = true;
++                else build42ProfileGesture = true;
++            }
++            return false;
++        });
++        card.spinner.setOnKeyListener((view, keyCode, event) -> {
++            if (event.getAction() == KeyEvent.ACTION_DOWN
++                    && (keyCode == KeyEvent.KEYCODE_ENTER
++                    || keyCode == KeyEvent.KEYCODE_DPAD_CENTER
++                    || keyCode == KeyEvent.KEYCODE_SPACE)) {
++                if (general) generalProfileGesture = true;
++                else build42ProfileGesture = true;
++            }
++            return false;
++        });
++    }
++
++    private void armBox64Gesture() {
++        box64.spinner.setOnTouchListener((view, event) -> {
++            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) box64Gesture = true;
++            return false;
++        });
++        box64.spinner.setOnKeyListener((view, keyCode, event) -> {
++            if (event.getAction() == KeyEvent.ACTION_DOWN
++                    && (keyCode == KeyEvent.KEYCODE_ENTER
++                    || keyCode == KeyEvent.KEYCODE_DPAD_CENTER
++                    || keyCode == KeyEvent.KEYCODE_SPACE)) {
++                box64Gesture = true;
++            }
++            return false;
++        });
++    }
++
++    private void showSettingsError(RuntimeException error) {
++        String detail = error.getMessage();
++        Toast.makeText(requireContext(), "OPT-LAB: setarea nu a fost salvată"
++                + (detail == null || detail.isEmpty() ? "" : " · " + detail),
++                Toast.LENGTH_LONG).show();
++    }
++
+     private void addTab(int label) { tabs.addTab(tabs.newTab().setText(label)); }
+ 
+-    private void showPage(int selected) {
+-        if (pages == null) return;
++    private void navigateTopLevel(int tab) {
++        routeHistory.clear();
++        Route target = tab == TAB_BUILD42 ? Route.build42Home()
++                : tab == TAB_EXPERIMENTAL ? Route.experimentalHome() : Route.root(tab);
++        navigate(target, false);
++    }
++
++    private void navigate(Route target, boolean rememberCurrent) {
++        if (pages == null || tabs == null || target == null) return;
++        if (rememberCurrent && currentRoute != null && !currentRoute.samePage(target)) {
++            routeHistory.push(currentRoute);
++        }
++        renderRoute(target);
++    }
++
++    private boolean navigateBack() {
++        if (routeHistory.isEmpty()) return false;
++        renderRoute(routeHistory.pop());
++        return true;
++    }
++
++    private void navigateBackOr(Route fallback) {
++        if (!navigateBack()) navigate(fallback, false);
++    }
++
++    private void renderRoute(Route route) {
++        if (pages == null || tabs == null) return;
++        TabLayout.Tab selected = tabs.getTabAt(route.tab);
++        if (selected != null && tabs.getSelectedTabPosition() != route.tab) {
++            internalTabSelection = true;
++            selected.select();
++            // TabLayout normally dispatches synchronously.  If it does not, the selected route
++            // still renders here and the delayed callback is ignored once.
++        }
+         for (int index = 0; index < pages.length; index++) {
+-            pages[index].setVisibility(index == selected ? View.VISIBLE : View.GONE);
++            pages[index].setVisibility(index == route.tab ? View.VISIBLE : View.GONE);
++        }
++        switch (route.kind) {
++            case BUILD42_HOME:
++                showBuild42Home();
++                break;
++            case BUILD42_MODULE:
++                showBuild42Module(route.module);
++                break;
++            case BUILD42_PRESETS:
++                showCustomPresetManager();
++                break;
++            case EXPERIMENTAL_HOME:
++                showExperimentalHome();
++                break;
++            case EXPERIMENTAL_MODULE:
++                showExperimentalModule(route.module);
++                break;
++            case ROOT:
++                pages[route.tab].scrollTo(0, 0);
++                break;
++            default:
++                throw new AssertionError(route.kind);
+         }
+-        if (selected == TAB_BUILD42) showBuild42Home();
+-        else if (selected == TAB_EXPERIMENTAL) showExperimentalHome();
++        currentRoute = route;
++    }
++
++    private enum RouteKind {
++        ROOT,
++        BUILD42_HOME,
++        BUILD42_MODULE,
++        BUILD42_PRESETS,
++        EXPERIMENTAL_HOME,
++        EXPERIMENTAL_MODULE
+     }
+ 
+-    private void selectTab(int index) {
+-        TabLayout.Tab tab = tabs == null ? null : tabs.getTabAt(index);
+-        if (tab != null) tab.select();
++    private static final class Route {
++        final int tab;
++        final RouteKind kind;
++        final OptLabFeatureRegistry.Module module;
++
++        private Route(int tab, RouteKind kind, OptLabFeatureRegistry.Module module) {
++            this.tab = tab;
++            this.kind = kind;
++            this.module = module;
++        }
++
++        static Route root(int tab) { return new Route(tab, RouteKind.ROOT, null); }
++        static Route build42Home() {
++            return new Route(TAB_BUILD42, RouteKind.BUILD42_HOME, null);
++        }
++        static Route build42Module(OptLabFeatureRegistry.Module module) {
++            return new Route(TAB_BUILD42, RouteKind.BUILD42_MODULE, module);
++        }
++        static Route build42Presets() {
++            return new Route(TAB_BUILD42, RouteKind.BUILD42_PRESETS, null);
++        }
++        static Route experimentalHome() {
++            return new Route(TAB_EXPERIMENTAL, RouteKind.EXPERIMENTAL_HOME, null);
++        }
++        static Route experimentalModule(OptLabFeatureRegistry.Module module) {
++            return new Route(TAB_EXPERIMENTAL, RouteKind.EXPERIMENTAL_MODULE, module);
++        }
++
++        boolean samePage(Route other) {
++            return other != null && tab == other.tab && kind == other.kind
++                    && module == other.module;
++        }
+     }
+ 
+     private int runtimeCount() {
+diff --git a/app/src/main/java/com/zomdroid/patch/PathfindingNativeManager.java b/app/src/main/java/com/zomdroid/patch/PathfindingNativeManager.java
+index 86930bd..e346b12 100644
+--- a/app/src/main/java/com/zomdroid/patch/PathfindingNativeManager.java
++++ b/app/src/main/java/com/zomdroid/patch/PathfindingNativeManager.java
+@@ -5,6 +5,7 @@ import android.util.Log;
+ import com.zomdroid.AppStorage;
+ import com.zomdroid.ElfSymbols;
+ import com.zomdroid.NativeModulesPreferences;
++import com.zomdroid.OptLabLaunchContract;
+ import com.zomdroid.game.GameInstance;
+ 
+ import java.io.File;
+@@ -111,8 +112,11 @@ public final class PathfindingNativeManager {
+         }
+ 
+         public void addAgentProperties(java.util.List<String> jvmArgs) {
+-            jvmArgs.add("-Dzomdroid.native.pathfinding.requested=" + bit(requested));
+-            jvmArgs.add("-Dzomdroid.native.pathfinding.active=" + bit(active));
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.native.pathfinding.requested",
++                    Integer.toString(bit(requested)));
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.native.pathfinding.active", Integer.toString(bit(active)));
+         }
+     }
+ 
+diff --git a/app/src/main/java/com/zomdroid/patch/PopManNativeManager.java b/app/src/main/java/com/zomdroid/patch/PopManNativeManager.java
+index d2d92f3..bd626a5 100644
+--- a/app/src/main/java/com/zomdroid/patch/PopManNativeManager.java
++++ b/app/src/main/java/com/zomdroid/patch/PopManNativeManager.java
+@@ -5,6 +5,7 @@ import android.util.Log;
+ import com.zomdroid.AppStorage;
+ import com.zomdroid.ElfSymbols;
+ import com.zomdroid.NativeModulesPreferences;
++import com.zomdroid.OptLabLaunchContract;
+ import com.zomdroid.game.GameInstance;
+ 
+ import java.io.File;
+@@ -129,8 +130,10 @@ public final class PopManNativeManager {
+         }
+ 
+         public void addAgentProperties(java.util.List<String> jvmArgs) {
+-            jvmArgs.add("-Dzomdroid.native.popman.requested=" + bit(requested));
+-            jvmArgs.add("-Dzomdroid.native.popman.active=" + bit(active));
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.native.popman.requested", Integer.toString(bit(requested)));
++            OptLabLaunchContract.putProperty(jvmArgs,
++                    "zomdroid.native.popman.active", Integer.toString(bit(active)));
+         }
+     }
+ 
+diff --git a/tools/NativeModulesPreferencesUnit.java b/tools/NativeModulesPreferencesUnit.java
+index 1c14a18..27d9217 100644
+--- a/tools/NativeModulesPreferencesUnit.java
++++ b/tools/NativeModulesPreferencesUnit.java
+@@ -43,9 +43,17 @@ public final class NativeModulesPreferencesUnit {
+         require(!resumed.isPzClipperEnabled(), "stored PZClipper restored");
+         require(resumed.isPathfindingEnabled(), "stored Pathfinding restored");
+         require(resumed.isPopManEnabled(), "stored PopMan restored");
++        resumed.setLighting64Enabled(false);
++        resumed.setPzClipperEnabled(false);
++        resumed.setPathfindingEnabled(false);
++        resumed.setPopManEnabled(false);
++        NativeModulesPreferences allOff = NativeModulesPreferences.from(context);
++        require(!allOff.isLighting64Enabled() && !allOff.isPzClipperEnabled()
++                        && !allOff.isPathfindingEnabled() && !allOff.isPopManEnabled(),
++                "one or more Native toggles re-armed after explicit OFF");
+         require(NativeModulesPreferences.SCHEMA == 4, "native schema 4");
+         System.out.println("NATIVE_MODULES_PREFERENCES_UNIT PASS schema=4 safe_mode=1"
+-                + " lighting_default_off=1");
++                + " lighting_default_off=1 off_restart=all");
+     }
+ 
+     private static final class FakeContext extends Context {
+diff --git a/tools/OptLabCustomPresetStoreUnit.java b/tools/OptLabCustomPresetStoreUnit.java
+index f9199d2..718b506 100644
+--- a/tools/OptLabCustomPresetStoreUnit.java
++++ b/tools/OptLabCustomPresetStoreUnit.java
+@@ -159,6 +159,12 @@ public final class OptLabCustomPresetStoreUnit {
+                 "unknown catalog data was destroyed");
+         require(prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP),
+                 "catalog failure changed live Build 42 state");
++        prefs.resetCustomBuild42PresetCatalog();
++        require(!prefs.hasCustomBuild42PresetStorageProblem()
++                        && prefs.getCustomBuild42Presets().isEmpty(),
++                "catalog-only recovery did not restore an empty writable store");
++        require(prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP),
++                "catalog reset changed live Build 42 state");
+     }
+ 
+     private static int visibleBuild42Count() {
+@@ -214,15 +220,23 @@ public final class OptLabCustomPresetStoreUnit {
+         @Override public Editor edit() {
+             return new Editor() {
+                 private final Map<String, Object> pending = new HashMap<>();
++                private final java.util.Set<String> removed = new java.util.HashSet<>();
+                 @Override public Editor putBoolean(String key, boolean value) {
+                     pending.put(key, value);
+                     return this;
+                 }
+                 @Override public Editor putString(String key, String value) {
+                     pending.put(key, value);
++                    removed.remove(key);
++                    return this;
++                }
++                @Override public Editor remove(String key) {
++                    pending.remove(key);
++                    removed.add(key);
+                     return this;
+                 }
+                 @Override public boolean commit() {
++                    for (String key : removed) values.remove(key);
+                     values.putAll(pending);
+                     return true;
+                 }
+diff --git a/tools/OptLabLaunchContractUnit.java b/tools/OptLabLaunchContractUnit.java
+new file mode 100644
+index 0000000..bc41088
+--- /dev/null
++++ b/tools/OptLabLaunchContractUnit.java
+@@ -0,0 +1,47 @@
++package com.zomdroid;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++
++/** Proves that stale ON values cannot survive an authoritative OFF launch snapshot. */
++public final class OptLabLaunchContractUnit {
++    public static void main(String[] args) {
++        ArrayList<String> jvm = new ArrayList<>(Arrays.asList(
++                "-Xmx2G",
++                "-Dzomdroid.optlab.stream.wake=1",
++                "-Dzomdroid.optlab.chunk.grid.load=1",
++                "-Dzomdroid.optlab.fbo.frame.budget=1",
++                "-Dzomdroid.optlab.render.mvp",
++                "-Dzomdroid.native.pathfinding.active=1",
++                "-Dunrelated.keep=1"));
++
++        OptLabLaunchContract.clearManagedProperties(jvm);
++        require(jvm.size() == 2, "managed properties were not completely removed");
++        require(jvm.contains("-Xmx2G") && jvm.contains("-Dunrelated.keep=1"),
++                "unrelated JVM arguments changed");
++
++        OptLabLaunchContract.putProperty(jvm, "zomdroid.optlab.stream.wake", "0");
++        OptLabLaunchContract.putProperty(jvm, "zomdroid.optlab.chunk.grid.load", "0");
++        OptLabLaunchContract.putProperty(jvm, "zomdroid.optlab.fbo.frame.budget", "0");
++        OptLabLaunchContract.putProperty(jvm, "zomdroid.native.pathfinding.active", "0");
++        OptLabLaunchContract.putProperty(jvm, "zomdroid.optlab.stream.wake", "0");
++        OptLabLaunchContract.requireUniqueManagedProperties(jvm);
++
++        require("0".equals(OptLabLaunchContract.valueOf(jvm,
++                "zomdroid.optlab.stream.wake")), "stream OFF missing");
++        require("0".equals(OptLabLaunchContract.valueOf(jvm,
++                "zomdroid.optlab.chunk.grid.load")), "chunk OFF missing");
++        require("0".equals(OptLabLaunchContract.valueOf(jvm,
++                "zomdroid.optlab.fbo.frame.budget")), "FBO OFF missing");
++        require("0".equals(OptLabLaunchContract.valueOf(jvm,
++                "zomdroid.native.pathfinding.active")), "native OFF missing");
++        OptLabLaunchContract.requireValue(jvm, "zomdroid.optlab.stream.wake", "0");
++        OptLabLaunchContract.requireValue(jvm, "zomdroid.optlab.chunk.grid.load", "0");
++        OptLabLaunchContract.requireValue(jvm, "zomdroid.optlab.fbo.frame.budget", "0");
++        System.out.println("OPTLAB_LAUNCH_CONTRACT_UNIT PASS stale_on=removed off=authoritative");
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new AssertionError(message);
++    }
++}
+diff --git a/tools/OptLabPreferencesIndependenceUnit.java b/tools/OptLabPreferencesIndependenceUnit.java
+index 402e32a..57735b8 100644
+--- a/tools/OptLabPreferencesIndependenceUnit.java
++++ b/tools/OptLabPreferencesIndependenceUnit.java
+@@ -1,6 +1,7 @@
+ import android.content.Context;
+ import android.content.SharedPreferences;
+ 
++import com.zomdroid.OptLabFeatureRegistry;
+ import com.zomdroid.OptLabPreferences;
+ 
+ import java.util.HashMap;
+@@ -93,6 +94,106 @@ public final class OptLabPreferencesIndependenceUnit {
+         require(!prefs.isFboDirtyDedup(), "Build 42 ALL OFF clears FBO");
+         require(prefs.isChunkCp2cDirtyClear(), "Build 42 ALL OFF preserves Experimental");
+ 
++        // Regression reported on device: an old Stream/FBO/Chunk preset must never re-arm a
++        // feature after the user explicitly turns it OFF, including through a new preferences
++        // object that models a complete application restart.
++        prefs.setProfile(OptLabPreferences.Profile.STREAM_ALL);
++        prefs.setStreamWake(false);
++        prefs.setStreamQueueFast(false);
++        prefs.setStreamVelocityEta(false);
++        prefs.setProfile(OptLabPreferences.Profile.FBO_ALL);
++        prefs.setFboDirtyDedup(false);
++        prefs.setFboFrameBudget(false);
++        prefs.setStreamFboCoordinator(false);
++        prefs.setChunkAllProduction(true);
++        prefs.setChunkGridLoad(false);
++        OptLabPreferences restarted = OptLabPreferences.from(context);
++        require(!restarted.isStreamWake() && !restarted.isStreamQueueFast()
++                        && !restarted.isStreamVelocityEta(),
++                "Stream Core re-armed after restart");
++        require(!restarted.isFboDirtyDedup() && !restarted.isFboFrameBudget()
++                        && !restarted.isStreamFboCoordinator(),
++                "FBO re-armed after restart");
++        require(!restarted.isChunkGridLoad(), "World Chunk re-armed after restart");
++        require(restarted.getBuild42LabProfile() == OptLabPreferences.LabProfile.CUSTOM,
++                "explicit OFF did not retain Custom profile identity");
++
++        restarted.setBuild42ProductionAllOff();
++        OptLabPreferences allOffRestarted = OptLabPreferences.from(context);
++        for (OptLabFeatureRegistry.Feature feature
++                : OptLabFeatureRegistry.Feature.values()) {
++            if (feature.category == OptLabFeatureRegistry.Category.BUILD42
++                    && feature.isVisible()) {
++                require(!allOffRestarted.isFeatureEnabled(feature),
++                        "ALL OFF re-armed " + feature.id + " after restart");
++            }
++        }
++
++        // Exercise every non-registry Runtime/Display control in both directions through a
++        // freshly constructed preferences object.  Registry-owned controls are covered by the
++        // exhaustive loop in OptLabRegistryIntegrityUnit.
++        FakeContext allSettingsContext = new FakeContext();
++        OptLabPreferences allSettings = OptLabPreferences.from(allSettingsContext);
++        allSettings.setMasterEnabled(true);
++        allSettings.setQuietRuntime(true);
++        allSettings.setStdioMode(OptLabPreferences.StdioMode.BUFFERED);
++        allSettings.setSqliteAndroidNative(true);
++        allSettings.setBox64Policy(OptLabPreferences.Box64Policy.LEVEL1_0);
++        allSettings.setSurfaceMode(OptLabPreferences.SurfaceMode.GEN_ACK);
++        allSettings.setDisplayFpsHint(OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
++        allSettings.setInputQueueMode(OptLabPreferences.InputQueueMode.MUTEX_SAFE);
++        allSettings.setAnalogFilter(true);
++        allSettings.setInputCoalesce(true);
++        allSettings.setMobileGlFileLogEnabled(true);
++        allSettings.setOnlyBuild42(false);
++        allSettings.setAdvancedControls(true);
++        allSettings = OptLabPreferences.from(allSettingsContext);
++        require(allSettings.isMasterEnabled() && allSettings.isQuietRuntime(),
++                "Runtime booleans did not persist ON");
++        require(allSettings.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED,
++                "stdio did not persist");
++        require(allSettings.isSqliteAndroidNative(), "SQLite did not persist ON");
++        require(allSettings.getBox64Policy() == OptLabPreferences.Box64Policy.LEVEL1_0,
++                "Box64 policy did not persist");
++        require(allSettings.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK,
++                "surface mode did not persist");
++        require(allSettings.getDisplayFpsHint()
++                        == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH,
++                "display hint did not persist");
++        require(allSettings.getInputQueueMode()
++                        == OptLabPreferences.InputQueueMode.MUTEX_SAFE,
++                "input mode did not persist");
++        require(allSettings.isAnalogFilter() && allSettings.isInputCoalesce()
++                        && allSettings.isMobileGlFileLogEnabled(),
++                "Display/Input booleans did not persist ON");
++        require(!allSettings.isOnlyBuild42() && allSettings.isAdvancedControls(),
++                "independent disclosure/policy values did not persist");
++
++        allSettings.setQuietRuntime(false);
++        allSettings.setStdioMode(OptLabPreferences.StdioMode.LEGACY);
++        allSettings.setSqliteAndroidNative(false);
++        allSettings.setBox64Policy(OptLabPreferences.Box64Policy.DEFAULT);
++        allSettings.setSurfaceMode(OptLabPreferences.SurfaceMode.LEGACY);
++        allSettings.setDisplayFpsHint(OptLabPreferences.DisplayFpsHint.OFF);
++        allSettings.setInputQueueMode(OptLabPreferences.InputQueueMode.LEGACY);
++        allSettings.setAnalogFilter(false);
++        allSettings.setInputCoalesce(false);
++        allSettings.setMobileGlFileLogEnabled(false);
++        allSettings.setOnlyBuild42(true);
++        allSettings.setAdvancedControls(false);
++        allSettings = OptLabPreferences.from(allSettingsContext);
++        require(!allSettings.isQuietRuntime()
++                        && allSettings.getStdioMode() == OptLabPreferences.StdioMode.LEGACY
++                        && !allSettings.isSqliteAndroidNative()
++                        && allSettings.getBox64Policy() == OptLabPreferences.Box64Policy.DEFAULT
++                        && allSettings.getSurfaceMode() == OptLabPreferences.SurfaceMode.LEGACY
++                        && allSettings.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.OFF
++                        && allSettings.getInputQueueMode() == OptLabPreferences.InputQueueMode.LEGACY
++                        && !allSettings.isAnalogFilter() && !allSettings.isInputCoalesce()
++                        && !allSettings.isMobileGlFileLogEnabled()
++                        && allSettings.isOnlyBuild42() && !allSettings.isAdvancedControls(),
++                "one or more Runtime/Display controls re-armed after explicit OFF");
++
+         require(OptLabPreferences.SCHEMA == 12, "schema 12");
+         require(OptLabPreferences.isKnownPzJarSha256(
+                 OptLabPreferences.EXPECTED_PZ_42203_JAR_SHA256), "42.20.3 known");
+@@ -100,7 +201,7 @@ public final class OptLabPreferencesIndependenceUnit {
+                         && prefs.machineReadable().contains("build42Profile="),
+                 "separate profiles missing from diagnostics");
+         System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=12 safe_mode=1"
+-                + " profiles=independent");
++                + " profiles=independent off_restart=all_features general_roundtrip=all");
+     }
+ 
+     private static final class FakeContext extends Context {
+diff --git a/tools/OptLabRegistryIntegrityUnit.java b/tools/OptLabRegistryIntegrityUnit.java
+index 3e5fe49..48e0e85 100644
+--- a/tools/OptLabRegistryIntegrityUnit.java
++++ b/tools/OptLabRegistryIntegrityUnit.java
+@@ -95,11 +95,13 @@ public final class OptLabRegistryIntegrityUnit {
+         System.out.println("OPTLAB_REGISTRY_INTEGRITY_UNIT PASS features="
+                 + OptLabFeatureRegistry.Feature.values().length
+                 + " render_visible=" + renderFeatures + " archived=" + archived
+-                + " ids_unique=1 prefs_unique=1 properties_unique=1 cycles=0 profiles=3");
++                + " ids_unique=1 prefs_unique=1 properties_unique=1 cycles=0 profiles=3"
++                + " toggle_roundtrip=all");
+     }
+ 
+     private static void verifyProfiles() {
+-        OptLabPreferences prefs = OptLabPreferences.from(new FakeContext());
++        FakeContext context = new FakeContext();
++        OptLabPreferences prefs = OptLabPreferences.from(context);
+         prefs.setGeneralProfile(OptLabPreferences.LabProfile.RECOMMENDED);
+         verifyProfile(prefs, OptLabPreferences.LabProfile.SAFE);
+         verifyProfile(prefs, OptLabPreferences.LabProfile.RECOMMENDED);
+@@ -137,6 +139,25 @@ public final class OptLabRegistryIntegrityUnit {
+         prefs.setBuild42ProductionAllOff();
+         require(prefs.isChunkCp2cDirtyClear(),
+                 "Build 42 production ALL OFF cleared Experimental CP2C");
++
++        // Exercise the exact generic API used by every registry-generated UI switch.  Each
++        // visible Build 42/Experimental feature must persist ON and then explicit OFF through a
++        // new preferences object, including dependency and dependent closure.
++        prefs.setSafeModeEnabled(false);
++        for (OptLabFeatureRegistry.Feature feature
++                : OptLabFeatureRegistry.Feature.values()) {
++            if (!feature.isVisible() || feature.preferenceKey == null
++                    || (feature.category != OptLabFeatureRegistry.Category.BUILD42
++                    && feature.category != OptLabFeatureRegistry.Category.EXPERIMENTAL)) continue;
++            prefs.setFeatureEnabled(feature, true);
++            prefs = OptLabPreferences.from(context);
++            require(prefs.isFeatureEnabled(feature),
++                    "toggle did not persist ON after restart: " + feature.id);
++            prefs.setFeatureEnabled(feature, false);
++            prefs = OptLabPreferences.from(context);
++            require(!prefs.isFeatureEnabled(feature),
++                    "toggle re-armed after explicit OFF: " + feature.id);
++        }
+     }
+ 
+     private static void verifyProfile(OptLabPreferences prefs,
+diff --git a/tools/preferences-stubs/android/content/SharedPreferences.java b/tools/preferences-stubs/android/content/SharedPreferences.java
+index c0b870b..7452a60 100644
+--- a/tools/preferences-stubs/android/content/SharedPreferences.java
++++ b/tools/preferences-stubs/android/content/SharedPreferences.java
+@@ -8,6 +8,7 @@ public interface SharedPreferences {
+     interface Editor {
+         Editor putBoolean(String key, boolean value);
+         default Editor putString(String key, String value) { return this; }
++        default Editor remove(String key) { return this; }
+         boolean commit();
+     }
+ }
+diff --git a/tools/test-cp62-apk-wiring.sh b/tools/test-cp62-apk-wiring.sh
+index ddf39ed..6235dbc 100755
+--- a/tools/test-cp62-apk-wiring.sh
++++ b/tools/test-cp62-apk-wiring.sh
+@@ -25,6 +25,12 @@ for prop,getter in props.items():
+     assert prop in agent, f'agent missing {prop}'
+ assert 'addAgentFeatureProperties(jvmArgs)' in launcher, \
+     'launcher does not delegate feature properties to registry'
++assert 'OptLabLaunchContract.clearManagedProperties(jvmArgs)' in launcher, \
++    'launcher does not remove stale OPT-LAB JVM properties'
++assert 'OptLabLaunchContract.requireUniqueManagedProperties(jvmArgs)' in launcher, \
++    'launcher does not reject duplicate OPT-LAB JVM properties'
++assert 'compatibility.requireAgentFeatureProperties(jvmArgs)' in launcher, \
++    'launcher does not verify the complete feature snapshot before JNI'
+ for feature in ('RTHREAD_CHUNK_DEPTH_UPLOAD','RTHREAD_CHUNK_DEPTH_LOOKUP',
+                 'RTHREAD_RING_RENDER_CLEAR'):
+     assert feature in registry and feature in agent, f'registry/agent missing {feature}'
+diff --git a/tools/test-native-modules-source.sh b/tools/test-native-modules-source.sh
+index 477c258..00e890b 100755
+--- a/tools/test-native-modules-source.sh
++++ b/tools/test-native-modules-source.sh
+@@ -13,6 +13,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/ElfSymbols.java" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/patch/DistinctFileBackup.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/patch/LightingArm64AbManager.java" \
+diff --git a/tools/test-optlab-custom-presets.sh b/tools/test-optlab-custom-presets.sh
+index 81713b1..ebcda8b 100755
+--- a/tools/test-optlab-custom-presets.sh
++++ b/tools/test-optlab-custom-presets.sh
+@@ -16,6 +16,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main --release 11 \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java" \
+   "$PROJECT_DIR/tools/OptLabCustomPresetStoreUnit.java"
+ 
+diff --git a/tools/test-optlab-launch-contract.sh b/tools/test-optlab-launch-contract.sh
+new file mode 100755
+index 0000000..70fc9c5
+--- /dev/null
++++ b/tools/test-optlab-launch-contract.sh
+@@ -0,0 +1,54 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
++WORK_DIR="$(mktemp -d)"
++trap 'rm -rf "$WORK_DIR"' EXIT
++
++if java -m jdk.compiler/com.sun.tools.javac.Main -version >/dev/null 2>&1; then
++  java -m jdk.compiler/com.sun.tools.javac.Main --release 11 -d "$WORK_DIR" \
++    "$PROJECT_DIR/tools/ui-stubs/androidx/annotation/NonNull.java" \
++    "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
++    "$PROJECT_DIR/tools/OptLabLaunchContractUnit.java"
++  java -cp "$WORK_DIR" com.zomdroid.OptLabLaunchContractUnit
++else
++  python3 - "$PROJECT_DIR" <<'PY'
++import pathlib, sys
++root = pathlib.Path(sys.argv[1])
++contract = (root/'app/src/main/java/com/zomdroid/OptLabLaunchContract.java').read_text()
++launcher = (root/'app/src/main/java/com/zomdroid/GameLauncher.java').read_text()
++registry = (root/'app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java').read_text()
++for prefix in ('zomdroid.optlab.', 'zomdroid.native.pathfinding.',
++               'zomdroid.native.popman.'):
++    assert f'"{prefix}"' in contract
++assert 'OptLabLaunchContract.clearManagedProperties(jvmArgs);' in launcher
++assert 'OptLabLaunchContract.requireUniqueManagedProperties(jvmArgs);' in launcher
++assert 'compatibility.requireAgentFeatureProperties(jvmArgs);' in launcher
++assert 'OptLabLaunchContract.putProperty(jvmArgs, feature.agentProperty' in registry
++
++# Runtime-equivalent transition: every managed stale ON is removed, unrelated args survive,
++# and putting an OFF twice still leaves one authoritative value.
++managed = ('zomdroid.optlab.', 'zomdroid.native.pathfinding.',
++           'zomdroid.native.popman.')
++args = ['-Xmx2G', '-Dzomdroid.optlab.stream.wake=1',
++        '-Dzomdroid.optlab.chunk.grid.load=1',
++        '-Dzomdroid.optlab.fbo.frame.budget=1', '-Dunrelated.keep=1']
++def key(arg):
++    return arg[2:].split('=', 1)[0] if arg.startswith('-D') and '=' in arg else None
++args = [a for a in args if not (key(a) and key(a).startswith(managed))]
++def put(k, v):
++    global args
++    args = [a for a in args if key(a) != k]
++    args.append(f'-D{k}={v}')
++for k in ('zomdroid.optlab.stream.wake', 'zomdroid.optlab.chunk.grid.load',
++          'zomdroid.optlab.fbo.frame.budget'):
++    put(k, '0')
++put('zomdroid.optlab.stream.wake', '0')
++keys = [key(a) for a in args if key(a) and key(a).startswith(managed)]
++assert len(keys) == len(set(keys))
++assert all(f'-D{k}=0' in args for k in (
++    'zomdroid.optlab.stream.wake', 'zomdroid.optlab.chunk.grid.load',
++    'zomdroid.optlab.fbo.frame.budget'))
++print('OPTLAB_LAUNCH_CONTRACT_SOURCE_FALLBACK PASS stale_on=removed off=authoritative')
++PY
++fi
+diff --git a/tools/test-optlab-registry-integrity.sh b/tools/test-optlab-registry-integrity.sh
+index 4190413..f024f4a 100755
+--- a/tools/test-optlab-registry-integrity.sh
++++ b/tools/test-optlab-registry-integrity.sh
+@@ -16,6 +16,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main --release 17 \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java" \
+   "$PROJECT_DIR/tools/OptLabRegistryIntegrityUnit.java"
+ 
+diff --git a/tools/test-optlab-tabbed-ui-source.sh b/tools/test-optlab-tabbed-ui-source.sh
+index 9ca4389..2b961d3 100755
+--- a/tools/test-optlab-tabbed-ui-source.sh
++++ b/tools/test-optlab-tabbed-ui-source.sh
+@@ -53,9 +53,13 @@ for setter in (
+     'setPopManEnabled', 'setGeneralProfile', 'setBuild42LabProfile'):
+     assert setter in fragment, f'unmapped setter: {setter}'
+ for action in ('createCustomBuild42Preset', 'applyCustomBuild42Preset',
+-               'updateCustomBuild42Preset', 'renameCustomBuild42Preset',
+-               'duplicateCustomBuild42Preset', 'deleteCustomBuild42Preset'):
++               'updateCustomBuild42Preset', 'deleteCustomBuild42Preset',
++               'resetCustomBuild42PresetCatalog'):
+     assert action in fragment and action in prefs, f'unmapped custom preset action: {action}'
++for advanced_store_action in ('renameCustomBuild42Preset',
++                              'duplicateCustomBuild42Preset'):
++    assert advanced_store_action in prefs, \
++        f'custom preset store API was not retained: {advanced_store_action}'
+ 
+ assert 'setSafeModeEnabled' in fragment and 'isSafeModeEnabled' in fragment
+ assert 'SCHEMA = 12' in prefs and 'K_SAFE_MODE' in prefs
+@@ -73,6 +77,15 @@ for token in ('LAB_PROFILES', 'showBuild42Module', 'showExperimentalModule',
+               'generalProfileCard', 'build42ProfileCard', 'experimentalModuleCards',
+               'advancedControls', 'featureCards', 'featuresForModule'):
+     assert token in fragment, f'missing modular UI token {token}'
++for token in ('routeHistory', 'navigateBack()', 'Route.build42Module(module)',
++              'Route.experimentalModule(module)', 'OnBackPressedCallback'):
++    assert token in fragment, f'missing route-history token {token}'
++assert 'back.setOnClickListener(view -> showBuild42Home())' not in fragment, \
++    'Build 42 Back is still hardcoded to the module home'
++assert 'back.setOnClickListener(view -> showExperimentalHome())' not in fragment, \
++    'Experimental Back is still hardcoded to the global Experimental home'
++assert 'navigate(Route.experimentalModule(module), true)' in fragment, \
++    'Build 42 -> Experimental does not preserve its exact origin route'
+ assert 'internalCards' not in fragment, 'Internal features still use read-only cards'
+ assert 'Internal · control individual · fallback automat' in fragment
+ assert 'INTERNAL · control individual' in fragment
+@@ -81,6 +94,12 @@ for token in ('buildCustomPresetManagerPage', 'showCustomPresetManager',
+               'Modified · based on ', 'Custom · '):
+     assert token in fragment, f'missing custom preset manager token {token}'
+ assert 'Ștergerea cere două apăsări.' in fragment
++assert 'Nume pentru un preset nou' in fragment
++assert 'customPresetName.input.setText(preset.getName())' not in fragment, \
++    'preset selection still overwrites the new-preset name field'
++assert 'customPresetRename' not in fragment and 'customPresetDuplicate' not in fragment, \
++    'advanced preset operations still clutter the compact manager'
++assert 'customPresetReset.setVisibility(storageProblem ? View.VISIBLE : View.GONE)' in fragment
+ assert 'RTHREAD_RING_BULK_PACK' not in fragment, 'archived Ring bulk leaked into UI'
+ assert 'Pathfinding' in fragment and 'PopMan' in fragment
+ assert 'setChunkCp2cDirtyClear' not in fragment, \
+@@ -143,7 +162,7 @@ assert len(hashlib.sha256(payload).hexdigest()) == 64
+ 
+ print('OPTLAB_TABBED_UI_SOURCE PASS full_screen=1 tabs=6 modules=7 detail_pages=1 '
+       'profiles=general_build42_independent experimental=module_categories '
+-      'advanced=registry_driven custom_presets=manager_actions_6 nested_dialogs=0 '
+-      'safe_mode=effective_preserve '
++      'advanced=registry_driven custom_presets=manager_actions_4_recovery nested_dialogs=0 '
++      'safe_mode=effective_preserve navigation=route_history '
+       'theme=light_dark agent_bundle_source_matched=1')
+ PY
+diff --git a/tools/test-r15-final-qa.sh b/tools/test-r15-final-qa.sh
+index 6ebddcf..34c8fd4 100755
+--- a/tools/test-r15-final-qa.sh
++++ b/tools/test-r15-final-qa.sh
+@@ -49,6 +49,7 @@ rg -o '"zomdroid\.optlab\.[^"]+"' \
+   | sed 's/^[^:]*://' | LC_ALL=C sort -u > "$WORK_DIR/registry-properties"
+ rg -o '"zomdroid\.optlab\.[^"]+"' \
+   "$PROJECT_DIR/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java" \
++  "$PROJECT_DIR/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
+   | sed 's/^[^:]*://' | LC_ALL=C sort -u > "$WORK_DIR/agent-properties"
+ diff -u "$WORK_DIR/registry-properties" "$WORK_DIR/agent-properties" \
+   || fail "registry/agent property coverage"
+@@ -58,6 +59,7 @@ run bash "$PROJECT_DIR/tools/build-optlab-agent.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-agent-source.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-registry-integrity.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-custom-presets.sh"
++run bash "$PROJECT_DIR/tools/test-optlab-launch-contract.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-tabbed-ui-source.sh"
+ run bash "$PROJECT_DIR/tools/test-cp62-apk-wiring.sh"
+ run bash "$PROJECT_DIR/tools/test-mobilegl-default-payload.sh"
+diff --git a/tools/ui-stubs/android/view/KeyEvent.java b/tools/ui-stubs/android/view/KeyEvent.java
+new file mode 100644
+index 0000000..f79ba8e
+--- /dev/null
++++ b/tools/ui-stubs/android/view/KeyEvent.java
+@@ -0,0 +1,9 @@
++package android.view;
++
++public class KeyEvent {
++    public static final int ACTION_DOWN = 0;
++    public static final int KEYCODE_ENTER = 66;
++    public static final int KEYCODE_DPAD_CENTER = 23;
++    public static final int KEYCODE_SPACE = 62;
++    public int getAction() { return 0; }
++}
+diff --git a/tools/ui-stubs/android/view/MotionEvent.java b/tools/ui-stubs/android/view/MotionEvent.java
+new file mode 100644
+index 0000000..4816c37
+--- /dev/null
++++ b/tools/ui-stubs/android/view/MotionEvent.java
+@@ -0,0 +1,6 @@
++package android.view;
++
++public class MotionEvent {
++    public static final int ACTION_DOWN = 0;
++    public int getActionMasked() { return 0; }
++}
+diff --git a/tools/ui-stubs/android/view/View.java b/tools/ui-stubs/android/view/View.java
+index 63007f0..b956cd7 100644
+--- a/tools/ui-stubs/android/view/View.java
++++ b/tools/ui-stubs/android/view/View.java
+@@ -15,6 +15,8 @@ public class View {
+     public void setClickable(boolean value) {}
+     public void setFocusable(boolean value) {}
+     public void setOnClickListener(OnClickListener listener) {}
++    public void setOnTouchListener(OnTouchListener listener) {}
++    public void setOnKeyListener(OnKeyListener listener) {}
+     public void setPadding(int left, int top, int right, int bottom) {}
+     public void setMinimumHeight(int value) {}
+     public void setBackground(Drawable value) {}
+@@ -23,4 +25,6 @@ public class View {
+     public void scrollTo(int x, int y) {}
+     public <T extends View> T findViewById(int id) { return null; }
+     public interface OnClickListener { void onClick(View view); }
++    public interface OnTouchListener { boolean onTouch(View view, MotionEvent event); }
++    public interface OnKeyListener { boolean onKey(View view, int keyCode, KeyEvent event); }
+ }
+diff --git a/tools/ui-stubs/android/widget/Toast.java b/tools/ui-stubs/android/widget/Toast.java
+new file mode 100644
+index 0000000..4686b03
+--- /dev/null
++++ b/tools/ui-stubs/android/widget/Toast.java
+@@ -0,0 +1,11 @@
++package android.widget;
++
++import android.content.Context;
++
++public class Toast {
++    public static final int LENGTH_LONG = 1;
++    public static Toast makeText(Context context, CharSequence text, int duration) {
++        return new Toast();
++    }
++    public void show() {}
++}
+diff --git a/tools/ui-stubs/androidx/activity/OnBackPressedCallback.java b/tools/ui-stubs/androidx/activity/OnBackPressedCallback.java
+new file mode 100644
+index 0000000..3533065
+--- /dev/null
++++ b/tools/ui-stubs/androidx/activity/OnBackPressedCallback.java
+@@ -0,0 +1,7 @@
++package androidx.activity;
++
++public abstract class OnBackPressedCallback {
++    public OnBackPressedCallback(boolean enabled) {}
++    public abstract void handleOnBackPressed();
++    public void setEnabled(boolean enabled) {}
++}
+diff --git a/tools/ui-stubs/androidx/activity/OnBackPressedDispatcher.java b/tools/ui-stubs/androidx/activity/OnBackPressedDispatcher.java
+new file mode 100644
+index 0000000..84b1d9e
+--- /dev/null
++++ b/tools/ui-stubs/androidx/activity/OnBackPressedDispatcher.java
+@@ -0,0 +1,6 @@
++package androidx.activity;
++
++public class OnBackPressedDispatcher {
++    public void addCallback(Object owner, OnBackPressedCallback callback) {}
++    public void onBackPressed() {}
++}
+diff --git a/tools/ui-stubs/androidx/fragment/app/Fragment.java b/tools/ui-stubs/androidx/fragment/app/Fragment.java
+index ed85cfe..8a58bd3 100644
+--- a/tools/ui-stubs/androidx/fragment/app/Fragment.java
++++ b/tools/ui-stubs/androidx/fragment/app/Fragment.java
+@@ -8,9 +8,12 @@ import android.view.ViewGroup;
+ 
+ public class Fragment {
+     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle state) { return null; }
++    public void onViewCreated(View view, Bundle state) {}
+     public void onResume() {}
+     public void onDestroyView() {}
+     public Context requireContext() { return new Context(); }
++    public FragmentActivity requireActivity() { return new FragmentActivity(); }
++    public Object getViewLifecycleOwner() { return new Object(); }
+     public String getString(int resource) { return Integer.toString(resource); }
+     public String getString(int resource, Object... args) { return Integer.toString(resource); }
+ }
+diff --git a/tools/ui-stubs/androidx/fragment/app/FragmentActivity.java b/tools/ui-stubs/androidx/fragment/app/FragmentActivity.java
+new file mode 100644
+index 0000000..a27e19a
+--- /dev/null
++++ b/tools/ui-stubs/androidx/fragment/app/FragmentActivity.java
+@@ -0,0 +1,9 @@
++package androidx.fragment.app;
++
++import androidx.activity.OnBackPressedDispatcher;
++
++public class FragmentActivity {
++    public OnBackPressedDispatcher getOnBackPressedDispatcher() {
++        return new OnBackPressedDispatcher();
++    }
++}
+diff --git a/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java b/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java
+index 5a33443..52b2ec7 100644
+--- a/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java
++++ b/tools/ui-stubs/com/google/android/material/tabs/TabLayout.java
+@@ -8,6 +8,7 @@ public class TabLayout extends View {
+     public Tab newTab() { return new Tab(); }
+     public void addTab(Tab tab) {}
+     public Tab getTabAt(int position) { return new Tab(); }
++    public int getSelectedTabPosition() { return 0; }
+     public void addOnTabSelectedListener(OnTabSelectedListener listener) {}
+     public static class Tab {
+         public Tab setText(int resource) { return this; }
+diff --git a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+index e69ba35..3984946 100644
+--- a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
++++ b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+@@ -128,4 +128,5 @@ public final class OptLabPreferences {
+         return null;
+     }
+     public void deleteCustomBuild42Preset(String id) {}
++    public void resetCustomBuild42PresetCatalog() {}
+ }
+-- 
+2.51.1
+

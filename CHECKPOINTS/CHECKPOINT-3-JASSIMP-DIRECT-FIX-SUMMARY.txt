@@ -1,0 +1,231 @@
+ZOMDROID OPT-LAB — CHECKPOINT 3 JASSIMP DIRECT FIX
+Data: 2026-08-29
+
+VERDICT
+=======
+
+IMPLEMENTARE DIRECTĂ ÎN SURSĂ: COMPLETE
+PAYLOAD ARM64 ÎN libs.tar.xz: COMPLETE
+JAVA AGENT ASSIMP53COMPAT ÎN RUNTIME: NU
+HOST / STATIC / PACKAGE QA: PASS
+REBUILD NDK INDEPENDENT ÎN ACEASTĂ SESIUNE: NU — TOOLCHAINUL NDK/CMAKE NU EXISTĂ LOCAL
+REBUILD NDK AUTOMAT ÎN WORKFLOW: ENABLED, NDK r27c PINNED
+GRADLE ANDROID COMPILE: PENDING
+DEVICE KI5 / SKINNED-FBX REGRESSION: PENDING
+CP3 OFFICIAL GAMEPLAY PASS: NU ÎNCĂ
+
+Acest checkpoint închide implementarea și livrarea directă. Nu declară rezultatul vizual pe
+dispozitiv înainte de testele cerute de master summary.
+
+
+1. INTRARE ȘI CHECKPOINT
+========================
+
+Intrare: sursa R9 OPT-LAB UI Tabs, versionCode 14751.
+Checkpoint nemodificat păstrat local:
+  work/ZomDroid-R9-OPTLAB-UI-TABS-SOURCE-BASELINE
+
+Ieșire: R10, versionCode 14752.
+Version names:
+  1.4.7v4-optlab-r10-jassimp-direct-side
+  1.4.7v4-optlab-r10-jassimp-direct-replace
+
+
+2. CE REPARĂ WORKAROUND-UL FURNIZAT
+===================================
+
+Referință:
+  ZomDroidAssimp53Compat-0.1.0.jar
+  SHA-256 af9f00fce0f264e75be6ac5642c63e10b2978aa618fb12ccb463885ae59a954a
+
+Auditul bytecode arată că agentul:
+
+- interceptează ieșirea din jassimp.Jassimp.importFile(...);
+- lucrează numai pentru FBX-uri binare cu mesh-uri skinned;
+- parsează obiectele Deformer/Cluster și proprietatea FBX `Transform`;
+- corelează Cluster -> LimbNode -> Skin -> Geometry/Model Mesh;
+- scrie matricea corectată în `m_offsetMatrix.m_data` pentru perechea mesh/bone;
+- aplică transpunerea pentru layout-ul JAssimp și corecția aferentă MAKE_LEFT_HANDED;
+- se oprește fail-open pentru FBX nesuportat, matrice necunoscută sau import eșuat.
+
+Agentul demonstrează astfel că diferența relevantă este matricea de offset a osului, nu ABI-ul
+JNI și nu simpla alegere a unui alt nume de librărie.
+
+
+3. FIXUL DIRECT
+===============
+
+Sursa de bază:
+  Assimp v5.4.3
+
+Rețeta existentă:
+  optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5
+
+Patch JNI/build:
+  patches/assimp/0001.patch
+
+Patch direct PZ:
+  patches/assimp/0002.patch
+  SHA-256 6079b4f5c9482f09a8dca4eb8d0a00f5fe1bf6e759b4a6cd2f037d011f10b1aa
+
+Proveniență patch:
+  udarmolota/zomdroid-dependencies
+  commit 0dbe092850d5cf528dbdfac01603d9d1bb799d04
+
+Modificarea activă din FBXConverter::ConvertCluster este:
+
+  bone->mOffsetMatrix = cluster->Transform();
+
+Aceasta restaurează semantica Assimp 5.3.1 înainte de modificarea upstream 384db868 din 5.4.
+Este aceeași matrice `Transform` pe care agentul o recuperează după import. În integrarea directă,
+Assimp face normal conversia layout/handedness în pipeline-ul său, înainte ca scena să ajungă în
+JAssimp; nu mai este necesară rescrierea reflectivă Java.
+
+
+4. CONTEXTUL FORKULUI UDARMOLOTA
+================================
+
+Binarul direct a fost construit și livrat de:
+  udarmolota/zomdroid commit 1ac8acf10e9d92a4c1ae804b4681ec22a5f16bda
+
+În acel commit se numea `libjassimp64.zomdroid.so`, dar SONAME-ul ELF este corect:
+  libjassimp64.so
+
+Commitul ulterior 1afe3a525bbaff5bb0a223020b9367ae0216da3d a retras rerutarea automată a
+importerului deoarece o problemă separată de animație a fost atribuită aliasurilor lowercase, nu
+JAssimp. Patch-ul PZ pentru offset rămâne în repository-ul de dependințe. R10 îl folosește strict
+pentru problema offset-matrix demonstrată de agent, nu pentru teoria de animație infirmată.
+
+
+5. IDENTITATEA BINARELOR
+========================
+
+Direct R10:
+  fișier: optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/
+          payload/libjassimp64.so
+  SHA-256: a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4
+  bytes: 2,730,512
+  ELF: 64-bit little-endian AArch64
+  SONAME: libjassimp64.so
+  Build ID: ecc1dfeb0746c29f5983526659d139da433459e3
+
+Rollback R9:
+  fișier: optlab_deps/jassimp-direct-0dbe092850d5cf528dbdfac01603d9d1bb799d04/
+          rollback/libjassimp64-r9-unpatched.so
+  SHA-256: 095da5c4acb15cc43270c7f98bde1cf4f83e26abbc9c23bd3352fb97d7dbb849
+  bytes: 2,730,688
+  Build ID: 660f4b72d8067f9307a4214bb9ea0867c0e4be42
+
+Bundle R10:
+  app/src/main/assets/bundles/libs.tar.xz
+  SHA-256: b5c55bde92492f4585d76d5201398e7e7441d061445201e9c5b0edc6bcd8b295
+  membrul android-arm64-v8a/libjassimp64.so este byte-for-byte payload-ul direct.
+
+ABI direct versus rollback:
+  3.053 / 3.053 simboluri exportate, identice ca nume.
+  Toate cele 10 intrări Java_jassimp_Jassimp_* sunt prezente.
+
+
+6. INTEGRAREA RUNTIME
+=====================
+
+- InstallerService detectează CRC-ul nou al libs.tar.xz și îl extrage la update.
+- PresetManager include dependencies/libs/android-arm64-v8a în java.library.path.
+- GameInstance pune acea cale înaintea directorului de lucru al jocului.
+- Nu se face System.load() prematur din classloader-ul aplicației.
+- GameLauncher înregistrează:
+    jassimpMode
+    jassimpPath
+    jassimpBytes
+    jassimpSha256
+- Modurile observabile sunt DIRECT_A53_COMPAT, ROLLBACK_UNPATCHED, MISSING_FALLBACK și
+  UNKNOWN_FALLBACK.
+- OptLab continuă să aibă propriul zomdroid-agent.jar pentru optimizările sale; acesta nu este
+  workaround-ul JAssimp. Assimp53Compat nu este în jars.tar și nu este argument runtime.
+
+
+7. AUTOMATIZARE
+===============
+
+tools/build-jassimp-direct.sh
+  Clone curat Assimp v5.4.3, aplică 0001 + 0002 și construiește ARM64.
+
+tools/install-jassimp-direct.sh
+  Verifică SHA/ELF/SONAME, înlocuiește atomic membrul din libs.tar.xz și rulează toate gate-urile.
+
+tools/test-jassimp-direct.sh
+  Verifică source patch, proveniență, SHA-uri, ELF64/AArch64, SONAME, Build ID, cele 10 JNI,
+  ABI-ul complet de 3.053 simboluri, payload=bundle, bytecode-ul agentului de referință și absența
+  lui din runtime.
+
+tools/rollback-jassimp-r9.sh
+  Restaurează exact binarul R9 numai cu CONFIRM_JASSIMP_R9_ROLLBACK=1.
+
+Gradle:
+  preBuild depinde de verifyJassimpDirectBundle.
+
+CI:
+  toate cele trei workflow-uri aplicație rulează test-jassimp-direct.sh;
+  jassimp-direct.yml face în plus rebuild independent cu NDK r27c/API 30/JDK 17.
+
+
+8. QA EXECUTAT
+==============
+
+PASS:
+
+- hash exact patch/payload/rollback/agent;
+- agentul de referință confirmat ca Transform -> m_offsetMatrix + MAKE_LEFT_HANDED;
+- patch-ul direct este identic byte-for-byte cu commitul de dependințe 0dbe092;
+- payload și membru bundle identice byte-for-byte;
+- toate cele 38 de fișiere din bundle sunt păstrate, iar numai libjassimp64.so diferă față de R9;
+- a doua împachetare produce același SHA-256 pentru libs.tar.xz;
+- xz și tar valide;
+- ELF64, AArch64, SONAME și Build ID;
+- toate cele 10 exporturi JNI;
+- export ABI direct versus R9: 3.053 identice;
+- agentul Assimp53Compat absent din jars.tar și din sursa runtime;
+- rollback real R9 -> verificare hash -> restaurare direct R10: PASS;
+- gate-ul CP3 rulează direct din Gradle și toate workflow-urile.
+
+PENDING:
+
+- `./gradlew assembleDebug/assembleRelease` în această sesiune; wrapper-ul nu poate descărca
+  Gradle 8.13 deoarece services.gradle.org este inaccesibil din mediu;
+- rebuild NDK local independent (toolchainul nu este instalat în mediu);
+- instalare APK pe ARM64;
+- KI5 B700;
+- KI5 F700;
+- animația capotei;
+- alte modele FBX/skinned afectate anterior;
+- modele care funcționau deja;
+- comparație vizuală direct versus agentul de referință;
+- verificarea că logul arată DIRECT_A53_COMPAT și nu conține [ZD-A53COMPAT].
+
+
+9. ROLLBACK
+===========
+
+Rollback explicit la R9:
+
+  CONFIRM_JASSIMP_R9_ROLLBACK=1 ./tools/rollback-jassimp-r9.sh
+
+Revenire la direct R10:
+
+  ./tools/install-jassimp-direct.sh
+
+Ambele operații reconstruiesc atomic libs.tar.xz. Runtime proof diferențiază imediat
+DIRECT_A53_COMPAT de ROLLBACK_UNPATCHED.
+
+
+10. HANDOFF DEVICE
+==================
+
+1. Compilează APK-ul R10.
+2. Pornește o dată jocul complet după update, pentru re-extragerea bundle-ului.
+3. Confirmă în log:
+     jassimpMode=DIRECT_A53_COMPAT
+     jassimpSha256=a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4
+4. Confirmă absența `[ZD-A53COMPAT]`.
+5. Rulează lista KI5/skinned-FBX de mai sus cu aceleași save/moduri/cameră.
+6. Numai după PASS vizual și animație marchează CP3 OFFICIAL PASS.

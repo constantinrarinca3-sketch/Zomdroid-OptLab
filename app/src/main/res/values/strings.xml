@@ -482,7 +482,7 @@
     <string name="mod_fix_group_double_path">Double path fix</string>
     <string name="mod_fix_double_path_hint">Fix for Build 41/42 mods with path errors on Android. Known mods: Tsar\'s Common Library (ID: 3402491515), Simple Flashlight on Belt (ID: 3394588830).</string>
     <string name="mod_fix_help_title">What is this fix?</string>
-    <string name="mod_fix_help_message">Some mods expose an Android path conflict while the game loads scripts: an already-absolute mod path can be prefixed again and lowercased.\n\nThe launcher now installs one copy with the original names. At runtime, it repairs only affected absolute paths when the real file can be verified under this instance\'s Zomboid/mods folder. Relative and vanilla paths are left unchanged.\n\nTo use: download the mod and load it here.</string>
+    <string name="mod_fix_help_message">Some mods use a folder structure that causes a path conflict on Android. The game ends up looking for files in a doubled path and cannot find them.\n\nThis fix installs the mod twice — once with the original folder names, and once with all names in lowercase — so the game finds the files regardless of which path it uses.\n\nKnown affected mods:\n• Tsar\'s Common Library — ID: 3402491515\n• [B42] Simple Flashlight on Belt — ID: 3394588830\n\nTo use: download the mod and load it here.</string>
 
     <!-- CPU/GPU autodetect -->
     <string name="preset_dialog_gpu_hint_qualcomm">\u2705 Snapdragon (Adreno) detected. For Build 42, ZINK works best on your device \u2014 it has been selected automatically. For best results, also pick a Freedreno/Turnip driver in Settings. NG_GL4ES is available as an alternative, but it uses noticeably more memory.</string>
@@ -509,7 +509,7 @@
     <string name="install_mod_smart_group">Smart Import</string>
     <string name="install_mod_smart_hint">Automatically finds the mod folder inside the ZIP, even if wrapped in extra folders (e.g. from Skymods). Applies fixes for mods with scripts or models.</string>
     <string name="install_mod_smart_help_title">Smart Import</string>
-    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFiles are installed once with their original names. A narrow runtime resolver handles affected absolute mod-script paths.</string>
+    <string name="install_mod_smart_help_message">Smart Import extracts the correct mod folder from any ZIP structure.\n\nIt detects the mod root by looking for mod.info, media/ or common/ folders — no matter how many wrapper folders surround it.\n\nFor mods with scripts/ or models_X/ folders, a lowercase copy is also installed automatically to fix Android path issues.</string>
     <string name="install_mod_smart_install">Import</string>
     <string name="install_mod_smart_title">Smart import…</string>
     <string name="install_mod_smart_done">Mod imported successfully</string>
@@ -599,10 +599,77 @@
     <!-- ===== ZomDroid OPT-LAB ===== -->
     <string name="opt_lab_open" translatable="false">ZomDroid OPT-LAB</string>
     <string name="opt_lab_title" translatable="false">ZomDroid OPT-LAB</string>
-    <string name="opt_lab_intro" translatable="false">Un singur APK, cu baseline și mecanisme independente. Valorile se aplică la următoarea pornire completă a jocului; linia [ZD-OPT-LAB] confirmă configurația efectivă.</string>
+    <string name="opt_lab_intro" translatable="false">Setări organizate pe module independente. Valorile se aplică la următoarea pornire completă a jocului; linia [ZD-OPT-LAB] confirmă configurația efectivă.</string>
     <string name="opt_lab_profile" translatable="false">Profil</string>
-    <string name="opt_lab_master" translatable="false">Master switch OPT-LAB</string>
+    <string name="opt_lab_master" translatable="false">Optimizări generale Runtime / Display</string>
+    <string name="opt_lab_general_master" translatable="false">Optimizări generale Runtime / Display</string>
+    <string name="opt_lab_tab_overview" translatable="false">Overview</string>
+    <string name="opt_lab_tab_runtime" translatable="false">Runtime</string>
+    <string name="opt_lab_tab_display" translatable="false">Display</string>
+    <string name="opt_lab_tab_build42" translatable="false">Build 42</string>
+    <string name="opt_lab_tab_native" translatable="false">Native</string>
+    <string name="opt_lab_tab_experimental" translatable="false">Experimental</string>
+    <string name="opt_lab_profile_general" translatable="false">Profil general · Runtime / Display</string>
+    <string name="opt_lab_profile_scope" translatable="false">Configurează numai Runtime și Display. Build 42, Native și Experimental au stare independentă.</string>
+    <string name="opt_lab_profile_build42" translatable="false">Profil Build 42</string>
+    <string name="opt_lab_profile_build42_scope" translatable="false">Configurează numai mecanismele Build 42. Nu modifică Runtime/Display, Native sau experimentele native.</string>
+    <string name="opt_lab_runtime_card" translatable="false">Runtime / JVM</string>
+    <string name="opt_lab_display_card" translatable="false">Display / Input</string>
+    <string name="opt_lab_build42_card" translatable="false">Build 42</string>
+    <string name="opt_lab_native_card" translatable="false">Native ARM64</string>
+    <string name="opt_lab_experimental_card" translatable="false">Experimental</string>
+    <string name="opt_lab_active_count" translatable="false">%1$d optimizări active</string>
+    <string name="opt_lab_build42_card_state" translatable="false">Only Build 42: %1$s · %2$s</string>
+    <string name="opt_lab_native_card_state" translatable="false">Lighting · PZClipper · Pathfinding · PopMan</string>
+    <string name="opt_lab_experimental_card_state" translatable="false">%1$d active · necesită validare</string>
+    <string name="opt_lab_safe_mode" translatable="false">Safe mode</string>
+    <string name="opt_lab_safe_mode_summary" translatable="false">Dezactivează temporar toate optimizările</string>
+    <string name="opt_lab_safe_mode_active" translatable="false">Activ · configurația salvată este păstrată</string>
+    <string name="opt_lab_safe_mode_note" translatable="false">Safe Mode oprește configurația efectivă la următoarea pornire, fără să șteargă valorile salvate. Oprirea lui restaurează exact selecțiile anterioare.</string>
+    <string name="opt_lab_changes_next_launch" translatable="false">Modificările se aplică la următoarea pornire completă a jocului.</string>
+    <string name="opt_lab_general_controls" translatable="false">Control general</string>
+    <string name="opt_lab_native_stable" translatable="false">Module native ARM64</string>
+    <string name="opt_lab_native_experimental_link" translatable="false">Lighting, Pathfinding și PopMan se află în categorii separate în tabul Experimental.</string>
+    <string name="opt_lab_experimental_native" translatable="false">NATIVE ARM64 · EXPERIMENTAL</string>
+    <string name="opt_lab_build42_all_off" translatable="false">Build 42 · ALL OFF</string>
+    <string name="opt_lab_safe_mode_state" translatable="false">SAFE MODE</string>
+    <string name="opt_lab_overview_modules" translatable="false">Module OPT-LAB</string>
+    <string name="opt_lab_overview_runtime" translatable="false">Runtime / JVM\n%1$d active · %2$s</string>
+    <string name="opt_lab_overview_display" translatable="false">Display / Input\n%1$d active · %2$s</string>
+    <string name="opt_lab_overview_build42" translatable="false">Build 42\n%1$s</string>
+    <string name="opt_lab_overview_native" translatable="false">Native ARM64\n%1$s</string>
+    <string name="opt_lab_overview_experimental" translatable="false">Experimental\n%1$s</string>
+    <string name="opt_lab_independent_note" translatable="false">Runtime/Display, Build 42 și Native sunt independente. Oprirea optimizărilor generale nu modifică celelalte module.</string>
+    <string name="opt_lab_build42_independent" translatable="false">Setările Build 42 au profiluri și stare proprie; nu depind de optimizările generale Runtime/Display.</string>
+    <string name="opt_lab_experimental_title" translatable="false">Optimizări experimentale</string>
+    <string name="opt_lab_experimental_placeholder" translatable="false">Funcțiile de aici sunt separate de presetul de producție și rămân implicit OFF.</string>
+    <string name="opt_lab_experimental_categories" translatable="false">Categorii experimentale</string>
+    <string name="opt_lab_experimental_module_link" translatable="false">Controalele experimentale ale modulului sunt izolate aici și rămân implicit OFF.</string>
+    <string name="opt_lab_experimental_back" translatable="false">← Categorii experimentale</string>
+    <string name="opt_lab_experimental_empty" translatable="false">Nu există mecanisme experimentale configurabile în această categorie.</string>
+    <string name="opt_lab_general_restart_warning" translatable="false">Restart game required. Acest tab controlează numai optimizările generale; Build 42 și Native își păstrează starea.</string>
+    <string name="native_modules_section" translatable="false">Module native ARM64</string>
+    <string name="native_modules_open" translatable="false">Deschide Native Modules</string>
+    <string name="native_modules_title" translatable="false">Native Modules</string>
+    <string name="native_modules_intro" translatable="false">Fiecare modul controlează implementarea folosită la următoarea pornire a jocului. OFF păstrează fallback-ul original.</string>
+    <string name="native_modules_lighting" translatable="false">Lighting64 Native · EXPERIMENTAL</string>
+    <string name="native_modules_clipper" translatable="false">PZClipper Native · STABLE</string>
+    <string name="native_modules_pathfinding" translatable="false">Pathfinding Native · EXPERIMENTAL</string>
+    <string name="native_modules_popman" translatable="false">PopMan Native · EXPERIMENTAL</string>
+    <string name="native_modules_popman_unavailable" translatable="false">EXPERIMENTAL: Pathfinding are regresie comportamentală raportată; PopMan nu are încă regresia completă pe dispozitiv. Recomandat: OFF până la validare.</string>
+    <string name="native_modules_overview_intro" translatable="false">Module ARM64 cu stare persistentă și fallback individual.</string>
+    <string name="native_modules_experimental_warning" translatable="false">Pathfinding și PopMan sunt EXPERIMENTAL; nu sunt declarate 100% validate.</string>
+    <string name="native_modules_restart" translatable="false">Restart game required. Pentru test A/B schimbă un singur modul între două porniri complete.</string>
     <string name="opt_lab_runtime_section" translatable="false">Runtime / JVM</string>
+    <string name="opt_lab_build42_section" translatable="false">Build 42</string>
+    <string name="opt_lab_build42_open" translatable="false">Deschide modulele Build 42</string>
+    <string name="opt_lab_build42_title" translatable="false">OPT-LAB · Build 42</string>
+    <string name="opt_lab_build42_intro" translatable="false">Pacing, Stream Core și FBO sunt izolate aici. Fiecare mecanism are verificare proprie; un target incompatibil revine la codul original fără să oprească restul OPT-LAB.</string>
+    <string name="opt_lab_only_build42" translatable="false">Only Build 42 (recomandat: ON)</string>
+    <string name="opt_lab_build42_master_off" translatable="false">Build 42 este independent de optimizările generale.</string>
+    <string name="opt_lab_build42_presets" translatable="false">Preseturi Build 42</string>
+    <string name="opt_lab_runtime_b42_section" translatable="false">MAIN LOOP · BUILD 42</string>
+    <string name="opt_lab_build42_restart_warning" translatable="false">Restart game required. VERIFIED = hash cunoscut; PROBE = verificare structurală; COMPATIBLE = proba a trecut; UNSUPPORTED = doar acel mecanism rămâne pe codul original.</string>
     <string name="opt_lab_quiet" translatable="false">O1 · Quiet runtime (fără debug forțat)</string>
     <string name="opt_lab_buffered_stdio" translatable="false">O3 · Logger buffered / bounded</string>
     <string name="opt_lab_pacing" translatable="false">O2 · Main-loop park + spin (experimental)</string>
@@ -615,6 +682,39 @@
     <string name="opt_lab_fbo_dedup" translatable="false">F1 · Deduplică marcări dirty identice</string>
     <string name="opt_lab_fbo_budget" translatable="false">F2 · Buget fair pentru FBO cache existent</string>
     <string name="opt_lab_stream_fbo_coordinator" translatable="false">C1 · Coordonator STREAM–FBO (cere F2)</string>
+    <string name="opt_lab_chunk_section" translatable="false">CHUNK OPTIMIZATION · CP4.1 V2</string>
+    <string name="opt_lab_chunk_open" translatable="false">Deschide Chunk Optimization</string>
+    <string name="opt_lab_chunk_title" translatable="false">Build 42 · Chunk Optimization</string>
+    <string name="opt_lab_chunk_intro" translatable="false">Un singur javaagent. Fiecare fast path are toggle, verificare de clasă/metodă și fallback vanilla propriu. 42.20 și 42.20.3 sunt VERIFIED; alte hotfixuri B42 intră prin PROBE structural.</string>
+    <string name="opt_lab_chunk_profiles" translatable="false">Profiluri Chunk</string>
+    <string name="opt_lab_chunk_stable_profile" translatable="false">Profil stabil · Neighbour Worker/Main + Vehicles</string>
+    <string name="opt_lab_chunk_all_profile" translatable="false">Toate fast path-urile de producție</string>
+    <string name="opt_lab_chunk_all_off" translatable="false">Chunk Optimization · ALL OFF</string>
+    <string name="opt_lab_chunk_forage" translatable="false">Foraging · scan fără Stream/boxing</string>
+    <string name="opt_lab_chunk_neighbour_worker" translatable="false">Neighbour Worker V2 · cache conservator</string>
+    <string name="opt_lab_chunk_neighbour_main" translatable="false">Neighbour Main V2 · cache conservator</string>
+    <string name="opt_lab_chunk_grid" translatable="false">Grid / Load · overlay lookup reutilizat</string>
+    <string name="opt_lab_chunk_vehicles" translatable="false">Vehicle Zone Index · validare exactă</string>
+    <string name="opt_lab_chunk_buildings" translatable="false">Randomized Buildings · dedup fără alocări</string>
+    <string name="opt_lab_chunk_lua" translatable="false">Lua MapObjects · snapshot reutilizat</string>
+    <string name="opt_lab_chunk_worldgen" translatable="false">WorldGen biome · memoizare per scope</string>
+    <string name="opt_lab_chunk_restart" translatable="false">Restart game required. ACTIVE confirmă doar că transformarea a trecut; EXERCISED confirmă prima folosire reală. Testul final pe device rămâne obligatoriu.</string>
+    <string name="opt_lab_render_section" translatable="false">RENDER HOTPATHS · CP6.x</string>
+    <string name="opt_lab_render_open" translatable="false">Deschide Render Hotpaths</string>
+    <string name="opt_lab_render_title" translatable="false">Build 42 · Render Hotpaths</string>
+    <string name="opt_lab_render_intro" translatable="false">CP6.1/CP6.2 portează direct în agentul APK numai rutele demonstrate. Fiecare mecanism are verificare proprie și fallback la metoda originală PZ. 42.20 și 42.20.3 sunt VERIFIED; alte versiuni Build 42 cer PROBE structural.</string>
+    <string name="opt_lab_render_profiles" translatable="false">Profiluri Render</string>
+    <string name="opt_lab_render_cp62_safe" translatable="false">CP6.2 demonstrat · toate cele 3 ON</string>
+    <string name="opt_lab_render_all_off" translatable="false">Render Hotpaths · ALL OFF</string>
+    <string name="opt_lab_render_chunk_depth" translatable="false">CHUNK DEPTH UNIFORM</string>
+    <string name="opt_lab_render_chunk_depth_upload" translatable="false">CP6.1 · elimină glUniform1f redundant</string>
+    <string name="opt_lab_render_chunk_depth_lookup" translatable="false">CP6.2 · cache getUniform cu invalidare la recompile</string>
+    <string name="opt_lab_render_ring" translatable="false">RING BUFFER RENDER</string>
+    <string name="opt_lab_render_ring_empty_clear" translatable="false">CP6.2 · omite modelDrawCounts.clear când mapa este goală</string>
+    <string name="opt_lab_render_ring_bulk_status" translatable="false">RingBuffer bulk packing: neintegrat și implicit OFF. Host parity a trecut în handoff, dar device run-ul nu a demonstrat încă un câștig CPU suficient.</string>
+    <string name="opt_lab_render_restart" translatable="false">Restart game required. ACTIVE/EXERCISED confirmă ruta directă; DEVICE PASS nu se declară fără un test nou pe dispozitiv.</string>
+    <string name="opt_lab_chunk_cp2c" translatable="false">CP2C dirty-clear · EXPERIMENTAL</string>
+    <string name="opt_lab_chunk_cp2c_warning" translatable="false">CP2C schimbă starea propertiesDirty într-un scope strict. Rămâne implicit OFF și nu este activat de niciun preset de producție.</string>
     <string name="opt_lab_box64" translatable="false">O4 · Politică Box64</string>
     <string name="opt_lab_android_section" translatable="false">Surface / display / input</string>
     <string name="opt_lab_surface" translatable="false">O5 · Surface generation + bounded ACK</string>
@@ -623,5 +723,5 @@
     <string name="opt_lab_analog" translatable="false">Input · suprimă axe neschimbate</string>
     <string name="opt_lab_coalesce" translatable="false">Input · coalescing cursor / axe</string>
     <string name="opt_lab_mgl_log" translatable="false">Păstrează fișierul de log MobileGL</string>
-    <string name="opt_lab_restart_warning" translatable="false">Fiecare mecanism nou este independent; preset-urile STREAM ALL, FBO ALL și FULL CANDIDATE le combină fără build-uri separate. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
+    <string name="opt_lab_restart_warning" translatable="false">Preseturile Pacing/Stream/FBO sunt disponibile numai în fereastra Build 42. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
 </resources>

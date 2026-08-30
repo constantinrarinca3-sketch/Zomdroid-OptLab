@@ -1,0 +1,54 @@
+R15-06-03 — CHECKLIST VALIDARE UTILIZATOR / DEVICE
+Data: 2026-08-30 UTC
+
+IMPORTANT
+- Source/host: PASS.
+- APK compile în mediul agentului: NOT RUN.
+- Device test: NO.
+- Nu declara regresia world-black rezolvată înainte de pașii de mai jos.
+
+1. BUILD ȘI PORNIRE
+[ ] Compilează APK-ul din arhiva completă R15-06-03.
+[ ] Instalează peste o copie/test și pornește OPT-LAB.
+[ ] Verifică tema luminoasă și tema întunecată.
+
+2. STRUCTURA UI
+[ ] Taburile rămân exact: Overview / Runtime / Display / Build 42 / Native /
+    Experimental.
+[ ] În Build 42 apare un singur card „Preseturi custom Build 42”.
+[ ] Cardul deschide o subpagină, nu un dialog și nu un tab nou.
+[ ] Modulele Build 42 și Experimental nu sunt amestecate cu managerul.
+
+3. TOGGLE-URI INTERNAL / WORLD BLACK
+[ ] Deschide Shader & Uniforms și confirmă toggle individual pentru:
+    Chunk-depth upload cache, Chunk-depth uniform cache,
+    Shader registry last-ID cache și MVP unchanged fastpath.
+[ ] Pornește de la profilul care reproduce lumea neagră.
+[ ] Dezactivează câte un mecanism Internal, cu restart complet între încercări.
+[ ] Notează exact prima combinație fără regresie și linia [ZD-OPT-LAB].
+[ ] Salvează acea combinație ca preset numit; nu presupune cauza înainte de test.
+
+4. LIFECYCLE PRESETURI
+[ ] Creează două preseturi cu nume diferite.
+[ ] După create apare „Custom · <nume>”.
+[ ] Modifică un toggle; apare „Modified · based on <nume>”.
+[ ] Aplică presetul; configurația revine și statusul devine exact.
+[ ] Actualizează presetul din configurația curentă.
+[ ] Redenumește fără pierderea stării.
+[ ] Duplică; copia nu trebuie să fie aplicată automat.
+[ ] Șterge; prima apăsare cere confirmare, a doua șterge.
+[ ] Închide/redeschide aplicația și verifică persistența tuturor presetelor.
+
+5. IZOLARE ȘI SIGURANȚĂ
+[ ] Safe/Recommended/Aggressive nu șterg preseturi salvate.
+[ ] ALL OFF nu șterge presetul de bază; statusul devine Modified.
+[ ] Safe Mode blochează acțiunile, dar presetul reapare după dezactivare.
+[ ] Preseturile nu schimbă Runtime/Display, Native, Lighting, PZClipper,
+    Pathfinding, PopMan sau CP2C independent.
+[ ] Verifică restart complet după Apply/Update înainte de verdict grafic.
+
+6. VERDICT PENTRU CONTINUARE
+[ ] UI ACCEPTAT / DE MODIFICAT (descrie).
+[ ] PRESETURI PASS / FAIL (descrie și atașează log).
+[ ] WORLD BLACK: mecanism suspect și combinație stabilă.
+[ ] Doar după acest verdict se autorizează R15-06-04 localizare RO/EN.

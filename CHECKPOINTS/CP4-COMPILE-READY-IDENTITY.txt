@@ -1,0 +1,37 @@
+ZOMDROID OPTLAB - CP4 COMPILE-READY IDENTITY
+Data UTC: 2026-08-28
+
+INPUT SOURCE ARCHIVE SHA256
+ee949970a9eee4aea264e9bacc152a47bb1087b62ebed10bc0272e2caa8c8e50
+
+OLD BUNDLE (rejected)
+jars.tar SHA256:
+bc0be8f5e1f2e90a497c5dc8749aae5f59acbf9c9fe3f5b28e9d6a48727195b0
+zomdroid-agent.jar SHA256:
+0c19662efcb8df4c8e82854f216a9bceeaca74647732f722c8b7a940d216907b
+Embedded identity: version 4 / schema 3
+FeatureCompatibility.class: MISSING
+
+NEW BUNDLE (accepted)
+jars.tar SHA256:
+188cdabb19ddeecc9a24f1f51cb5f0f4189c8511938ea7611181906ebc362773
+zomdroid-agent.jar SHA256:
+0a5998ab01618b2709271c0037fa1929675a238b1b3aa7ae094bd8ce16a5364f
+Embedded identity: version 5 / schema 4
+FeatureCompatibility.class: PRESENT
+
+STATIC TESTS
+FeatureCompatibilityUnit: PASS
+OptLabRuntimeUnit: PASS
+Agent archive integrity: PASS
+Agent bundle/source identity guard: PASS
+Shell syntax: PASS
+strings.xml: PASS
+GitHub workflow YAML: PASS
+
+ANDROID BUILD
+NOT RUN. Gradle wrapper could not download Gradle 8.13 because services.gradle.org is not
+reachable from the execution environment. This failure happened before project configuration.
+
+OFFICIAL DEVICE PASS
+PENDING: build, launch, runtime proof and A/B benchmark on an ARM64 device.

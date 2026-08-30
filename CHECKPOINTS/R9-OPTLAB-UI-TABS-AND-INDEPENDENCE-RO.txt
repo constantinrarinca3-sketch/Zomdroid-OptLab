@@ -1,0 +1,63 @@
+ZOMDROID OPT-LAB R9 — UI TABS + INDEPENDENȚĂ MODULE
+Data: 2026-08-29
+
+SCOP
+====
+
+Acest checkpoint reorganizează interfața OPT-LAB pentru lista viitoare de
+optimizări. Nu modifică algoritmii Pathfinding sau PopMan și nu integrează
+JAssimp.
+
+UI
+==
+
+- se păstrează AlertDialog-ul existent, nu se introduce o activitate cu aspect diferit;
+- se păstrează tema Material a aplicației și accentul portocaliu;
+- culorile sunt moștenite din temă, deci funcționează automat light/dark;
+- șase taburi scrollabile: Overview, Runtime, Display, Build 42, Native, Experimental;
+- Overview afișează numai profilul și rezumatele modulelor;
+- Runtime și Display conțin opțiunile generale existente;
+- Build 42 și Native păstrează ferestrele detaliate existente;
+- Experimental este rezervat explicit optimizărilor viitoare și nu simulează funcții active.
+
+INDEPENDENȚĂ
+============
+
+- fostul Master OPT-LAB este acum masterul general Runtime/Display;
+- OFF la masterul general nu dezactivează și nu șterge Build 42;
+- profilurile generale nu modifică Pacing/Stream/FBO;
+- presetările Build 42 nu activează și nu modifică Runtime/Display;
+- Native Modules rămâne complet independent;
+- schema preferințelor OPT-LAB crește de la 4 la 5.
+
+EXPERIMENTAL
+============
+
+- Pathfinding Native este etichetat EXPERIMENTAL din cauza regresiei raportate:
+  zombi care pierd traseul/urmărirea față de baseline-ul Java;
+- PopMan Native este etichetat EXPERIMENTAL până la regresia completă pe dispozitiv;
+- ambele rămân toggle-uri reale și persistente;
+- nu este declarat niciun fix comportamental în acest checkpoint.
+
+TESTE
+=====
+
+PASS:
+- test-optlab-preferences-independence.sh;
+- test-native-modules-ui-source.sh;
+- test-native-modules-preferences.sh;
+- test-native-modules-source.sh;
+- test-optlab-agent-source.sh;
+- test-pathfinding-native-payload.sh;
+- test-popman-native-source.sh;
+- test-mobilegl-default-payload.sh;
+- test-cp1-proof-validator.sh;
+- parse 96 XML și 3 workflow-uri YAML.
+
+LIMITĂ
+======
+
+Gradle 8.13 nu a fost disponibil local și rețeaua către distribuția Gradle a
+fost inaccesibilă. Compilarea Android/APK și verificarea vizuală light/dark pe
+dispozitiv rămân PENDING. Testele comportamentale Pathfinding/PopMan și JAssimp
+rămân pentru checkpointul următor.

@@ -1,0 +1,1 @@
+package zombie.iso.zones; public final class VehicleZone extends Zone {}

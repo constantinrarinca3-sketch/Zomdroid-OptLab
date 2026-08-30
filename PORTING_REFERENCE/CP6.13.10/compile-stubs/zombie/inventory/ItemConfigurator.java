@@ -1,0 +1,1 @@
+package zombie.inventory; public class ItemConfigurator { public static boolean registerZone(String s){return false;} }

@@ -1,0 +1,1 @@
+package zombie.iso; import zombie.iso.areas.IsoRoom; public final class RoomDef { public boolean doneSpawn; public int level; public long id; public IsoRoom getIsoRoom(){return null;} public boolean intersects(int x,int y,int w,int h){return false;} }

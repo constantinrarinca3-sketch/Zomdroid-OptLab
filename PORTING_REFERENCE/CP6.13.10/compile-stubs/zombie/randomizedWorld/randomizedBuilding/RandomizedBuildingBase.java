@@ -1,0 +1,1 @@
+package zombie.randomizedWorld.randomizedBuilding; import zombie.iso.areas.IsoBuilding; public class RandomizedBuildingBase { public static void ChunkLoaded(IsoBuilding b){} }

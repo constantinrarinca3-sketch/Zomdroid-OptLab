@@ -1,0 +1,1 @@
+package zombie.vehicles; public class BaseVehicle { public void applyAccumulatedImpulsesFromHitObjectsToPhysics(){} public void applyAllImpulsesFromProneCharacters(){} public void checkSurroundingChunks(){} }

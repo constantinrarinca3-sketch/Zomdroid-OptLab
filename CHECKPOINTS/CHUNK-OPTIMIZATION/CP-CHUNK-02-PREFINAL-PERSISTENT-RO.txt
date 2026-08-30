@@ -1,0 +1,16 @@
+ZomDroid R11 - CP-CHUNK-02 PREFINAL PERSISTENT
+Data: 2026-08-29
+
+STARE SALVATA
+- Agent unificat OPT-LAB: DONE
+- Chunk Optimization: 8 functii production + CP2C experimental: DONE
+- Integrare launcher / registry / preferinte: DONE
+- UI Build 42 si ramura Chunk Optimization: DONE
+- Compatibilitate structurala Build 42: DONE
+- JAR real 42.20: PASS
+- JAR real 42.20.3: PASS
+- Android compile: NOT RUN
+- Device test: NO
+
+Acesta este checkpointul prefinal. Testele host finale, manifestul final si arhiva
+de livrare sunt pasii ramasi. CP2C ramane experimental si trebuie testat separat.

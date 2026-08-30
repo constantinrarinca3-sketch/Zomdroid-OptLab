@@ -1,0 +1,47 @@
+ZOMDROID R11 - CP4.1 V2 CHUNK OPTIMIZATION - FINAL QA
+Data: 2026-08-29
+
+VERDICT SURSA
+===============
+
+- CP4.1 V2 integrat in agentul OPT-LAB unic: DONE
+- Al doilea agent/profiler greu introdus in runtime: NU
+- 8 mecanisme production independente: DONE
+- CP2C Dirty Clear separat si marcat experimental: DONE
+- Preferinte / launcher / registry / proof: DONE
+- Ramura UI Chunk Optimization in Build 42: DONE
+- Compatibilitate structurala pentru familia Build 42: DONE
+- Verificare exacta projectzomboid 42.20: PASS
+- Verificare exacta projectzomboid 42.20.3: PASS
+- Teste host/statice: PASS
+- Android compile: NOT RUN
+- DEVICE TEST: NO
+
+PROFIL RECOMANDAT PENTRU PRIMUL TEST
+====================================
+
+Neighbour Worker = ON
+Neighbour Main = ON
+Vehicle Index = ON
+Toate celelalte Chunk Optimization = OFF
+CP2C Dirty Clear = OFF
+
+LISTA DEVICE TEST
+=================
+
+[ ] Pornire complet curata, prima data pe 42.20.3.
+[ ] Activeaza numai profilul stabil de mai sus; CP2C ramane OFF.
+[ ] Mers si alergare 10 minute, intoarceri dese, zona cu zombi si vehicule.
+[ ] Verifica in opt-proof selectiile ACTIVE + EXERCISED, fara UNSUPPORTED sau guard fallback.
+[ ] Save, inchidere completa, reload si revenire in chunk-urile vizitate.
+[ ] Verifica pereti, usi, coliziune, vizibilitate, vehicule duplicate si erori Lua/worldgen.
+[ ] A/B cu acelasi save si traseu, cate un toggle nou activat o data.
+[ ] Abia apoi testeaza toate cele 8 mecanisme production impreuna.
+[ ] CP2C se testeaza ultimul, singur, fiind experimental.
+[ ] Repeta testul de baza pe 42.20.
+
+NOTA
+====
+
+Testele host demonstreaza compatibilitatea si instalarea transformerelor, nu siguranta
+gameplay pe dispozitiv. Nicio functie netestata pe dispozitiv nu este declarata validata.

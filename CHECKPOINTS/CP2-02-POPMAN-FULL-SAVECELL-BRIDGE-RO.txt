@@ -1,0 +1,119 @@
+ZOMDROID OPT-LAB — CHECKPOINT CP2-02
+POPMAN NATIVE: BRIDGE COMPLET n_saveCell
+Data: 2026-08-28
+Status: DONE (SOURCE + AUDIT STATIC)
+Build Android: NO — utilizatorul compilează sursa
+Device test: NO — păstrat intenționat pentru checkpointul final
+
+============================================================
+IDENTITĂȚI OFICIALE CONFIRMATE
+============================================================
+
+Build 42.20 și 42.20.3 folosesc aceleași binare PopMan:
+
+ARM64 Android
+- SHA-256:
+  eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+- Build ID:
+  5d14d77db7656224cc78114ec553cb9d6c363323
+- mărime: 9.539.608 bytes
+
+x86_64 Linux
+- SHA-256:
+  baa9213172885e82310a40886359fd831c766dc726469f60dd75831a51a2bbe0
+- Build ID:
+  9540ac8db80e096e640f5e87196bd60313941b07
+
+Clasele ZombiePopulationManager din cele două JAR-uri diferă, dar ambele declară
+și apelează aceeași metodă:
+
+  private static native void n_saveCell(int, int);
+
+Payloadul ARM64 rămâne acceptat numai pentru cele două hashuri de clasă auditate.
+
+============================================================
+DE CE BRIDGE-UL CP2-01 NU ERA SUFICIENT
+============================================================
+
+Disassembly-ul oficial x86_64 a confirmat că n_saveCell nu înseamnă doar:
+
+  getCellFromCellPos(...)->save()
+
+ManagerWorker::saveCell(int,int) execută întregul ciclu:
+
+1. validează coordonatele față de minX/minY/width/height;
+2. găsește celula și cere ca ea să fie loaded;
+3. parcurge lista de zombi reali pregătită de ManagerMain;
+4. calculează floor(x) și floor(y) pentru fiecare Zombie;
+5. atașează celulei numai zombii care îi aparțin;
+6. execută Cell::save();
+7. golește lista temporară din Cell;
+8. reciclează toți zombii pregătiți în ZombiePool;
+9. golește lista ManagerMain inclusiv pe ramurile invalid/null/unloaded.
+
+Bridge-ul simplu din CP2-01 ar fi putut omite zombi din snapshot și ar fi lăsat
+obiectele nereciclate. Gate-ul false din CP2-01 a prevenit corect activarea lui.
+
+============================================================
+IMPLEMENTAREA CP2-02
+============================================================
+
+Fișier:
+  app/src/main/cpp/popman_savecell_bridge.c
+
+Bridge-ul reconstruiește ciclul complet folosind codul intern al payloadului ARM:
+
+- ManagerWorker::instance                  0x261770
+- ManagerMain::instance                    0x261b60
+- ManagerWorker::getCellFromCellPos        0x079b38
+- ManagerWorker::getCellFromWorldPos       0x07968c
+- ArrayList<Zombie*>::add                  0x0687ec
+- Cell::save                               0x064ed8
+- ObjectPool<Zombie*>::release             0x07d87c
+
+Layouturile sunt luate din DWARF-ul payloadului ARM64 oficial:
+
+- ManagerWorker: minX +0, minY +4, width +8, height +12;
+- ManagerMain: ZombiePool +200, saveRealZombieHack +256;
+- Cell: loaded +84, saveRealZombieHack +96;
+- Zombie: x +0, y +4;
+- ArrayList<T>: reprezentare de 24 bytes begin/end/capacity.
+
+Protecții păstrate:
+
+- SHA-256 și ELF64 AArch64 validate de launcher;
+- exact două hashuri Java acceptate;
+- Build ID verificat din nou în bridge înainte de orice offset intern;
+- identitate necunoscută = UnsatisfiedLinkError + fallback la restart;
+- liste cu structură invalidă = eroare tare, niciodată succes fals;
+- PopMan rămâne implicit OFF;
+- orice eroare writeCellSnapshot scrie marker pentru un restart x86_64 sigur;
+- bridge-ul nu scrie log la fiecare celulă.
+
+BRIDGE_SEMANTICS_VERIFIED este acum true pe baza echivalenței statice complete.
+Aceasta permite testarea reală PopMan ON, dar nu declară testul pe dispozitiv PASS.
+
+============================================================
+CE NU S-A FĂCUT ÎN ACEST CHECKPOINT
+============================================================
+
+- APK-ul nu a fost compilat aici;
+- testele PopMan și Pathfinding pe dispozitiv nu au fost rulate;
+- benchmarkul OFF vs ON nu a fost rulat;
+- fixul gate-ului Pathfinding-only și mutarea UI Build 42 rămân în lista finală;
+- niciun rezultat ACTIVE/EXERCISED nu este inventat.
+
+Acestea sunt păstrate în:
+  FIXES-AND-TESTS-TO-DO-AT-END-RO.txt
+
+============================================================
+REZULTAT
+============================================================
+
+CP2-02 = DONE (SOURCE + AUDIT STATIC)
+POPMAN_NATIVE_AVAILABLE = IMPLEMENTAT
+POPMAN_NATIVE_ACTIVE = SELECTABIL, IMPLICIT OFF
+POPMAN_NATIVE_EXERCISED = NO / AȘTEAPTĂ DEVICE TEST
+ANDROID BUILD = NO
+DEVICE TEST = NO
+CP2 OFFICIAL PASS = NO / AȘTEAPTĂ TESTELE FINALE

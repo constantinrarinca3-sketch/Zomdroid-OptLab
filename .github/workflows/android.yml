@@ -20,6 +20,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Prepare and test OPT-LAB agent bundle
+        run: |
+          ./tools/build-optlab-agent.sh
+          ./tools/test-optlab-agent-source.sh
+          ./tools/test-optlab-launch-contract.sh
+          ./tools/test-pathfinding-native-payload.sh
+          ./tools/test-popman-native-source.sh
+          ./tools/test-native-modules-source.sh
+          ./tools/test-native-modules-preferences.sh
+          ./tools/test-native-modules-ui-source.sh
+          ./tools/test-optlab-preferences-independence.sh
+          ./tools/test-mobilegl-default-payload.sh
+          ./tools/test-jassimp-direct.sh
+          ./tools/test-cp1-proof-validator.sh
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
@@ -27,4 +42,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/**/debug/*.apk
+          if-no-files-found: error

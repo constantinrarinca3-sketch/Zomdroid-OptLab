@@ -1,0 +1,2686 @@
+--- /dev/null
++++ b/CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
+@@ -0,0 +1,179 @@
++ZOMDROID OPTLAB — CHECKPOINT 4 BUILD 42 COMPATIBILITY
++SOURCE HANDOFF SUMMARY
++Data UTC: 2026-08-28
++
++STATUS OFICIAL
++==============
++
++CHECKPOINT 4 DONE (SOURCE): YES
++IMPLEMENTATION: COMPLETE
++STATIC REVIEW: PASS
++BUILD: NOT RUN — USER WILL COMPILE
++DEVICE TEST: NO / PENDING
++BENCHMARK OFF vs ON: PENDING
++OFFICIAL PASS: NO — AWAITING BUILD AND DEVICE VALIDATION
++
++Acest status este intenționat strict. Sursa este terminată și verificată static; checkpoint-ul nu
++este declarat PASS pe dispozitiv înainte ca utilizatorul să compileze și să confirme jocul real.
++
++CE S-A REPARAT
++===============
++
++1. Gate-ul global pe SHA-ul întregului projectzomboid.jar a fost eliminat din agent.
++
++2. SHA-ul exact nu a fost eliminat. El rămâne dovadă puternică pentru starea VERIFIED.
++
++3. Fiecare mecanism are propria decizie:
++
++- VERIFIED: hash-urile claselor cerute sunt cele auditate;
++- PROBE: build/SHA nou, încă neconfirmat;
++- COMPATIBLE: proba structurală a feature-ului a trecut;
++- UNSUPPORTED: numai acel feature revine la codul original.
++
++4. Un build B42 cu SHA general diferit nu mai oprește automat tot OPT-LAB.
++
++5. Pacing, Stream Core și FBO sunt mutate într-o fereastră separată „OPT-LAB · Build 42”.
++Setările generale Runtime/Box64/Surface/Input rămân în fereastra principală.
++
++6. A fost adăugată politica persistentă „Only Build 42”, implicit ON:
++
++- ON: mecanismele bytecode B42 sunt oprite pe alte familii;
++- OFF: utilizatorul poate cere o probă cross-family, dar nimic nu pornește VERIFIED; fiecare
++  mecanism trebuie să treacă propria probă structurală.
++
++7. Fallback-ul este independent și fail-open:
++
++- formă de clasă necunoscută;
++- clasă lipsă;
++- număr neașteptat de instrucțiuni;
++- eroare ByteBuddy;
++- reflection/runtime failure.
++
++În toate cazurile de mai sus se păstrează sau se reapelează comportamentul original al jocului.
++
++8. Identitatea sursei compilate a fost ridicată la versionCode 14745 și
++1.4.7v4-optlab-r4-b42-compat, pentru a nu fi confundată cu R3 Stream/FBO original.
++
++PROBE STRUCTURALE IMPLEMENTATE
++==============================
++
++PACING
++- MainThread.mainLoop()V unic;
++- queueInvokeOnMainThread prezent;
++- GameWindow.frameStep unic;
++- exact un Thread.yield în locul auditat.
++
++STREAM_WAKE
++- WorldStreamer.threadLoop unic;
++- metodele de signal prezente;
++- exact patru Thread.sleep(J)V înlocuite.
++
++STREAM_QUEUE_FAST
++- WorldStreamer.threadLoop unic;
++- exact două Collections.sort(List, Comparator) înlocuite.
++
++STREAM_VELOCITY_ETA
++- ChunkComparator.init unic;
++- reflection runtime fail-open.
++
++FBO_DIRTY_DEDUP
++- exact un setDirty(J)V;
++- matcherul Advice cere long și return void.
++
++FBO_FRAME_BUDGET / COORDONATOR
++- beginRenderChunkLevel unic;
++- exact un apel FBORenderLevels.isDirty(IF)Z în locul auditat;
++- coordonatorul cere FBO frame budget și probe valide în WorldStreamer + FBO manager.
++
++DIAGNOSTIC
++==========
++
++Schema proof: 4.
++
++Stări relevante în opt-proof.log:
++
++- DETECTED;
++- VERIFIED;
++- PROBE;
++- ACTIVE;
++- EXERCISED;
++- UNSUPPORTED, cu fallback=original_game_code și motiv.
++
++ACTIVE demonstrează că toate probele structurale cerute au trecut.
++EXERCISED demonstrează că ruta a fost apelată efectiv în runtime.
++Niciuna dintre ele nu este prezentată fals ca benchmark sau PASS pe dispozitiv.
++
++AUDIT STREAM CORE
++=================
++
++Raport complet: STREAM-CORE-AUDIT-RO.txt
++
++Verdict rezumat:
++
++- S1 STREAM_WAKE: bun și recomandabil pentru A/B;
++- S2 STREAM_QUEUE_FAST: corect pentru contractul auditat; confirmare A/B pe build nou;
++- S3 STREAM_VELOCITY_ETA: experimental; test separat, OFF în baseline;
++- Stream Core nu bugetează direct commit-urile Java de chunk/grid pe main thread și, singur,
++  nu poate garanta eliminarea stutter-ului în mersul pe jos.
++
++VERIFICĂRI EXECUTATE
++====================
++
++- compilarea izolată a tuturor surselor agentului cu Java 17: PASS;
++- FeatureCompatibilityUnit: PASS;
++- OptLabRuntimeUnit: PASS;
++- fallback Collections.sort: PASS;
++- fallback FBO: PASS;
++- wake/unpark: PASS;
++- FBO fairness și dirty preservation: PASS;
++- bash -n pentru scripturile agentului: PASS;
++- strings.xml well-formed: PASS;
++- patch cumulativ aplicabil peste sursa originală cu patch --dry-run: PASS.
++
++Compilarea Android completă nu a fost executată deoarece Gradle 8.13 nu este disponibil local și
++wrapperul nu poate descărca distribuția în acest mediu. Aceasta rămâne explicit sarcina
++utilizatorului, conform cererii de livrare „doar sursa”.
++
++BUILD UTILIZATOR
++================
++
++Din rădăcina sursei:
++
++1. bash tools/test-optlab-agent-source.sh
++2. ./tools/build-optlab-agent.sh
++3. ./gradlew :app:assembleSideBySideDebug
++
++Pentru varianta care înlocuiește identitatea R1, folosește task-ul flavorului replaceR1 numai dacă
++aceasta este intenția ta explicită. Varianta sideBySide rămâne calea sigură de test.
++
++TEST PE DISPOZITIV
++==================
++
++1. Build B42 cunoscut, toate mecanismele OFF — baseline.
++2. Același build, S1 singur ON.
++3. Același build, S2 singur ON.
++4. Același build, S1+S2 ON.
++5. S3 separat.
++6. F1 separat, apoi F2 separat, apoi coordonatorul cu F2.
++7. Un patch B42 cu SHA nou: verifică PROBE -> ACTIVE/COMPATIBLE -> EXERCISED.
++8. Verifică lipsa crash-urilor, chunk-urilor negre și artefactelor FBO.
++9. Compară frame-time/stutter în aceleași condiții; nu doar FPS mediu.
++
++ROLLBACK
++========
++
++Arhiva originală a fost păstrată neatinsă.
++
++SHA256 arhivă originală:
++1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
++
++Checkpointurile interne CP1-00…CP1-03 și patch-urile cumulative se află în CHECKPOINTS/.
++
++FIȘIERUL MASTER AL UTILIZATORULUI
++=================================
++
++ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt este inclus în sursă. Corpul
++planului a fost păstrat, iar la final a fost adăugat statusul efectiv al Checkpoint 4 sărit înainte,
++conform deciziei utilizatorului.
++
++SFÂRȘIT CHECKPOINT 4 SOURCE HANDOFF
+--- /dev/null
++++ b/STREAM-CORE-AUDIT-RO.txt
+@@ -0,0 +1,84 @@
++ZomDroid R3 — AUDIT STREAM CORE
++Data UTC: 2026-08-28
++Scop: audit static pentru Checkpoint 4; fără benchmark inventat și fără test pe dispozitiv.
++
++CONCLUZIE SCURTĂ
++Stream Core este fail-open și mecanismele sunt separate corect, dar nu este o soluție completă
++pentru stutter-ul simțit în mersul pe jos. El optimizează trezirea workerului, alegerea următorului
++job și prioritatea de streaming. Nu bugetează direct commit-urile Java de chunk/grid executate pe
++main thread. Din acest motiv poate reduce unele spike-uri, dar nu poate garanta frame pacing plat.
++
++S1 — STREAM_WAKE
++Verdict static: BUN / RECOMANDABIL PENTRU A/B.
++
++- înlocuiește cele patru Thread.sleep(J)V auditate cu un park ce poate fi trezit prin unpark;
++- păstrează semantica InterruptedException;
++- dacă forma metodei nu mai are exact patru sleep-uri, S1 se dezactivează singur;
++- după dezactivare, wrapperul cheamă Thread.sleep original;
++- o eroare S1 nu dezactivează S2, S3, FBO sau restul OPT-LAB.
++
++Limită:
++- parkNanos poate reveni spurios, deci workerul poate face o iterație mai devreme; aceasta nu
++  corupe date și nu blochează jocul, dar trebuie confirmată energetic/termic pe dispozitiv.
++
++S2 — STREAM_QUEUE_FAST
++Verdict static: CORECT PENTRU CONTRACTUL AUDITAT, DAR NECESITĂ A/B PE FIECARE BUILD NOU.
++
++- selectează în O(n) același element maxim pe care sortarea stabilă urmată de pop l-ar alege;
++- egalitățile păstrează regula „ultimul maxim câștigă”;
++- Stack-ul este modificat sub același monitor;
++- dacă nu este Stack, are sub două elemente sau mecanismul este dezactivat, rulează
++  Collections.sort original;
++- proba structurală cere exact două apeluri Collections.sort în threadLoop; alt număr produce
++  fallback numai pentru S2.
++
++Limită importantă:
++- optimizarea nu sortează întreaga coadă rămasă. Este echivalentă numai cât timp rezultatul
++  observabil al locului auditat este alegerea următorului maxim. Hash-ul exact rămâne VERIFIED;
++  pentru un SHA B42 nou starea începe PROBE și trebuie confirmată prin telemetry/A-B.
++
++S3 — STREAM_VELOCITY_ETA
++Verdict static: EXPERIMENTAL; ȚINE-L OFF ÎN BASELINE ȘI TESTEAZĂ-L SEPARAT.
++
++- calculează direcția din poziția curentă și ultima poziție;
++- deplasează centrul de prioritate cu minimum 10 tile-uri inclusiv la mersul pe jos;
++- peste pragul de viteză al vehiculului crește bounded până la 28 tile-uri;
++- reflection failure dezactivează numai S3 și revine la comparatorul original.
++
++Limită importantă:
++- dovada EXERCISED se emite numai când lookahead-ul trece de 10,01, de regulă în vehicul, deși
++  centrul este mutat și la mers. S3 nu explică și nu repară singur agățările la 60/75 FPS pe jos.
++
++COORDONATOR STREAM–FBO
++Verdict static: FAIL-OPEN / CONSERVATOR.
++
++- doar reduce temporar bugetul FBO non-critic când streamingul este urgent;
++- un FBO nou, fără textură sau nesubmis nu este amânat;
++- dirty rămâne adevărat la defer, iar fairness forțează admiterea după maximum două frame-uri;
++- dacă proba FBO sau WorldStreamer eșuează, coordonatorul singur revine OFF.
++
++CE S-A VERIFICAT PE HOST
++- FeatureCompatibilityUnit: exact B42, SHA B42 nou, policy Only Build 42, clasă lipsă,
++  cross-family explicit și izolarea erorilor — PASS;
++- OptLabRuntimeUnit: selecție stabilă, fallback Collections.sort, wake/unpark, dirty dedup,
++  FBO budget/fairness și fallback FBO — PASS;
++- compilare izolată a surselor agentului cu Java 17 — PASS.
++
++CE NU POATE FI DECLARAT ÎNCĂ
++- build Android: NOT RUN — USER WILL COMPILE;
++- comportament pe Project Zomboid real: DEVICE TEST PENDING;
++- benchmark OFF/ON: PENDING;
++- Checkpoint 4 PASS oficial: NU, până la compilare și test.
++
++CONFIGURAȚIE DE TEST RECOMANDATĂ
++1. Baseline: toate S1/S2/S3 OFF.
++2. S1 singur ON.
++3. S2 singur ON.
++4. S1+S2 ON.
++5. S3 separat, nu combinat la prima validare.
++
++Urmărește opt-proof.log:
++- VERIFIED sau PROBE înaintea transformării;
++- ACTIVE numai după trecerea tuturor probelor structurale;
++- EXERCISED când ruta chiar este apelată;
++- UNSUPPORTED + fallback=original_game_code la orice incompatibilitate.
+--- /dev/null
++++ b/ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt
+@@ -0,0 +1,654 @@
++ZOMDROID OPTLAB - MASTER SUMMARY PE CHECKPOINT-URI
++Data: 2026-08-28
++
++SCOP
++====
++
++Documentul este împărțit pe checkpoint-uri mici și verificabile.
++
++Regula generală:
++
++1. se lucrează la un singur checkpoint;
++2. se face build;
++3. se testează;
++4. se păstrează rollback;
++5. se scrie summary;
++6. abia apoi se trece la următorul checkpoint.
++
++Nu se amestecă mai multe modificări mari într-un singur build experimental.
++
++
++============================================================
++CHECKPOINT 0 - STAREA ACTUALĂ
++============================================================
++
++Lighting64 Native
++Status: EXISTĂ / ESTE DEJA PORTAT
++
++PZClipper Native
++Status: EXISTĂ / ESTE DEJA PORTAT
++
++Pathfinding Native
++Status: URMĂTORUL TARGET DE IMPLEMENTARE
++
++PopMan Native
++Status: PLANIFICAT
++
++JAssimp / Assimp Fix
++Status:
++- fixul există și funcționează prin Java Agent;
++- nu este încă integrat direct în JAssimp / libjassimp64.so;
++- soluția finală trebuie mutată în librarie;
++- Java Agent trebuie să rămână doar workaround / referință / rollback.
++
++OptLab Build 42 Compatibility
++Status:
++- OptLab este prea dependent de SHA-ul exact al unui anumit 42.20;
++- patch-urile 42.20.1 / 42.20.2 / 42.20.3 pot fi blocate doar pentru că SHA-ul diferă;
++- această problemă trebuie reparată ulterior fără să activăm orbește toate optimizările pe orice Build 42.
++
++
++============================================================
++CHECKPOINT 1 - PATHFINDING NATIVE + NATIVE MODULES UI
++============================================================
++
++SCOP
++====
++
++Acest checkpoint unește două lucruri care trebuie construite împreună:
++
++1. implementarea Pathfinding Native;
++2. infrastructura UI pentru toate modulele native.
++
++Motiv:
++Pathfinding trebuie oricum activat/dezactivat pentru testare.
++Nu are sens să facem Pathfinding acum și să reconstruim ulterior aceeași infrastructură pentru toggle-uri.
++
++
++PARTEA A - PATHFINDING NATIVE
++=============================
++
++Obiectiv:
++portarea părții utile din Pathfinding în native ARM64.
++
++NU trebuie presupus că tot sistemul de Pathfinding trebuie portat.
++
++Mai întâi trebuie identificate:
++
++- clasele relevante;
++- metodele relevante;
++- hotspot-urile;
++- buclele costisitoare;
++- calculele repetitive;
++- structurile de date folosite frecvent;
++- partea care poate beneficia real de native ARM64.
++
++Se portează doar ce are sens.
++
++
++CERINȚE PATHFINDING
++===================
++
++1. Identifică exact ruta reală de Pathfinding folosită de Project Zomboid Build 42.
++
++2. Identifică ce parte merită mutată în native.
++
++3. Creează implementarea native ARM64.
++
++4. Păstrează fallback către implementarea originală Java.
++
++5. Dacă ruta native eșuează:
++- jocul nu trebuie să crape;
++- se revine la implementarea originală;
++- motivul trebuie scris în log.
++
++6. Adaugă diagnostic clar:
++
++PATHFINDING_NATIVE_AVAILABLE
++PATHFINDING_NATIVE_ACTIVE
++PATHFINDING_NATIVE_EXERCISED
++PATHFINDING_NATIVE_FALLBACK
++
++Trebuie demonstrat că ruta native chiar este folosită.
++
++Nu este suficient:
++ACTIVE=1
++
++Trebuie să vedem și:
++EXERCISED=1
++
++
++PARTEA B - NATIVE MODULES UI
++============================
++
++În același checkpoint trebuie adăugată o fereastră separată:
++
++Native Modules
++
++Toggle-uri:
++
++- Lighting64 Native
++- PZClipper Native
++- Pathfinding Native
++- PopMan Native
++
++
++COMPORTAMENT UI
++===============
++
++Lighting64 Native
++- toggle real;
++- controlează implementarea reală;
++- stare persistentă.
++
++PZClipper Native
++- toggle real;
++- controlează implementarea reală;
++- stare persistentă.
++
++Pathfinding Native
++- toggle real;
++- conectat la implementarea creată în acest checkpoint;
++- stare persistentă.
++
++PopMan Native
++- apare deja în UI;
++- dar rămâne OFF / Unavailable până la Checkpoint 2;
++- nu trebuie simulat ca fiind funcțional.
++
++
++RESTART
++=======
++
++Dacă un modul nu poate fi schimbat după ce procesul jocului a pornit:
++
++afișează:
++
++Restart game required
++
++Toggle-ul trebuie să controleze starea reală folosită la următoarea pornire.
++
++
++TESTARE CHECKPOINT 1
++====================
++
++PATHFINDING:
++
++Baseline:
++Pathfinding Native OFF
++
++Candidate:
++Pathfinding Native ON
++
++Se compară în aceleași condiții.
++
++Se verifică:
++
++- frame-time;
++- stutter;
++- CPU;
++- stabilitate;
++- mișcarea zombie;
++- urmărirea jucătorului;
++- evitarea obstacolelor;
++- uși;
++- scări;
++- interior/exterior;
++- clădiri;
++- zone cu mulți zombie;
++- gameplay normal.
++
++UI:
++
++Se verifică separat:
++
++Lighting64 OFF / ON
++PZClipper OFF / ON
++Pathfinding OFF / ON
++
++Se verifică dacă setările rămân salvate după restartul aplicației.
++
++
++PASS CHECKPOINT 1
++=================
++
++Checkpoint-ul este PASS doar dacă:
++
++- Native Modules UI funcționează;
++- Lighting64 are toggle real;
++- PZClipper are toggle real;
++- Pathfinding are toggle real;
++- PopMan apare dar este indisponibil până la implementare;
++- Pathfinding Native este implementat;
++- Pathfinding Native este ACTIVE și EXERCISED;
++- nu există regresii clare;
++- fallback-ul funcționează;
++- există benchmark OFF vs ON;
++- există rollback.
++
++
++ROLLBACK
++========
++
++Păstrează:
++
++- build-ul stabil anterior;
++- implementarea Java originală;
++- librăriile native vechi;
++- configurația anterioară.
++
++
++DUPĂ PASS
++=========
++
++Creează:
++
++CHECKPOINT-1-PATHFINDING-NATIVE-AND-NATIVE-MODULES-UI-SUMMARY.txt
++
++
++============================================================
++CHECKPOINT 2 - POPMAN NATIVE
++============================================================
++
++SCOP
++====
++
++Implementarea PopMan Native folosind infrastructura Native Modules deja creată în Checkpoint 1.
++
++Nu mai trebuie refăcut UI-ul.
++
++Toggle-ul PopMan există deja.
++În acest checkpoint trebuie conectat la implementarea reală.
++
++
++CERINȚE
++=======
++
++1. Identifică exact codul PopMan relevant.
++
++2. Identifică hotspot-urile reale.
++
++3. Nu porta totul dacă nu este necesar.
++
++4. Implementează doar partea care are potențial real de beneficiu.
++
++5. Păstrează fallback.
++
++6. Adaugă:
++
++POPMAN_NATIVE_AVAILABLE
++POPMAN_NATIVE_ACTIVE
++POPMAN_NATIVE_EXERCISED
++POPMAN_NATIVE_FALLBACK
++
++7. Conectează toggle-ul PopMan Native existent în UI.
++
++
++TESTARE
++=======
++
++Se verifică:
++
++- populație zombie;
++- spawn;
++- despawn;
++- migrare;
++- celule;
++- zone dense;
++- încărcare lume;
++- gameplay lung;
++- stabilitate.
++
++Benchmark:
++
++PopMan Native OFF
++vs
++PopMan Native ON
++
++
++PASS
++====
++
++- fără regresii majore;
++- fără crash;
++- fără zombie lipsă / duplicate din cauza portării;
++- ruta native este ACTIVE și EXERCISED;
++- fallback funcțional;
++- benchmark documentat.
++
++
++DUPĂ PASS
++=========
++
++Creează:
++
++CHECKPOINT-2-POPMAN-NATIVE-SUMMARY.txt
++
++
++============================================================
++CHECKPOINT 3 - JASSIMP DIRECT FIX
++============================================================
++
++SCOP
++====
++
++Eliminarea nevoii de:
++
++-javaagent
++
++pentru fixul JAssimp.
++
++
++STAREA ACTUALĂ
++==============
++
++Fixul este deja demonstrat prin Java Agent.
++
++Dar acesta nu trebuie să rămână soluția finală.
++
++Soluția finală trebuie integrată direct în:
++
++Assimp / JAssimp / libjassimp64.so
++
++
++OBIECTIV
++========
++
++- modificare directă în sursă;
++- rebuild Android ARM64;
++- înlocuire libjassimp64.so;
++- integrare în ZomDroid;
++- test fără Java Agent.
++
++
++CERINȚE
++=======
++
++1. Găsește sursa exactă folosită pentru libjassimp64.so.
++
++2. Identifică exact comportamentul reparat de Java Agent.
++
++3. Mută fixul direct în librarie.
++
++4. Rebuild libjassimp64.so pentru ARM64.
++
++5. Înlocuiește libraria veche.
++
++6. Rebuild / package ZomDroid.
++
++7. Testează fără -javaagent.
++
++
++VALIDARE
++========
++
++Teste principale:
++
++- KI5 B700;
++- KI5 F700;
++- animația capotei;
++- alte modele FBX/skinned afectate anterior;
++- modele care funcționau deja.
++
++Java Agent rămâne doar:
++
++- referință;
++- comparație;
++- rollback;
++- diagnostic.
++
++
++PASS
++====
++
++Fixul funcționează direct din librarie fără -javaagent.
++
++
++DUPĂ PASS
++=========
++
++Creează:
++
++CHECKPOINT-3-JASSIMP-DIRECT-FIX-SUMMARY.txt
++
++
++============================================================
++CHECKPOINT 4 - OPTLAB BUILD 42 COMPATIBILITY
++============================================================
++
++SCOP
++====
++
++Rezolvarea problemei de compatibilitate OptLab cu diferitele patch-uri Build 42.
++
++
++PROBLEMA
++========
++
++OptLab este prea dependent de SHA-ul exact al unui anumit Project Zomboid 42.20.
++
++Exemplu:
++
++42.20 poate funcționa.
++
++Dar:
++
++42.20.1
++42.20.2
++42.20.3
++
++pot avea alt SHA și OptLab poate rămâne OFF chiar dacă unele optimizări sunt încă perfect compatibile.
++
++
++ONLY BUILD 42
++=============
++
++Adaugă:
++
++Only Build 42
++
++Default recomandat:
++
++ON
++
++Înseamnă:
++
++- OptLab vizează familia Build 42;
++- Build 41 și mai vechi nu sunt prioritate.
++
++NU înseamnă:
++
++Build 42 = toate optimizările ON
++
++
++REGULA CORECTĂ
++==============
++
++Build 42
+++
++feature-ul respectiv este compatibil
++=
++feature-ul poate fi activat
++
++
++COMPATIBILITATE INDIVIDUALĂ
++===========================
++
++Fiecare optimizare trebuie verificată separat.
++
++Exemplu:
++
++42.20.3
++
++OPT-022 = COMPATIBLE -> ON
++OPT-023 = VERIFIED -> ON
++OPT-024 = UNSUPPORTED -> OFF
++
++Un feature incompatibil NU trebuie să dezactiveze întreg OptLab.
++
++
++STĂRI
++=====
++
++VERIFIED
++= build / SHA deja testat
++
++COMPATIBLE
++= SHA-ul general diferă, dar codul necesar feature-ului este compatibil
++
++PROBE
++= încă neconfirmat; OFF implicit
++
++UNSUPPORTED
++= incompatibil; OFF
++
++
++SHA
++===
++
++Nu elimina verificarea SHA.
++
++SHA exact rămâne util pentru build-uri deja validate.
++
++Dar:
++
++SHA diferit NU trebuie să însemne automat:
++
++tot OptLab OFF.
++
++
++LOGURI
++======
++
++Exemplu:
++
++PZ_VERSION=42.20.3
++PZ_BUILD_FAMILY=42
++PZ_SHA256=...
++
++ONLY_BUILD_42=ON
++
++OPT022=COMPATIBLE
++OPT023=VERIFIED
++OPT024=UNSUPPORTED
++
++Dacă un feature este dezactivat:
++
++OPT024_DISABLED reason=TARGET_NOT_COMPATIBLE
++
++
++PASS
++====
++
++- un SHA nou Build 42 nu mai blochează global OptLab;
++- fiecare feature are propria compatibilitate;
++- fiecare feature are propriul motiv de activare/dezactivare;
++- fallback-ul rămâne sigur.
++
++
++DUPĂ PASS
++=========
++
++Creează:
++
++CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
++
++
++============================================================
++ORDINEA FINALĂ
++============================================================
++
++CHECKPOINT 1
++Pathfinding Native + Native Modules UI
++
++CHECKPOINT 2
++PopMan Native
++
++CHECKPOINT 3
++JAssimp Direct Fix
++
++CHECKPOINT 4
++OptLab Build 42 Compatibility
++
++
++============================================================
++REGULI GENERALE PENTRU TOATE CHECKPOINT-URILE
++============================================================
++
++1. Un singur checkpoint activ.
++
++2. Nu combina Checkpoint 2, 3 sau 4 cu Checkpoint 1.
++
++3. Fiecare checkpoint trebuie să păstreze:
++
++- sursa de bază;
++- commit / SHA;
++- patch / diff;
++- build rezultat;
++- SHA256 unde este relevant;
++- test;
++- PASS / FAIL;
++- rollback;
++- summary TXT.
++
++4. Nu considera un feature gata doar pentru că compilează.
++
++5. Pentru module native trebuie demonstrat:
++
++AVAILABLE
++ACTIVE
++EXERCISED
++
++6. Fără benchmark inventat.
++
++7. Benchmark-ul trebuie făcut față de un baseline stabil.
++
++8. Orice feature nou trebuie să aibă fallback sigur.
++
++9. Următorul checkpoint începe doar din ultimul build PASS.
++
++10. Nu se activează automat feature-uri necunoscute doar pentru că jocul este Build 42.
++
++
++============================================================
++URMĂTOAREA ACȚIUNE
++============================================================
++
++START:
++
++CHECKPOINT 1
++PATHFINDING NATIVE + NATIVE MODULES UI
++
++În acest checkpoint se construiește baza pentru toate modulele native.
++
++La final trebuie să avem deja în aplicație:
++
++Lighting64 Native     toggle funcțional
++PZClipper Native      toggle funcțional
++Pathfinding Native    toggle funcțional + implementare native
++PopMan Native         vizibil, dar OFF / Unavailable
++
++După ce Checkpoint 1 este PASS, infrastructura Native Modules nu mai trebuie refăcută pentru PopMan.
++
++
++============================================================
++STATUS IMPLEMENTARE ADĂUGAT — 2026-08-28
++============================================================
++
++La decizia utilizatorului, ordinea planului a fost sărită și s-a implementat mai întâi:
++
++CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
++
++CHECKPOINT 4 DONE (SOURCE): YES
++IMPLEMENTATION: COMPLETE
++STATIC REVIEW: PASS
++BUILD: NOT RUN — USER WILL COMPILE
++DEVICE TEST: NO / PENDING
++BENCHMARK OFF vs ON: PENDING
++OFFICIAL PASS: NO — AWAITING BUILD AND DEVICE VALIDATION
++
++Detalii complete:
++CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
++
++Checkpoint 1 Pathfinding Native + Native Modules UI, Checkpoint 2 PopMan Native și Checkpoint 3
++JAssimp Direct Fix nu sunt declarate implementate de această livrare.
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -49,9 +49,9 @@
+         applicationId = "com.zomdroid.mglpz2"
+         minSdk = 30
+         targetSdk = 35
+-        versionCode = 14744
+-        versionName = "1.4.7v4-optlab-r3-stream-fbo-pack-side"
+-        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK"
++        versionCode = 14745
++        versionName = "1.4.7v4-optlab-r4-b42-compat-side"
++        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R4 B42"
+ 
+         // JavaSteam + protobuf + kotlin stack push past the 64K method limit.
+         multiDexEnabled = true
+@@ -76,16 +76,16 @@
+         create("sideBySide") {
+             dimension = "installMode"
+             applicationId = "com.zomdroid.mglpz2"
+-            versionCode = 14744
+-            versionName = "1.4.7v4-optlab-r3-stream-fbo-pack-side"
+-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK"
++            versionCode = 14745
++            versionName = "1.4.7v4-optlab-r4-b42-compat-side"
++            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R4 B42"
+         }
+         create("replaceR1") {
+             dimension = "installMode"
+             applicationId = "com.zomdroid.mglpz1"
+-            versionCode = 14744
+-            versionName = "1.4.7v4-optlab-r3-stream-fbo-pack-replace"
+-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R3 PACK Replace"
++            versionCode = 14745
++            versionName = "1.4.7v4-optlab-r4-b42-compat-replace"
++            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R4 B42 Replace"
+         }
+     }
+ 
+--- a/app/src/main/java/com/zomdroid/GameLauncher.java
++++ b/app/src/main/java/com/zomdroid/GameLauncher.java
+@@ -247,12 +247,14 @@
+         jvmArgs.add("-Dzomdroid.renderer=" + LauncherPreferences.requireSingleton().getRenderer().name());
+ 
+         String pzJarSha = sha256(new File(gameInstance.getGamePath(), "projectzomboid.jar"));
+-        boolean pzJarGate = OptLabPreferences.EXPECTED_PZ_JAR_SHA256.equals(pzJarSha);
++        OptLabFeatureRegistry.Snapshot compatibility = OptLabFeatureRegistry.evaluate(
++                gameInstance, optLab, pzJarSha, arm64Native.lightingActive,
++                arm64Native.clipperActive);
++        compatibility.log();
+         String optLabSession = System.currentTimeMillis() + "-" + android.os.Process.myPid();
+         File optProofFile = new File(home, "opt-proof.log");
+-        prepareOptProof(optProofFile, optLabSession, optLab.machineReadable());
+-        jvmArgs.add("-Dzomdroid.optlab.jar.sha256=" + pzJarSha);
+-        jvmArgs.add("-Dzomdroid.optlab.jar.gate=" + (pzJarGate ? "1" : "0"));
++        prepareOptProof(optProofFile, optLabSession, optLab.machineReadable(), compatibility);
++        compatibility.addAgentIdentityProperties(jvmArgs);
+         jvmArgs.add("-Dzomdroid.optlab.session=" + optLabSession);
+         jvmArgs.add("-Dzomdroid.optlab.proof.path=" + optProofFile.getAbsolutePath());
+         jvmArgs.add("-Dzomdroid.optlab.pacing=" + boolArg(optLab.isMainloopPacing()));
+@@ -277,9 +279,15 @@
+         if (optLab.isAnyAgentOptimizationEnabled()) {
+             jvmArgs.add("-Dnet.bytebuddy.experimental=true");
+         }
+-        if (optLab.isAnyAgentOptimizationEnabled() && !pzJarGate) {
+-            Log.w("ZD-OPT-LAB", "agent optimizations blocked by PZ JAR identity gate: "
+-                    + pzJarSha);
++        if (optLab.isAnyAgentOptimizationEnabled() && !compatibility.isBuild42()) {
++            if (compatibility.isOnlyBuild42()) {
++                Log.w("ZD-OPT-LAB", "Build 42 agent features blocked for build family "
++                        + gameInstance.getBuildVersion() + " by Only Build 42 policy");
++            } else {
++                Log.w("ZD-OPT-LAB", "Cross-family agent probes requested for build family "
++                        + gameInstance.getBuildVersion()
++                        + "; each mechanism must pass its own structural gate");
++            }
+         }
+ 
+         if (optLab.isSqliteAndroidNative()) {
+@@ -359,8 +367,7 @@
+         Log.i("ZD-OPT-LAB", "[ZD-OPT-LAB] pkg=" + BuildConfig.APPLICATION_ID
+                 + " version=" + BuildConfig.VERSION_NAME
+                 + " " + optLab.machineReadable()
+-                + " pzJarSha256=" + pzJarSha
+-                + " pzJarGate=" + (pzJarGate ? 1 : 0)
++                + " " + compatibility.identityMachineReadable()
+                 + " optProofSession=" + optLabSession
+                 + " optProofPath=" + optProofFile.getAbsolutePath()
+                 + " rendererPath=" + rendererFile.getAbsolutePath()
+@@ -383,7 +390,8 @@
+         return value ? "1" : "0";
+     }
+ 
+-    private static void prepareOptProof(File file, String session, String settings) {
++    private static void prepareOptProof(File file, String session, String settings,
++                                        OptLabFeatureRegistry.Snapshot compatibility) {
+         try {
+             File parent = file.getParentFile();
+             if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+@@ -394,6 +402,7 @@
+                     + settings.replace(' ', '_') + "\n";
+             try (FileOutputStream output = new FileOutputStream(file, false)) {
+                 output.write(header.getBytes(StandardCharsets.UTF_8));
++                output.write(compatibility.proofLines(session).getBytes(StandardCharsets.UTF_8));
+                 output.getFD().sync();
+             }
+         } catch (Throwable error) {
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+@@ -0,0 +1,315 @@
++package com.zomdroid;
++
++import android.util.Log;
++
++import androidx.annotation.NonNull;
++
++import com.zomdroid.game.GameInstance;
++
++import java.io.File;
++import java.io.IOException;
++import java.util.Collections;
++import java.util.EnumMap;
++import java.util.Map;
++import java.util.jar.Attributes;
++import java.util.jar.JarFile;
++import java.util.jar.Manifest;
++
++/**
++ * Launcher-side source of truth for OPT-LAB feature ownership and compatibility.
++ *
++ * <p>This registry intentionally separates a user's persisted request from the state that can be
++ * activated for the selected game instance.  Build-independent controls remain available when a
++ * Project Zomboid identity changes, while bytecode patches are handed to the agent as B42 probes.
++ * The agent performs the final per-class and per-shape decision.</p>
++ */
++public final class OptLabFeatureRegistry {
++    private static final String LOG_TAG = "ZD-OPT-COMPAT";
++
++    public enum Category {
++        GENERAL,
++        BUILD42,
++        NATIVE
++    }
++
++    public enum Compatibility {
++        VERIFIED,
++        COMPATIBLE,
++        PROBE,
++        UNSUPPORTED
++    }
++
++    public enum Feature {
++        QUIET_RUNTIME("QUIET_RUNTIME", Category.GENERAL, false, true),
++        BUFFERED_STDIO("BUFFERED_STDIO", Category.GENERAL, false, true),
++        SQLITE_ANDROID_NATIVE("SQLITE_ANDROID_NATIVE", Category.GENERAL, false, true),
++        BOX64_POLICY("BOX64_POLICY", Category.GENERAL, false, true),
++        SURFACE_GENERATION_ACK("SURFACE_GENERATION_ACK", Category.GENERAL, false, true),
++        DISPLAY_FPS_HINT("DISPLAY_FPS_HINT", Category.GENERAL, false, true),
++        INPUT_MUTEX_SAFE("INPUT_MUTEX_SAFE", Category.GENERAL, false, true),
++        INPUT_ANALOG_FILTER("INPUT_ANALOG_FILTER", Category.GENERAL, false, true),
++        INPUT_COALESCE("INPUT_COALESCE", Category.GENERAL, false, true),
++        MOBILEGL_FILE_LOG("MOBILEGL_FILE_LOG", Category.GENERAL, false, true),
++
++        PACING("PACING", Category.BUILD42, false, true),
++        STREAM_WAKE("STREAM_WAKE", Category.BUILD42, false, true),
++        STREAM_QUEUE_FAST("STREAM_QUEUE_FAST", Category.BUILD42, false, true),
++        STREAM_VELOCITY_ETA("STREAM_VELOCITY_ETA", Category.BUILD42, false, true),
++        FBO_DIRTY_DEDUP("FBO_DIRTY_DEDUP", Category.BUILD42, false, true),
++        FBO_FRAME_BUDGET("FBO_FRAME_BUDGET", Category.BUILD42, false, true),
++        STREAM_FBO_COORDINATOR("STREAM_FBO_COORDINATOR", Category.BUILD42, false, true),
++
++        LIGHTING64_NATIVE("LIGHTING64_NATIVE", Category.NATIVE, true, true),
++        PZCLIPPER_NATIVE("PZCLIPPER_NATIVE", Category.NATIVE, true, true);
++
++        public final String id;
++        public final Category category;
++        public final boolean defaultEnabled;
++        public final boolean restartRequired;
++
++        Feature(String id, Category category, boolean defaultEnabled,
++                boolean restartRequired) {
++            this.id = id;
++            this.category = category;
++            this.defaultEnabled = defaultEnabled;
++            this.restartRequired = restartRequired;
++        }
++    }
++
++    public static final class Entry {
++        public final Feature feature;
++        public final boolean requested;
++        public final Compatibility compatibility;
++        public final String reason;
++
++        private Entry(Feature feature, boolean requested, Compatibility compatibility,
++                      String reason) {
++            this.feature = feature;
++            this.requested = requested;
++            this.compatibility = compatibility;
++            this.reason = reason;
++        }
++
++        public String machineReadable() {
++            return "feature=" + feature.id
++                    + " category=" + feature.category
++                    + " requested=" + bit(requested)
++                    + " compatibility=" + compatibility
++                    + " restartRequired=" + bit(feature.restartRequired)
++                    + " defaultEnabled=" + bit(feature.defaultEnabled)
++                    + " reason=" + token(reason);
++        }
++    }
++
++    public static final class Snapshot {
++        private final String buildFamily;
++        private final String versionHint;
++        private final String jarSha256;
++        private final boolean knownJar;
++        private final boolean onlyBuild42;
++        private final Map<Feature, Entry> entries;
++
++        private Snapshot(String buildFamily, String versionHint, String jarSha256,
++                         boolean knownJar, boolean onlyBuild42,
++                         EnumMap<Feature, Entry> entries) {
++            this.buildFamily = buildFamily;
++            this.versionHint = versionHint;
++            this.jarSha256 = jarSha256;
++            this.knownJar = knownJar;
++            this.onlyBuild42 = onlyBuild42;
++            this.entries = Collections.unmodifiableMap(entries);
++        }
++
++        public boolean isBuild42() {
++            return "42".equals(buildFamily);
++        }
++
++        public boolean isKnownJar() {
++            return knownJar;
++        }
++
++        public boolean isOnlyBuild42() {
++            return onlyBuild42;
++        }
++
++        @NonNull
++        public Entry get(@NonNull Feature feature) {
++            Entry entry = entries.get(feature);
++            if (entry == null) throw new IllegalArgumentException("Unknown feature " + feature);
++            return entry;
++        }
++
++        public String identityMachineReadable() {
++            return "PZ_VERSION_HINT=" + token(versionHint)
++                    + " PZ_BUILD_FAMILY=" + token(buildFamily)
++                    + " PZ_SHA256=" + token(jarSha256)
++                    + " PZ_SHA256_KNOWN=" + bit(knownJar)
++                    + " ONLY_BUILD_42=" + bit(onlyBuild42);
++        }
++
++        public void log() {
++            Log.i(LOG_TAG, identityMachineReadable());
++            for (Feature feature : Feature.values()) {
++                Log.i(LOG_TAG, get(feature).machineReadable());
++            }
++        }
++
++        public void addAgentIdentityProperties(@NonNull java.util.List<String> jvmArgs) {
++            jvmArgs.add("-Dzomdroid.optlab.pz.build.family=" + propertyValue(buildFamily));
++            jvmArgs.add("-Dzomdroid.optlab.pz.version.hint=" + propertyValue(versionHint));
++            jvmArgs.add("-Dzomdroid.optlab.jar.sha256=" + propertyValue(jarSha256));
++            jvmArgs.add("-Dzomdroid.optlab.jar.known=" + bit(knownJar));
++            jvmArgs.add("-Dzomdroid.optlab.only.build42=" + bit(onlyBuild42));
++        }
++
++        public String proofLines(String session) {
++            StringBuilder output = new StringBuilder(2048);
++            output.append("[ZD-OPT-PROOF] session=").append(token(session))
++                    .append(" mechanism=PZ_IDENTITY state=")
++                    .append(isBuild42() ? "COMPATIBLE"
++                            : (onlyBuild42 ? "UNSUPPORTED" : "PROBE"))
++                    .append(" detail=").append(identityMachineReadable().replace(' ', '_'))
++                    .append('\n');
++            for (Feature feature : Feature.values()) {
++                Entry entry = get(feature);
++                output.append("[ZD-OPT-PROOF] session=").append(token(session))
++                        .append(" mechanism=").append(feature.id)
++                        .append(" state=").append(entry.compatibility)
++                        .append(" detail=category_").append(feature.category)
++                        .append("_requested_").append(bit(entry.requested))
++                        .append("_reason_").append(token(entry.reason))
++                        .append('\n');
++            }
++            return output.toString();
++        }
++    }
++
++    private OptLabFeatureRegistry() {}
++
++    @NonNull
++    public static Snapshot evaluate(@NonNull GameInstance gameInstance,
++                                    @NonNull OptLabPreferences preferences,
++                                    @NonNull String jarSha256,
++                                    boolean lightingActive,
++                                    boolean clipperActive) {
++        String family = token(gameInstance.getBuildVersion());
++        String version = detectVersionHint(gameInstance);
++        boolean build42 = "42".equals(family);
++        boolean knownJar = OptLabPreferences.EXPECTED_PZ_JAR_SHA256.equals(jarSha256);
++        boolean onlyBuild42 = preferences.isOnlyBuild42();
++        EnumMap<Feature, Entry> entries = new EnumMap<>(Feature.class);
++
++        for (Feature feature : Feature.values()) {
++            boolean requested = requested(feature, preferences, build42);
++            Compatibility compatibility;
++            String reason;
++            switch (feature.category) {
++                case GENERAL:
++                    compatibility = Compatibility.COMPATIBLE;
++                    reason = "BUILD_INDEPENDENT";
++                    break;
++                case BUILD42:
++                    if (!build42 && onlyBuild42) {
++                        compatibility = Compatibility.UNSUPPORTED;
++                        reason = "ONLY_BUILD_42_POLICY";
++                    } else if (build42 && knownJar) {
++                        compatibility = Compatibility.VERIFIED;
++                        reason = "KNOWN_PZ_JAR";
++                    } else {
++                        compatibility = Compatibility.PROBE;
++                        reason = build42 ? "AGENT_CLASS_PROBE_REQUIRED"
++                                : "CROSS_FAMILY_AGENT_PROBE_REQUIRED";
++                    }
++                    break;
++                case NATIVE:
++                    if (!build42) {
++                        compatibility = Compatibility.UNSUPPORTED;
++                        reason = "BUILD_FAMILY_NOT_42";
++                    } else {
++                        boolean active = feature == Feature.LIGHTING64_NATIVE
++                                ? lightingActive : clipperActive;
++                        compatibility = active
++                                ? Compatibility.VERIFIED : Compatibility.UNSUPPORTED;
++                        reason = active ? "AUDITED_ARM64_PAYLOAD_ACTIVE"
++                                : "NATIVE_PREFLIGHT_FAILED";
++                    }
++                    break;
++                default:
++                    throw new AssertionError(feature.category);
++            }
++            entries.put(feature, new Entry(feature, requested, compatibility, reason));
++        }
++        return new Snapshot(family, version, jarSha256, knownJar, onlyBuild42, entries);
++    }
++
++    private static boolean requested(Feature feature, OptLabPreferences prefs, boolean build42) {
++        switch (feature) {
++            case QUIET_RUNTIME: return prefs.isQuietRuntime();
++            case BUFFERED_STDIO:
++                return prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED;
++            case SQLITE_ANDROID_NATIVE: return prefs.isSqliteAndroidNative();
++            case BOX64_POLICY:
++                return prefs.getBox64Policy() != OptLabPreferences.Box64Policy.LEGACY_3_0;
++            case SURFACE_GENERATION_ACK:
++                return prefs.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK;
++            case DISPLAY_FPS_HINT:
++                return prefs.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH;
++            case INPUT_MUTEX_SAFE:
++                return prefs.getInputQueueMode() == OptLabPreferences.InputQueueMode.MUTEX_SAFE;
++            case INPUT_ANALOG_FILTER: return prefs.isAnalogFilter();
++            case INPUT_COALESCE: return prefs.isInputCoalesce();
++            case MOBILEGL_FILE_LOG: return prefs.isMobileGlFileLogEnabled();
++            case PACING: return prefs.isMainloopPacing();
++            case STREAM_WAKE: return prefs.isStreamWake();
++            case STREAM_QUEUE_FAST: return prefs.isStreamQueueFast();
++            case STREAM_VELOCITY_ETA: return prefs.isStreamVelocityEta();
++            case FBO_DIRTY_DEDUP: return prefs.isFboDirtyDedup();
++            case FBO_FRAME_BUDGET: return prefs.isFboFrameBudget();
++            case STREAM_FBO_COORDINATOR: return prefs.isStreamFboCoordinator();
++            case LIGHTING64_NATIVE:
++            case PZCLIPPER_NATIVE:
++                return build42;
++            default:
++                throw new AssertionError(feature);
++        }
++    }
++
++    private static String detectVersionHint(GameInstance gameInstance) {
++        File jar = new File(gameInstance.getGamePath(), "projectzomboid.jar");
++        if (jar.isFile()) {
++            try (JarFile jarFile = new JarFile(jar, false)) {
++                Manifest manifest = jarFile.getManifest();
++                if (manifest != null) {
++                    Attributes attributes = manifest.getMainAttributes();
++                    String[] keys = {"Project-Zomboid-Version", "Implementation-Version",
++                            "Specification-Version", "Bundle-Version"};
++                    for (String key : keys) {
++                        String value = attributes.getValue(key);
++                        if (value != null && !value.trim().isEmpty()) {
++                            return value.trim();
++                        }
++                    }
++                }
++            } catch (IOException ignored) {
++                // The class-level agent probe remains authoritative when metadata is unavailable.
++            }
++        }
++        if (gameInstance.isBuild4220Plus()) return "42.20+_layout";
++        String preset = gameInstance.getPresetName();
++        return preset == null || preset.trim().isEmpty()
++                ? gameInstance.getBuildVersion() : preset.trim();
++    }
++
++    private static int bit(boolean value) {
++        return value ? 1 : 0;
++    }
++
++    private static String propertyValue(String value) {
++        return value == null || value.isEmpty() ? "UNKNOWN" : value.replace(' ', '_');
++    }
++
++    private static String token(String value) {
++        if (value == null || value.trim().isEmpty()) return "UNKNOWN";
++        return value.trim().replace('\n', '_').replace('\r', '_').replace(' ', '_');
++    }
++}
+--- a/app/src/main/java/com/zomdroid/OptLabPreferences.java
++++ b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+@@ -13,7 +13,7 @@
+  * launcher settings.
+  */
+ public final class OptLabPreferences {
+-    public static final int SCHEMA = 3;
++    public static final int SCHEMA = 4;
+     public static final String EXPECTED_PZ_JAR_SHA256 =
+             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
+     public static final String EXPECTED_MAIN_THREAD_SHA256 =
+@@ -42,6 +42,7 @@
+     private static final String K_FBO_DIRTY_DEDUP = "fbo_dirty_dedup";
+     private static final String K_FBO_FRAME_BUDGET = "fbo_frame_budget";
+     private static final String K_STREAM_FBO_COORDINATOR = "stream_fbo_coordinator";
++    private static final String K_ONLY_BUILD42 = "only_build_42";
+ 
+     public enum Profile {
+         BASELINE("ALL OFF / legacy"),
+@@ -154,6 +155,9 @@
+     public boolean isStreamFboCoordinator() {
+         return isMasterEnabled() && prefs.getBoolean(K_STREAM_FBO_COORDINATOR, false);
+     }
++    public boolean isOnlyBuild42() {
++        return prefs.getBoolean(K_ONLY_BUILD42, true);
++    }
+     public boolean isAnyAgentOptimizationEnabled() {
+         return isMainloopPacing() || isStreamWake() || isStreamQueueFast()
+                 || isStreamVelocityEta() || isFboDirtyDedup() || isFboFrameBudget()
+@@ -289,6 +293,18 @@
+     public void setStreamFboCoordinator(boolean value) {
+         editCustom(K_STREAM_FBO_COORDINATOR, value);
+     }
++    public void setOnlyBuild42(boolean value) {
++        commit(prefs.edit().putBoolean(K_ONLY_BUILD42, value));
++    }
++
++    public String build42Summary() {
++        return "Only Build 42=" + (isOnlyBuild42() ? "ON" : "OFF")
++                + " · pacing=" + bool(isMainloopPacing())
++                + " stream=" + bool(isStreamWake() || isStreamQueueFast()
++                        || isStreamVelocityEta())
++                + " fbo=" + bool(isFboDirtyDedup() || isFboFrameBudget())
++                + " coordinator=" + bool(isStreamFboCoordinator());
++    }
+ 
+     public String summary() {
+         if (!isMasterEnabled()) return "ALL OFF / legacy";
+@@ -322,7 +338,8 @@
+                 + " streamVelocityEta=" + bool(isStreamVelocityEta())
+                 + " fboDirtyDedup=" + bool(isFboDirtyDedup())
+                 + " fboFrameBudget=" + bool(isFboFrameBudget())
+-                + " streamFboCoordinator=" + bool(isStreamFboCoordinator());
++                + " streamFboCoordinator=" + bool(isStreamFboCoordinator())
++                + " onlyBuild42=" + bool(isOnlyBuild42());
+     }
+ 
+     private static void setIsolatedPack(SharedPreferences.Editor editor,
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
+@@ -5,6 +5,7 @@
+ import android.view.View;
+ import android.widget.AdapterView;
+ import android.widget.ArrayAdapter;
++import android.widget.Button;
+ import android.widget.LinearLayout;
+ import android.widget.ScrollView;
+ import android.widget.Spinner;
+@@ -46,37 +47,19 @@
+                 prefs.isQuietRuntime());
+         SwitchCompat buffered = toggle(context, context.getString(R.string.opt_lab_buffered_stdio),
+                 prefs.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
+-        SwitchCompat pacing = toggle(context, context.getString(R.string.opt_lab_pacing),
+-                prefs.isMainloopPacing());
+         SwitchCompat sqlite = toggle(context, context.getString(R.string.opt_lab_sqlite),
+                 prefs.isSqliteAndroidNative());
+         content.addView(quiet);
+         content.addView(buffered);
+-        content.addView(pacing);
+         content.addView(sqlite);
+ 
+-        addSection(content, context, context.getString(R.string.opt_lab_stream_section));
+-        SwitchCompat streamWake = toggle(context, context.getString(R.string.opt_lab_stream_wake),
+-                prefs.isStreamWake());
+-        SwitchCompat streamQueue = toggle(context, context.getString(R.string.opt_lab_stream_queue),
+-                prefs.isStreamQueueFast());
+-        SwitchCompat streamEta = toggle(context, context.getString(R.string.opt_lab_stream_eta),
+-                prefs.isStreamVelocityEta());
+-        content.addView(streamWake);
+-        content.addView(streamQueue);
+-        content.addView(streamEta);
+-
+-        addSection(content, context, context.getString(R.string.opt_lab_fbo_section));
+-        SwitchCompat fboDedup = toggle(context, context.getString(R.string.opt_lab_fbo_dedup),
+-                prefs.isFboDirtyDedup());
+-        SwitchCompat fboBudget = toggle(context, context.getString(R.string.opt_lab_fbo_budget),
+-                prefs.isFboFrameBudget());
+-        SwitchCompat coordinator = toggle(context,
+-                context.getString(R.string.opt_lab_stream_fbo_coordinator),
+-                prefs.isStreamFboCoordinator());
+-        content.addView(fboDedup);
+-        content.addView(fboBudget);
+-        content.addView(coordinator);
++        addSection(content, context, context.getString(R.string.opt_lab_build42_section));
++        Button build42Button = new Button(context);
++        build42Button.setText(R.string.opt_lab_build42_open);
++        content.addView(build42Button);
++        TextView build42Summary = text(context, prefs.build42Summary(), false);
++        build42Summary.setPadding(0, dp(context, 2), 0, dp(context, 8));
++        content.addView(build42Summary);
+ 
+         addLabel(content, context, context.getString(R.string.opt_lab_box64));
+         Spinner box64 = spinner(context, OptLabPreferences.Box64Policy.values(),
+@@ -119,14 +102,8 @@
+             master.setChecked(now.isMasterEnabled());
+             quiet.setChecked(now.isQuietRuntime());
+             buffered.setChecked(now.getStdioMode() == OptLabPreferences.StdioMode.BUFFERED);
+-            pacing.setChecked(now.isMainloopPacing());
+             sqlite.setChecked(now.isSqliteAndroidNative());
+-            streamWake.setChecked(now.isStreamWake());
+-            streamQueue.setChecked(now.isStreamQueueFast());
+-            streamEta.setChecked(now.isStreamVelocityEta());
+-            fboDedup.setChecked(now.isFboDirtyDedup());
+-            fboBudget.setChecked(now.isFboFrameBudget());
+-            coordinator.setChecked(now.isStreamFboCoordinator());
++            build42Summary.setText(now.build42Summary());
+             box64.setSelection(now.getBox64Policy().ordinal());
+             surface.setChecked(now.getSurfaceMode() == OptLabPreferences.SurfaceMode.GEN_ACK);
+             refresh.setChecked(now.getDisplayFpsHint() == OptLabPreferences.DisplayFpsHint.NATIVE_REFRESH);
+@@ -137,14 +114,7 @@
+             boolean enabled = now.isMasterEnabled();
+             quiet.setEnabled(enabled);
+             buffered.setEnabled(enabled);
+-            pacing.setEnabled(enabled);
+             sqlite.setEnabled(enabled);
+-            streamWake.setEnabled(enabled);
+-            streamQueue.setEnabled(enabled);
+-            streamEta.setEnabled(enabled);
+-            fboDedup.setEnabled(enabled);
+-            fboBudget.setEnabled(enabled);
+-            coordinator.setEnabled(enabled);
+             box64.setEnabled(enabled);
+             surface.setEnabled(enabled);
+             refresh.setEnabled(enabled);
+@@ -193,33 +163,14 @@
+                 showCustomProfile.run();
+             }
+         });
+-        pacing.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setMainloopPacing(checked); showCustomProfile.run(); }
+-        });
+         sqlite.setOnCheckedChangeListener((v, checked) -> {
+             if (!updating[0]) { prefs.setSqliteAndroidNative(checked); showCustomProfile.run(); }
+         });
+-        streamWake.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setStreamWake(checked); showCustomProfile.run(); }
+-        });
+-        streamQueue.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setStreamQueueFast(checked); showCustomProfile.run(); }
+-        });
+-        streamEta.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setStreamVelocityEta(checked); showCustomProfile.run(); }
+-        });
+-        fboDedup.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setFboDirtyDedup(checked); showCustomProfile.run(); }
+-        });
+-        fboBudget.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) { prefs.setFboFrameBudget(checked); showCustomProfile.run(); }
+-        });
+-        coordinator.setOnCheckedChangeListener((v, checked) -> {
+-            if (!updating[0]) {
+-                prefs.setStreamFboCoordinator(checked);
+-                showCustomProfile.run();
+-            }
+-        });
++        build42Button.setOnClickListener(v -> Build42OptLabDialog.show(context, () -> {
++            updating[0] = true;
++            sync.run();
++            updating[0] = false;
++        }));
+         box64.setOnItemSelectedListener(enumListener(updating,
+                 value -> prefs.setBox64Policy((OptLabPreferences.Box64Policy) value),
+                 showCustomProfile));
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+@@ -0,0 +1,163 @@
++package com.zomdroid.fragments;
++
++import android.content.Context;
++import android.graphics.Typeface;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++import androidx.appcompat.app.AlertDialog;
++import androidx.appcompat.widget.SwitchCompat;
++
++import com.zomdroid.OptLabPreferences;
++import com.zomdroid.R;
++
++/** Restart-scoped panel containing only bytecode features owned by the Build 42 pack. */
++public final class Build42OptLabDialog {
++    private Build42OptLabDialog() {}
++
++    public static void show(Context context, Runnable onClosed) {
++        OptLabPreferences prefs = OptLabPreferences.from(context);
++        int pad = dp(context, 16);
++
++        LinearLayout content = new LinearLayout(context);
++        content.setOrientation(LinearLayout.VERTICAL);
++        content.setPadding(pad, dp(context, 4), pad, pad);
++
++        TextView intro = text(context, context.getString(R.string.opt_lab_build42_intro), false);
++        intro.setPadding(0, 0, 0, dp(context, 10));
++        content.addView(intro);
++
++        SwitchCompat onlyBuild42 = toggle(context,
++                context.getString(R.string.opt_lab_only_build42), prefs.isOnlyBuild42());
++        content.addView(onlyBuild42);
++
++        TextView masterOff = text(context,
++                context.getString(R.string.opt_lab_build42_master_off), true);
++        masterOff.setPadding(0, dp(context, 4), 0, dp(context, 4));
++        content.addView(masterOff);
++
++        addSection(content, context, context.getString(R.string.opt_lab_runtime_b42_section));
++        SwitchCompat pacing = toggle(context, context.getString(R.string.opt_lab_pacing),
++                prefs.isMainloopPacing());
++        content.addView(pacing);
++
++        addSection(content, context, context.getString(R.string.opt_lab_stream_section));
++        SwitchCompat streamWake = toggle(context, context.getString(R.string.opt_lab_stream_wake),
++                prefs.isStreamWake());
++        SwitchCompat streamQueue = toggle(context,
++                context.getString(R.string.opt_lab_stream_queue), prefs.isStreamQueueFast());
++        SwitchCompat streamEta = toggle(context, context.getString(R.string.opt_lab_stream_eta),
++                prefs.isStreamVelocityEta());
++        content.addView(streamWake);
++        content.addView(streamQueue);
++        content.addView(streamEta);
++
++        addSection(content, context, context.getString(R.string.opt_lab_fbo_section));
++        SwitchCompat fboDedup = toggle(context, context.getString(R.string.opt_lab_fbo_dedup),
++                prefs.isFboDirtyDedup());
++        SwitchCompat fboBudget = toggle(context, context.getString(R.string.opt_lab_fbo_budget),
++                prefs.isFboFrameBudget());
++        SwitchCompat coordinator = toggle(context,
++                context.getString(R.string.opt_lab_stream_fbo_coordinator),
++                prefs.isStreamFboCoordinator());
++        content.addView(fboDedup);
++        content.addView(fboBudget);
++        content.addView(coordinator);
++
++        TextView warning = text(context,
++                context.getString(R.string.opt_lab_build42_restart_warning), false);
++        warning.setPadding(0, dp(context, 12), 0, 0);
++        content.addView(warning);
++
++        final boolean[] updating = {false};
++        Runnable sync = () -> {
++            OptLabPreferences now = OptLabPreferences.from(context);
++            updating[0] = true;
++            onlyBuild42.setChecked(now.isOnlyBuild42());
++            pacing.setChecked(now.isMainloopPacing());
++            streamWake.setChecked(now.isStreamWake());
++            streamQueue.setChecked(now.isStreamQueueFast());
++            streamEta.setChecked(now.isStreamVelocityEta());
++            fboDedup.setChecked(now.isFboDirtyDedup());
++            fboBudget.setChecked(now.isFboFrameBudget());
++            coordinator.setChecked(now.isStreamFboCoordinator());
++            boolean enabled = now.isMasterEnabled();
++            masterOff.setVisibility(enabled ? TextView.GONE : TextView.VISIBLE);
++            pacing.setEnabled(enabled);
++            streamWake.setEnabled(enabled);
++            streamQueue.setEnabled(enabled);
++            streamEta.setEnabled(enabled);
++            fboDedup.setEnabled(enabled);
++            fboBudget.setEnabled(enabled);
++            coordinator.setEnabled(enabled && now.isFboFrameBudget());
++            updating[0] = false;
++        };
++
++        onlyBuild42.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setOnlyBuild42(checked);
++        });
++        pacing.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setMainloopPacing(checked);
++        });
++        streamWake.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setStreamWake(checked);
++        });
++        streamQueue.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setStreamQueueFast(checked);
++        });
++        streamEta.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setStreamVelocityEta(checked);
++        });
++        fboDedup.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setFboDirtyDedup(checked);
++        });
++        fboBudget.setOnCheckedChangeListener((view, checked) -> {
++            if (updating[0]) return;
++            prefs.setFboFrameBudget(checked);
++            if (!checked && prefs.isStreamFboCoordinator()) {
++                prefs.setStreamFboCoordinator(false);
++            }
++            sync.run();
++        });
++        coordinator.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) prefs.setStreamFboCoordinator(checked);
++        });
++
++        sync.run();
++        ScrollView scroll = new ScrollView(context);
++        scroll.addView(content);
++        new AlertDialog.Builder(context)
++                .setTitle(R.string.opt_lab_build42_title)
++                .setView(scroll)
++                .setPositiveButton(R.string.dialog_button_ok, null)
++                .setOnDismissListener(dialog -> onClosed.run())
++                .show();
++    }
++
++    private static SwitchCompat toggle(Context context, String label, boolean checked) {
++        SwitchCompat toggle = new SwitchCompat(context);
++        toggle.setText(label);
++        toggle.setChecked(checked);
++        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
++        return toggle;
++    }
++
++    private static TextView text(Context context, String value, boolean bold) {
++        TextView view = new TextView(context);
++        view.setText(value);
++        view.setTextSize(13);
++        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
++        return view;
++    }
++
++    private static void addSection(LinearLayout parent, Context context, String value) {
++        TextView label = text(context, value, true);
++        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
++        parent.addView(label);
++    }
++
++    private static int dp(Context context, int value) {
++        return Math.round(value * context.getResources().getDisplayMetrics().density);
++    }
++}
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -603,6 +603,14 @@
+     <string name="opt_lab_profile" translatable="false">Profil</string>
+     <string name="opt_lab_master" translatable="false">Master switch OPT-LAB</string>
+     <string name="opt_lab_runtime_section" translatable="false">Runtime / JVM</string>
++    <string name="opt_lab_build42_section" translatable="false">Build 42</string>
++    <string name="opt_lab_build42_open" translatable="false">Deschide modulele Build 42</string>
++    <string name="opt_lab_build42_title" translatable="false">OPT-LAB · Build 42</string>
++    <string name="opt_lab_build42_intro" translatable="false">Pacing, Stream Core și FBO sunt izolate aici. Fiecare mecanism are verificare proprie; un target incompatibil revine la codul original fără să oprească restul OPT-LAB.</string>
++    <string name="opt_lab_only_build42" translatable="false">Only Build 42 (recomandat: ON)</string>
++    <string name="opt_lab_build42_master_off" translatable="false">Master OPT-LAB este OFF. Activează-l din fereastra principală.</string>
++    <string name="opt_lab_runtime_b42_section" translatable="false">MAIN LOOP · BUILD 42</string>
++    <string name="opt_lab_build42_restart_warning" translatable="false">Restart game required. VERIFIED = hash cunoscut; PROBE = verificare structurală; COMPATIBLE = proba a trecut; UNSUPPORTED = doar acel mecanism rămâne pe codul original.</string>
+     <string name="opt_lab_quiet" translatable="false">O1 · Quiet runtime (fără debug forțat)</string>
+     <string name="opt_lab_buffered_stdio" translatable="false">O3 · Logger buffered / bounded</string>
+     <string name="opt_lab_pacing" translatable="false">O2 · Main-loop park + spin (experimental)</string>
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+@@ -1,6 +1,7 @@
+ package com.zomdroid.agent;
+ 
+ import com.zomdroid.agent.decorators.ShaderUnit;
++import com.zomdroid.agent.optimization.FeatureCompatibility;
+ import com.zomdroid.agent.optimization.FboRuntime;
+ import com.zomdroid.agent.optimization.PacingRuntime;
+ import com.zomdroid.agent.optimization.ProofRuntime;
+@@ -18,13 +19,17 @@
+ import net.bytebuddy.implementation.Implementation;
+ import net.bytebuddy.jar.asm.MethodVisitor;
+ import net.bytebuddy.jar.asm.Opcodes;
++import net.bytebuddy.matcher.ElementMatcher;
+ import net.bytebuddy.pool.TypePool;
++import net.bytebuddy.utility.JavaModule;
+ 
+ import java.io.InputStream;
+ import java.lang.instrument.Instrumentation;
+ import java.security.MessageDigest;
+ 
+ import static net.bytebuddy.matcher.ElementMatchers.named;
++import static net.bytebuddy.matcher.ElementMatchers.returns;
++import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+ 
+ public final class Main {
+     private static final String MAIN_THREAD_SHA256 =
+@@ -44,7 +49,8 @@
+ 
+     public static void premain(String args, Instrumentation instrumentation) {
+         ProofRuntime.configureFromProperties();
+-        System.out.println("[ZD-OPT-LAB-AGENT] version=4 schema=3 loaded");
++        FeatureCompatibility.configureFromProperties();
++        System.out.println("[ZD-OPT-LAB-AGENT] version=5 schema=4 loaded");
+ 
+         String renderer = System.getProperty("zomdroid.renderer", "");
+         if ("GL4ES".equals(renderer)) installLegacyShaderPatch(instrumentation);
+@@ -65,18 +71,6 @@
+             return;
+         }
+ 
+-        boolean jarGate = flag("zomdroid.optlab.jar.gate");
+-        if (!jarGate) {
+-            blockRequested("PACING", pacingRequested, "jar_hash");
+-            blockRequested("STREAM_WAKE", wakeRequested, "jar_hash");
+-            blockRequested("STREAM_QUEUE_FAST", queueRequested, "jar_hash");
+-            blockRequested("STREAM_VELOCITY_ETA", lookaheadRequested, "jar_hash");
+-            blockRequested("FBO_DIRTY_DEDUP", dirtyDedupRequested, "jar_hash");
+-            blockRequested("FBO_FRAME_BUDGET", fboBudgetRequested, "jar_hash");
+-            blockRequested("STREAM_FBO_COORDINATOR", coordinatorRequested, "jar_hash");
+-            return;
+-        }
+-
+         String mainThreadHash = resourceSha256("zombie/MainThread.class");
+         String gameWindowHash = resourceSha256("zombie/GameWindow.class");
+         String worldHash = resourceSha256("zombie/iso/WorldStreamer.class");
+@@ -86,101 +80,173 @@
+         String fboNLevelsHash = resourceSha256(
+                 "zombie/iso/fboRenderChunk/FBORenderLevels$NLevels.class");
+ 
+-        boolean pacing = pacingRequested
+-                && MAIN_THREAD_SHA256.equals(mainThreadHash)
+-                && GAME_WINDOW_SHA256.equals(gameWindowHash);
+-        boolean worldClassOk = WORLD_STREAMER_SHA256.equals(worldHash);
+-        boolean wake = wakeRequested && worldClassOk;
+-        boolean queueFast = queueRequested && worldClassOk;
+-        boolean lookahead = lookaheadRequested && WORLD_COMPARATOR_SHA256.equals(comparatorHash);
+-        boolean dirtyDedup = dirtyDedupRequested && FBO_NLEVELS_SHA256.equals(fboNLevelsHash);
+-        boolean fboBudget = fboBudgetRequested && FBO_MANAGER_SHA256.equals(fboManagerHash);
+-        boolean coordinator = coordinatorRequested && fboBudget && worldClassOk;
+-
+-        classGate("PACING", pacingRequested, pacing,
+-                "main=" + mainThreadHash + ",window=" + gameWindowHash);
+-        classGate("STREAM_WAKE", wakeRequested, wake, "world=" + worldHash);
+-        classGate("STREAM_QUEUE_FAST", queueRequested, queueFast, "world=" + worldHash);
+-        classGate("STREAM_VELOCITY_ETA", lookaheadRequested, lookahead,
+-                "comparator=" + comparatorHash);
+-        classGate("FBO_DIRTY_DEDUP", dirtyDedupRequested, dirtyDedup,
+-                "nlevels=" + fboNLevelsHash);
+-        classGate("FBO_FRAME_BUDGET", fboBudgetRequested, fboBudget,
+-                "manager=" + fboManagerHash);
+-        if (!coordinatorRequested) {
+-            ProofRuntime.state("STREAM_FBO_COORDINATOR", "OFF", "not_requested");
+-        } else if (!fboBudgetRequested) {
+-            ProofRuntime.state("STREAM_FBO_COORDINATOR", "BLOCKED_DEPENDENCY",
+-                    "requires_fbo_frame_budget");
+-        } else {
+-            classGate("STREAM_FBO_COORDINATOR", true, coordinator,
+-                    "world=" + worldHash + ",manager=" + fboManagerHash);
+-        }
+-
+-        if (!(pacing || wake || queueFast || lookahead || dirtyDedup || fboBudget
+-                || coordinator)) return;
++        FeatureCompatibility.Requirement mainThread = requirement(
++                "main_thread", MAIN_THREAD_SHA256, mainThreadHash);
++        FeatureCompatibility.Requirement gameWindow = requirement(
++                "game_window", GAME_WINDOW_SHA256, gameWindowHash);
++        FeatureCompatibility.Requirement worldStreamer = requirement(
++                "world_streamer", WORLD_STREAMER_SHA256, worldHash);
++        FeatureCompatibility.Requirement comparator = requirement(
++                "chunk_comparator", WORLD_COMPARATOR_SHA256, comparatorHash);
++        FeatureCompatibility.Requirement fboManager = requirement(
++                "fbo_manager", FBO_MANAGER_SHA256, fboManagerHash);
++        FeatureCompatibility.Requirement fboNLevels = requirement(
++                "fbo_nlevels", FBO_NLEVELS_SHA256, fboNLevelsHash);
++
++        final FeatureCompatibility.Decision pacing = FeatureCompatibility.evaluate(
++                "PACING", pacingRequested, 2, mainThread, gameWindow);
++        final FeatureCompatibility.Decision wake = FeatureCompatibility.evaluate(
++                "STREAM_WAKE", wakeRequested, 2, worldStreamer);
++        final FeatureCompatibility.Decision queueFast = FeatureCompatibility.evaluate(
++                "STREAM_QUEUE_FAST", queueRequested, 1, worldStreamer);
++        final FeatureCompatibility.Decision lookahead = FeatureCompatibility.evaluate(
++                "STREAM_VELOCITY_ETA", lookaheadRequested, 1, comparator);
++        final FeatureCompatibility.Decision dirtyDedup = FeatureCompatibility.evaluate(
++                "FBO_DIRTY_DEDUP", dirtyDedupRequested, 1, fboNLevels);
++        final FeatureCompatibility.Decision fboBudget = FeatureCompatibility.evaluate(
++                "FBO_FRAME_BUDGET", fboBudgetRequested, 1, fboManager);
++        final FeatureCompatibility.Decision coordinator = fboBudgetRequested
++                ? FeatureCompatibility.evaluate("STREAM_FBO_COORDINATOR",
++                        coordinatorRequested, 2, worldStreamer, fboManager)
++                : FeatureCompatibility.unsupported("STREAM_FBO_COORDINATOR",
++                        coordinatorRequested, "requires_fbo_frame_budget");
++
++        if (!(pacing.isCandidate() || wake.isCandidate() || queueFast.isCandidate()
++                || lookahead.isCandidate() || dirtyDedup.isCandidate()
++                || fboBudget.isCandidate() || coordinator.isCandidate())) return;
+ 
+         try {
+-            if (pacing) PacingRuntime.configureFromProperties();
+-            StreamCoreRuntime.configure(wake, queueFast, lookahead);
+-            FboRuntime.configure(dirtyDedup, fboBudget, coordinator);
+-
+-            AgentBuilder builder = new AgentBuilder.Default().disableClassFormatChanges();
+-            if (pacing) {
++            if (pacing.isCandidate()) PacingRuntime.configureFromProperties();
++            StreamCoreRuntime.configure(wake.isCandidate(), queueFast.isCandidate(),
++                    lookahead.isCandidate());
++            FboRuntime.configure(dirtyDedup.isCandidate(), fboBudget.isCandidate(),
++                    coordinator.isCandidate());
++
++            AgentBuilder builder = new AgentBuilder.Default()
++                    .disableClassFormatChanges()
++                    .with(new TransformFailureListener());
++            if (pacing.isCandidate()) {
+                 builder = builder
+                         .type(named("zombie.MainThread"))
+-                        .transform((target, type, loader, module, domain) -> target
+-                                .visit(new AsmVisitorWrapper.ForDeclaredMethods()
+-                                        .method(named("mainLoop"), new YieldReplacement()))
+-                                .visit(Advice.to(QueueInvokeAdvice.class)
+-                                        .on(named("queueInvokeOnMainThread"))))
++                        .transform((target, type, loader, module, domain) -> {
++                            int mainLoops = methodCount(type, "mainLoop", "()V");
++                            int queueMethods = methodCount(type, "queueInvokeOnMainThread", null);
++                            if (mainLoops != 1 || queueMethods < 1) {
++                                PacingRuntime.disable();
++                                pacing.fallback("main_thread_shape mainLoop=" + mainLoops
++                                        + " queueInvoke=" + queueMethods);
++                                return target;
++                            }
++                            return target
++                                    .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
++                                            named("mainLoop").and(takesArguments(0))
++                                                    .and(returns(void.class)),
++                                            new YieldReplacement(pacing)))
++                                    .visit(Advice.to(QueueInvokeAdvice.class)
++                                            .on(named("queueInvokeOnMainThread")));
++                        })
+                         .type(named("zombie.GameWindow"))
+-                        .transform((target, type, loader, module, domain) -> target
+-                                .visit(Advice.to(FrameStepAdvice.class).on(named("frameStep"))));
++                        .transform((target, type, loader, module, domain) -> {
++                            int frameSteps = methodCount(type, "frameStep", null);
++                            if (frameSteps != 1) {
++                                PacingRuntime.disable();
++                                pacing.fallback("game_window_shape frameStep=" + frameSteps);
++                                return target;
++                            }
++                            pacing.passPart("game_window_frame_step");
++                            return target.visit(Advice.to(FrameStepAdvice.class)
++                                    .on(named("frameStep")));
++                        });
+             }
+-            if (wake || queueFast || coordinator) {
+-                final boolean installSignal = wake || coordinator;
++            if (wake.isCandidate() || queueFast.isCandidate() || coordinator.isCandidate()) {
+                 builder = builder.type(named("zombie.iso.WorldStreamer"))
+                         .transform((target, type, loader, module, domain) -> {
+-                            if (wake || queueFast) {
++                            int loops = methodCount(type, "threadLoop", null);
++                            int signals = signalMethodCount(type);
++                            boolean applyWake = wake.isCandidate() && loops == 1 && signals > 0;
++                            boolean applyQueue = queueFast.isCandidate() && loops == 1;
++                            boolean applyCoordinator = coordinator.isCandidate() && signals > 0;
++                            if (wake.isCandidate() && !applyWake) {
++                                StreamCoreRuntime.disableWakeShape(-1);
++                                wake.fallback("world_streamer_shape threadLoop=" + loops
++                                        + " signals=" + signals);
++                            }
++                            if (queueFast.isCandidate() && !applyQueue) {
++                                StreamCoreRuntime.disableQueueShape(-1);
++                                queueFast.fallback("world_streamer_shape threadLoop=" + loops);
++                            }
++                            if (coordinator.isCandidate() && !applyCoordinator) {
++                                FboRuntime.disableCoordinator();
++                                coordinator.fallback("world_streamer_shape signals=" + signals);
++                            }
++                            if (applyWake || applyQueue) {
+                                 target = target.visit(new AsmVisitorWrapper.ForDeclaredMethods()
+                                         .method(named("threadLoop"),
+-                                                new WorldStreamerLoopVisitor(wake, queueFast)));
++                                                new WorldStreamerLoopVisitor(applyWake, applyQueue,
++                                                        wake, queueFast)));
+                             }
+-                            if (installSignal) {
++                            if (applyWake || applyCoordinator) {
+                                 target = target.visit(Advice.to(StreamSignalAdvice.class).on(
+-                                        named("addJob").or(named("addJobInstant"))
+-                                                .or(named("addJobConvert"))
+-                                                .or(named("addJobWipe"))
+-                                                .or(named("receiveChunkPart"))
+-                                                .or(named("receiveNotRequired"))
+-                                                .or(named("requestLargeAreaZip"))
+-                                                .or(named("stop")).or(named("quit"))));
++                                        streamSignalMatcher()));
++                                if (applyWake) wake.passPart("world_streamer_signal");
++                                if (applyCoordinator) {
++                                    coordinator.passPart("world_streamer_signal");
++                                }
+                             }
+                             return target;
+                         });
+             }
+-            if (lookahead) {
++            if (lookahead.isCandidate()) {
+                 builder = builder.type(named("zombie.iso.WorldStreamer$ChunkComparator"))
+-                        .transform((target, type, loader, module, domain) -> target
+-                                .visit(Advice.to(StreamLookaheadAdvice.class).on(named("init"))));
++                        .transform((target, type, loader, module, domain) -> {
++                            int initMethods = methodCount(type, "init", null);
++                            if (initMethods != 1) {
++                                StreamCoreRuntime.disableLookahead();
++                                lookahead.fallback("chunk_comparator_shape init=" + initMethods);
++                                return target;
++                            }
++                            lookahead.passPart("chunk_comparator_init");
++                            return target.visit(Advice.to(StreamLookaheadAdvice.class)
++                                    .on(named("init")));
++                        });
+             }
+-            if (fboBudget) {
++            if (fboBudget.isCandidate() || coordinator.isCandidate()) {
+                 builder = builder
+                         .type(named("zombie.iso.fboRenderChunk.FBORenderChunkManager"))
+-                        .transform((target, type, loader, module, domain) -> target
+-                                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
+-                                        named("beginRenderChunkLevel"), new FboDirtyGateVisitor())));
++                        .transform((target, type, loader, module, domain) -> {
++                            int beginMethods = methodCount(type, "beginRenderChunkLevel", null);
++                            if (beginMethods != 1) {
++                                FboRuntime.disableBudgetShape(-1);
++                                fboBudget.fallback("fbo_manager_shape beginRenderChunkLevel="
++                                        + beginMethods);
++                                coordinator.fallback("fbo_manager_shape beginRenderChunkLevel="
++                                        + beginMethods);
++                                return target;
++                            }
++                            return target.visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
++                                    named("beginRenderChunkLevel"),
++                                    new FboDirtyGateVisitor(fboBudget, coordinator)));
++                        });
+             }
+-            if (dirtyDedup) {
++            if (dirtyDedup.isCandidate()) {
+                 builder = builder
+                         .type(named("zombie.iso.fboRenderChunk.FBORenderLevels$NLevels"))
+-                        .transform((target, type, loader, module, domain) -> target
++                        .transform((target, type, loader, module, domain) -> {
++                            int setDirty = methodCount(type, "setDirty", "(J)V");
++                            if (setDirty != 1) {
++                                FboRuntime.disableDirtyDedup();
++                                dirtyDedup.fallback("fbo_nlevels_shape setDirty_long=" + setDirty);
++                                return target;
++                            }
++                            dirtyDedup.passPart("fbo_nlevels_set_dirty");
++                            return target
+                                 // Skip only a redundant dirty-bit OR. NLevels.invalidate() also
+                                 // clears live cached-square lists, so skipping that outer method
+                                 // would be observably unsafe even when the dirty bits match.
+                                 .visit(Advice.to(FboSetDirtyAdvice.class)
+-                                        .on(named("setDirty"))));
++                                        .on(named("setDirty").and(takesArguments(long.class))
++                                                .and(returns(void.class))));
++                        });
+             }
+             builder.installOn(instrumentation);
+             ProofRuntime.state("PACK", "ARMED", "transformers_installed");
+@@ -198,15 +264,42 @@
+         return "1".equals(System.getProperty(property, "0"));
+     }
+ 
+-    private static void classGate(String mechanism, boolean requested, boolean allowed,
+-                                  String detail) {
+-        if (!requested) ProofRuntime.state(mechanism, "OFF", "not_requested");
+-        else if (allowed) ProofRuntime.state(mechanism, "ARMED", "class_gate_pass");
+-        else ProofRuntime.state(mechanism, "BLOCKED_CLASS_HASH", detail);
++    private static FeatureCompatibility.Requirement requirement(
++            String label, String expectedSha256, String actualSha256) {
++        return new FeatureCompatibility.Requirement(label, expectedSha256, actualSha256);
++    }
++
++    private static int methodCount(TypeDescription type, String name, String descriptor) {
++        int count = 0;
++        for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
++            if (name.equals(method.getName())
++                    && (descriptor == null || descriptor.equals(method.getDescriptor()))) {
++                count++;
++            }
++        }
++        return count;
++    }
++
++    private static int signalMethodCount(TypeDescription type) {
++        int count = 0;
++        for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
++            String name = method.getName();
++            if ("addJob".equals(name) || "addJobInstant".equals(name)
++                    || "addJobConvert".equals(name) || "addJobWipe".equals(name)
++                    || "receiveChunkPart".equals(name) || "receiveNotRequired".equals(name)
++                    || "requestLargeAreaZip".equals(name) || "stop".equals(name)
++                    || "quit".equals(name)) {
++                count++;
++            }
++        }
++        return count;
+     }
+ 
+-    private static void blockRequested(String mechanism, boolean requested, String reason) {
+-        if (requested) ProofRuntime.state(mechanism, "BLOCKED", reason);
++    private static ElementMatcher.Junction<MethodDescription> streamSignalMatcher() {
++        return named("addJob").or(named("addJobInstant"))
++                .or(named("addJobConvert")).or(named("addJobWipe"))
++                .or(named("receiveChunkPart")).or(named("receiveNotRequired"))
++                .or(named("requestLargeAreaZip")).or(named("stop")).or(named("quit"));
+     }
+ 
+     private static void installLegacyShaderPatch(Instrumentation instrumentation) {
+@@ -280,6 +373,12 @@
+ 
+     private static final class YieldReplacement
+             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
++        private final FeatureCompatibility.Decision pacing;
++
++        YieldReplacement(FeatureCompatibility.Decision pacing) {
++            this.pacing = pacing;
++        }
++
+         @Override
+         public MethodVisitor wrap(TypeDescription instrumentedType,
+                                   MethodDescription instrumentedMethod,
+@@ -301,9 +400,8 @@
+                 @Override public void visitEnd() {
+                     if (replacements != 1) {
+                         PacingRuntime.disable();
+-                        ProofRuntime.state("PACING", "BLOCKED_SHAPE",
+-                                "yield_replacements=" + replacements);
+-                    }
++                        pacing.fallback("main_loop_yield_replacements=" + replacements);
++                    } else pacing.passPart("main_thread_main_loop");
+                     super.visitEnd();
+                 }
+             };
+@@ -314,9 +412,16 @@
+             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+         private final boolean wake;
+         private final boolean queueFast;
+-        WorldStreamerLoopVisitor(boolean wake, boolean queueFast) {
++        private final FeatureCompatibility.Decision wakeDecision;
++        private final FeatureCompatibility.Decision queueDecision;
++
++        WorldStreamerLoopVisitor(boolean wake, boolean queueFast,
++                                 FeatureCompatibility.Decision wakeDecision,
++                                 FeatureCompatibility.Decision queueDecision) {
+             this.wake = wake;
+             this.queueFast = queueFast;
++            this.wakeDecision = wakeDecision;
++            this.queueDecision = queueDecision;
+         }
+         @Override
+         public MethodVisitor wrap(TypeDescription instrumentedType,
+@@ -349,10 +454,12 @@
+                 @Override public void visitEnd() {
+                     if (wake && sleepReplacements != 4) {
+                         StreamCoreRuntime.disableWakeShape(sleepReplacements);
+-                    }
++                        wakeDecision.fallback("sleep_replacements=" + sleepReplacements);
++                    } else if (wake) wakeDecision.passPart("world_streamer_idle_wait");
+                     if (queueFast && sortReplacements != 2) {
+                         StreamCoreRuntime.disableQueueShape(sortReplacements);
+-                    }
++                        queueDecision.fallback("sort_replacements=" + sortReplacements);
++                    } else if (queueFast) queueDecision.passPart("world_streamer_queue_select");
+                     super.visitEnd();
+                 }
+             };
+@@ -361,6 +468,15 @@
+ 
+     private static final class FboDirtyGateVisitor
+             implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
++        private final FeatureCompatibility.Decision budget;
++        private final FeatureCompatibility.Decision coordinator;
++
++        FboDirtyGateVisitor(FeatureCompatibility.Decision budget,
++                            FeatureCompatibility.Decision coordinator) {
++            this.budget = budget;
++            this.coordinator = coordinator;
++        }
++
+         @Override
+         public MethodVisitor wrap(TypeDescription instrumentedType,
+                                   MethodDescription instrumentedMethod,
+@@ -386,10 +502,48 @@
+                     }
+                 }
+                 @Override public void visitEnd() {
+-                    if (replacements != 1) FboRuntime.disableBudgetShape(replacements);
++                    if (replacements != 1) {
++                        FboRuntime.disableBudgetShape(replacements);
++                        budget.fallback("dirty_gate_replacements=" + replacements);
++                        coordinator.fallback("dirty_gate_replacements=" + replacements);
++                    } else {
++                        budget.passPart("fbo_manager_dirty_gate");
++                        coordinator.passPart("fbo_manager_dirty_gate");
++                    }
+                     super.visitEnd();
+                 }
+             };
+         }
+     }
++
++    private static final class TransformFailureListener extends AgentBuilder.Listener.Adapter {
++        @Override
++        public void onError(String typeName, ClassLoader classLoader, JavaModule module,
++                            boolean loaded, Throwable throwable) {
++            String reason = "transform_error=" + throwable.getClass().getSimpleName();
++            if ("zombie.MainThread".equals(typeName) || "zombie.GameWindow".equals(typeName)) {
++                PacingRuntime.disable();
++                FeatureCompatibility.fallback("PACING", reason);
++            } else if ("zombie.iso.WorldStreamer".equals(typeName)) {
++                StreamCoreRuntime.disableWake();
++                StreamCoreRuntime.disableQueueFast();
++                FboRuntime.disableCoordinator();
++                FeatureCompatibility.fallback("STREAM_WAKE", reason);
++                FeatureCompatibility.fallback("STREAM_QUEUE_FAST", reason);
++                FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR", reason);
++            } else if ("zombie.iso.WorldStreamer$ChunkComparator".equals(typeName)) {
++                StreamCoreRuntime.disableLookahead();
++                FeatureCompatibility.fallback("STREAM_VELOCITY_ETA", reason);
++            } else if ("zombie.iso.fboRenderChunk.FBORenderChunkManager".equals(typeName)) {
++                FboRuntime.disableFrameBudget();
++                FboRuntime.disableCoordinator();
++                FeatureCompatibility.fallback("FBO_FRAME_BUDGET", reason);
++                FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR", reason);
++            } else if ("zombie.iso.fboRenderChunk.FBORenderLevels$NLevels".equals(typeName)) {
++                FboRuntime.disableDirtyDedup();
++                FeatureCompatibility.fallback("FBO_DIRTY_DEDUP", reason);
++            }
++            System.err.println("[ZD-OPT-LAB-AGENT] " + typeName + " " + reason);
++        }
++    }
+ }
+--- /dev/null
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java
+@@ -0,0 +1,193 @@
++package com.zomdroid.agent.optimization;
++
++import java.util.Collections;
++import java.util.LinkedHashSet;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++
++/**
++ * Per-mechanism B42 compatibility registry.
++ *
++ * <p>An exact class hash is strong evidence, not a global kill switch. Unknown B42 class hashes
++ * may reach the structural probe in {@code Main}; a mechanism becomes active only after every
++ * required class shape has passed. Missing classes, non-B42 instances, shape mismatches and
++ * transform errors fail open for that mechanism alone.</p>
++ */
++public final class FeatureCompatibility {
++    public enum Compatibility {
++        VERIFIED,
++        COMPATIBLE,
++        PROBE,
++        UNSUPPORTED
++    }
++
++    public static final class Requirement {
++        public final String label;
++        public final String expectedSha256;
++        public final String actualSha256;
++
++        public Requirement(String label, String expectedSha256, String actualSha256) {
++            this.label = token(label);
++            this.expectedSha256 = token(expectedSha256);
++            this.actualSha256 = token(actualSha256);
++        }
++
++        private boolean exact() {
++            return expectedSha256.equals(actualSha256);
++        }
++
++        private boolean available() {
++            return !("MISSING".equals(actualSha256) || "ERROR".equals(actualSha256)
++                    || "UNKNOWN".equals(actualSha256));
++        }
++
++        private String proof() {
++            return label + "_sha256_" + actualSha256;
++        }
++    }
++
++    public static final class Decision {
++        private final String mechanism;
++        private final boolean requested;
++        private final Compatibility initialCompatibility;
++        private final int requiredParts;
++        private final LinkedHashSet<String> passedParts = new LinkedHashSet<>();
++        private boolean blocked;
++        private boolean active;
++
++        private Decision(String mechanism, boolean requested, Compatibility compatibility,
++                         int requiredParts) {
++            this.mechanism = token(mechanism);
++            this.requested = requested;
++            this.initialCompatibility = compatibility;
++            this.requiredParts = Math.max(1, requiredParts);
++        }
++
++        public synchronized boolean isCandidate() {
++            return requested && !blocked
++                    && (initialCompatibility == Compatibility.VERIFIED
++                    || initialCompatibility == Compatibility.PROBE);
++        }
++
++        public synchronized boolean isActive() {
++            return active && !blocked;
++        }
++
++        public synchronized void passPart(String part) {
++            if (!isCandidate()) return;
++            passedParts.add(token(part));
++            if (!active && passedParts.size() >= requiredParts) {
++                active = true;
++                Compatibility result = initialCompatibility == Compatibility.VERIFIED
++                        ? Compatibility.VERIFIED : Compatibility.COMPATIBLE;
++                ProofRuntime.state(mechanism, "ACTIVE",
++                        "compatibility=" + result + " structural_parts=" + passedParts);
++            }
++        }
++
++        public synchronized void fallback(String reason) {
++            if (!requested || blocked) return;
++            blocked = true;
++            active = false;
++            ProofRuntime.state(mechanism, "UNSUPPORTED",
++                    "fallback=original_game_code reason=" + token(reason));
++        }
++
++        public String mechanism() {
++            return mechanism;
++        }
++    }
++
++    private static final Map<String, Decision> DECISIONS = new ConcurrentHashMap<>();
++    private static volatile String buildFamily = "UNKNOWN";
++    private static volatile String versionHint = "UNKNOWN";
++    private static volatile String jarSha256 = "UNKNOWN";
++    private static volatile boolean knownJar;
++    private static volatile boolean onlyBuild42 = true;
++
++    private FeatureCompatibility() {}
++
++    public static void configureFromProperties() {
++        DECISIONS.clear();
++        buildFamily = property("zomdroid.optlab.pz.build.family");
++        versionHint = property("zomdroid.optlab.pz.version.hint");
++        jarSha256 = property("zomdroid.optlab.jar.sha256");
++        knownJar = "1".equals(System.getProperty("zomdroid.optlab.jar.known", "0"));
++        onlyBuild42 = "1".equals(System.getProperty(
++                "zomdroid.optlab.only.build42", "1"));
++        ProofRuntime.state("PZ_IDENTITY", "DETECTED",
++                "build_family=" + buildFamily + " version_hint=" + versionHint
++                        + " jar_sha256=" + jarSha256 + " known_jar=" + bit(knownJar)
++                        + " only_build_42=" + bit(onlyBuild42));
++    }
++
++    public static Decision evaluate(String mechanism, boolean requested, int requiredParts,
++                                    Requirement... requirements) {
++        String id = token(mechanism);
++        if (!requested) return register(new Decision(id, false, Compatibility.UNSUPPORTED,
++                requiredParts), "OFF", "not_requested");
++        if (!"42".equals(buildFamily) && onlyBuild42) {
++            return register(new Decision(id, true, Compatibility.UNSUPPORTED, requiredParts),
++                    "UNSUPPORTED", "fallback=original_game_code only_build_42=1 build_family="
++                            + buildFamily);
++        }
++
++        // Known B42 hashes stay VERIFIED. Cross-family use, when the user deliberately disables
++        // the default policy, must always prove its shape and can only become COMPATIBLE.
++        boolean exact = "42".equals(buildFamily);
++        StringBuilder detail = new StringBuilder();
++        for (Requirement requirement : requirements) {
++            if (detail.length() > 0) detail.append(',');
++            detail.append(requirement.proof());
++            if (!requirement.available()) {
++                return register(new Decision(id, true, Compatibility.UNSUPPORTED, requiredParts),
++                        "UNSUPPORTED", "fallback=original_game_code missing=" + requirement.label);
++            }
++            exact &= requirement.exact();
++        }
++
++        Compatibility compatibility = exact ? Compatibility.VERIFIED : Compatibility.PROBE;
++        String reason = exact ? "exact_class_hashes=" : "unknown_b42_structural_probe=";
++        return register(new Decision(id, true, compatibility, requiredParts),
++                compatibility.name(), reason + detail);
++    }
++
++    public static Decision unsupported(String mechanism, boolean requested, String reason) {
++        Decision decision = new Decision(mechanism, requested, Compatibility.UNSUPPORTED, 1);
++        return register(decision, requested ? "UNSUPPORTED" : "OFF",
++                requested ? "fallback=original_game_code reason=" + token(reason)
++                        : "not_requested");
++    }
++
++    public static Decision decision(String mechanism) {
++        return DECISIONS.get(token(mechanism));
++    }
++
++    public static void fallback(String mechanism, String reason) {
++        Decision decision = decision(mechanism);
++        if (decision != null) decision.fallback(reason);
++    }
++
++    public static Map<String, Decision> decisions() {
++        return Collections.unmodifiableMap(DECISIONS);
++    }
++
++    private static Decision register(Decision decision, String state, String detail) {
++        DECISIONS.put(decision.mechanism, decision);
++        ProofRuntime.state(decision.mechanism, state, detail);
++        return decision;
++    }
++
++    private static String property(String name) {
++        return token(System.getProperty(name, "UNKNOWN"));
++    }
++
++    private static int bit(boolean value) {
++        return value ? 1 : 0;
++    }
++
++    private static String token(String value) {
++        if (value == null || value.trim().isEmpty()) return "UNKNOWN";
++        return value.trim().replace('\n', '_').replace('\r', '_').replace(' ', '_');
++    }
++}
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+@@ -23,7 +23,7 @@
+     public static void configureFromProperties() {
+         path = System.getProperty("zomdroid.optlab.proof.path", "").trim();
+         session = System.getProperty("zomdroid.optlab.session", "unknown").trim();
+-        emit("SESSION", "START", "schema=3 path=" + clean(path));
++        emit("SESSION", "START", "schema=4 path=" + clean(path));
+     }
+ 
+     public static void state(String mechanism, String state, String detail) {
+@@ -34,7 +34,7 @@
+         synchronized (LOCK) {
+             if (!ONCE.add(mechanism)) return;
+         }
+-        emit(mechanism, "APPLIED", detail);
++        emit(mechanism, "EXERCISED", detail);
+     }
+ 
+     private static void emit(String mechanism, String state, String detail) {
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java
+@@ -40,12 +40,28 @@
+ 
+     public static void disableWakeShape(int replacements) {
+         wakeEnabled = false;
+-        ProofRuntime.state("STREAM_WAKE", "BLOCKED_SHAPE", "sleep_replacements=" + replacements);
++        FeatureCompatibility.fallback("STREAM_WAKE",
++                "sleep_replacements=" + replacements);
+     }
+ 
+     public static void disableQueueShape(int replacements) {
+         queueFastEnabled = false;
+-        ProofRuntime.state("STREAM_QUEUE_FAST", "BLOCKED_SHAPE", "sort_replacements=" + replacements);
++        FeatureCompatibility.fallback("STREAM_QUEUE_FAST",
++                "sort_replacements=" + replacements);
++    }
++
++    public static void disableWake() {
++        wakeEnabled = false;
++        Thread target = streamerThread;
++        if (target != null) LockSupport.unpark(target);
++    }
++
++    public static void disableQueueFast() {
++        queueFastEnabled = false;
++    }
++
++    public static void disableLookahead() {
++        lookaheadEnabled = false;
+     }
+ 
+     public static void idleWait(long millis) throws InterruptedException {
+@@ -137,7 +153,8 @@
+             }
+         } catch (Throwable error) {
+             lookaheadEnabled = false;
+-            ProofRuntime.state("STREAM_VELOCITY_ETA", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
++            FeatureCompatibility.fallback("STREAM_VELOCITY_ETA",
++                    "runtime=" + error.getClass().getSimpleName());
+         }
+     }
+ 
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java
+@@ -54,7 +54,22 @@
+     public static void disableBudgetShape(int replacements) {
+         frameBudgetEnabled = false;
+         coordinatorEnabled = false;
+-        ProofRuntime.state("FBO_FRAME_BUDGET", "BLOCKED_SHAPE", "dirty_gate_replacements=" + replacements);
++        FeatureCompatibility.fallback("FBO_FRAME_BUDGET",
++                "dirty_gate_replacements=" + replacements);
++        FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR",
++                "dirty_gate_replacements=" + replacements);
++    }
++
++    public static void disableDirtyDedup() {
++        dirtyDedupEnabled = false;
++    }
++
++    public static void disableFrameBudget() {
++        frameBudgetEnabled = false;
++    }
++
++    public static void disableCoordinator() {
++        coordinatorEnabled = false;
+     }
+ 
+     public static boolean allowDirty(boolean dirty, Object manager, Object chunk, int level, float zoom) {
+@@ -105,7 +120,10 @@
+         } catch (Throwable error) {
+             frameBudgetEnabled = false;
+             coordinatorEnabled = false;
+-            ProofRuntime.state("FBO_FRAME_BUDGET", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
++            FeatureCompatibility.fallback("FBO_FRAME_BUDGET",
++                    "runtime=" + error.getClass().getSimpleName());
++            FeatureCompatibility.fallback("STREAM_FBO_COORDINATOR",
++                    "runtime=" + error.getClass().getSimpleName());
+             return dirty;
+         }
+     }
+@@ -126,7 +144,8 @@
+             return true;
+         } catch (Throwable error) {
+             dirtyDedupEnabled = false;
+-            ProofRuntime.state("FBO_DIRTY_DEDUP", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
++            FeatureCompatibility.fallback("FBO_DIRTY_DEDUP",
++                    "runtime=" + error.getClass().getSimpleName());
+             return false;
+         }
+     }
+--- a/tools/build-optlab-agent.sh
++++ b/tools/build-optlab-agent.sh
+@@ -17,6 +17,7 @@
+   -cp "$WORK_DIR/zomdroid-agent.jar" \
+   -d "$WORK_DIR/classes" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/Main.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PacingRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java" \
+--- /dev/null
++++ b/tools/FeatureCompatibilityUnit.java
+@@ -0,0 +1,93 @@
++import com.zomdroid.agent.optimization.FeatureCompatibility;
++
++/** Host checks for the per-mechanism B42 compatibility state machine. */
++public final class FeatureCompatibilityUnit {
++    private static final String EXACT = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
++    private static final String OTHER = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
++
++    public static void main(String[] args) {
++        testExactHashIsVerifiedCandidate();
++        testUnknownB42RequiresAndPassesShapeProbe();
++        testNonB42IsUnsupported();
++        testExplicitCrossFamilyProbe();
++        testMissingClassIsUnsupported();
++        testFailureIsIsolated();
++        System.out.println("FEATURE_COMPATIBILITY_UNIT PASS");
++    }
++
++    private static void testExactHashIsVerifiedCandidate() {
++        configure("42", true, true);
++        FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                "EXACT", true, 2, requirement(EXACT));
++        require(decision.isCandidate(), "exact B42 class must be a candidate");
++        decision.passPart("class_a");
++        require(!decision.isActive(), "all structural parts must pass before ACTIVE");
++        decision.passPart("class_b");
++        require(decision.isActive(), "exact candidate must activate after all shapes pass");
++    }
++
++    private static void testUnknownB42RequiresAndPassesShapeProbe() {
++        configure("42", false, true);
++        FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                "PROBE", true, 1, requirement(OTHER));
++        require(decision.isCandidate(), "unknown B42 hash must reach its structural probe");
++        require(!decision.isActive(), "probe must not be active before its shape passes");
++        decision.passPart("shape");
++        require(decision.isActive(), "compatible shape must activate an unknown B42 hash");
++    }
++
++    private static void testNonB42IsUnsupported() {
++        configure("41", false, true);
++        FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                "B42_ONLY", true, 1, requirement(EXACT));
++        require(!decision.isCandidate(), "B41 must not reach B42 bytecode transforms");
++    }
++
++    private static void testExplicitCrossFamilyProbe() {
++        configure("41", false, false);
++        FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                "CROSS_FAMILY", true, 1, requirement(EXACT));
++        require(decision.isCandidate(), "Only Build 42 OFF must permit a structural probe");
++        require(!decision.isActive(), "cross-family probe must never start as verified");
++        decision.passPart("shape");
++        require(decision.isActive(), "matching cross-family shape may become compatible");
++    }
++
++    private static void testMissingClassIsUnsupported() {
++        configure("42", false, true);
++        FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                "MISSING_CLASS", true, 1,
++                new FeatureCompatibility.Requirement("target", EXACT, "MISSING"));
++        require(!decision.isCandidate(), "missing target class must fail open");
++    }
++
++    private static void testFailureIsIsolated() {
++        configure("42", false, true);
++        FeatureCompatibility.Decision first = FeatureCompatibility.evaluate(
++                "FIRST", true, 1, requirement(OTHER));
++        FeatureCompatibility.Decision second = FeatureCompatibility.evaluate(
++                "SECOND", true, 1, requirement(OTHER));
++        first.fallback("test_shape_mismatch");
++        require(!first.isCandidate(), "failed mechanism must be disabled");
++        require(second.isCandidate(), "one failure must not block another mechanism");
++        second.passPart("shape");
++        require(second.isActive(), "unrelated mechanism must still activate");
++    }
++
++    private static FeatureCompatibility.Requirement requirement(String actual) {
++        return new FeatureCompatibility.Requirement("target", EXACT, actual);
++    }
++
++    private static void configure(String family, boolean knownJar, boolean onlyBuild42) {
++        System.setProperty("zomdroid.optlab.pz.build.family", family);
++        System.setProperty("zomdroid.optlab.pz.version.hint", family + ".test");
++        System.setProperty("zomdroid.optlab.jar.sha256", knownJar ? EXACT : OTHER);
++        System.setProperty("zomdroid.optlab.jar.known", knownJar ? "1" : "0");
++        System.setProperty("zomdroid.optlab.only.build42", onlyBuild42 ? "1" : "0");
++        FeatureCompatibility.configureFromProperties();
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new AssertionError(message);
++    }
++}
+--- a/tools/OptLabRuntimeUnit.java
++++ b/tools/OptLabRuntimeUnit.java
+@@ -12,12 +12,25 @@
+ public final class OptLabRuntimeUnit {
+     public static void main(String[] args) throws Exception {
+         testStableLinearSelection();
++        testQueueFallback();
+         testWakeSignal();
+         testDirtyDedup();
+         testFboBudget();
++        testFboFallback();
+         System.out.println("RUNTIME_UNIT PASS");
+     }
+ 
++    private static void testQueueFallback() {
++        StreamCoreRuntime.configure(false, true, false);
++        StreamCoreRuntime.disableQueueShape(0);
++        Stack<Integer> values = new Stack<>();
++        values.addAll(Arrays.asList(4, 1, 3, 2));
++        StreamCoreRuntime.sortForStreamer(values,
++                (left, right) -> ((Integer) left).compareTo((Integer) right));
++        require(values.equals(Arrays.asList(1, 2, 3, 4)),
++                "disabled queue patch must execute Collections.sort exactly");
++    }
++
+     private static void testStableLinearSelection() {
+         StreamCoreRuntime.configure(false, true, false);
+         Stack<Integer> values = new Stack<>();
+@@ -90,6 +103,16 @@
+         require(decide(manager, deferred, far), "max two deferrals must force admission");
+     }
+ 
++    private static void testFboFallback() {
++        FboRuntime.configure(true, true, true);
++        FboRuntime.disableBudgetShape(0);
++        require(FboRuntime.allowDirty(true, new Object(), new Object(), 0, 1.0f),
++                "disabled FBO governor must preserve the original dirty=true result");
++        FboRuntime.disableDirtyDedup();
++        require(!FboRuntime.shouldSkipSetDirty(new Object(), 1L),
++                "disabled dirty dedup must execute the original method");
++    }
++
+     private static boolean decide(MockManager manager, FBORenderChunk renderChunk,
+                                   IsoChunk chunk) {
+         manager.renderChunk = renderChunk;
+--- /dev/null
++++ b/tools/test-optlab-agent-source.sh
+@@ -0,0 +1,36 @@
++#!/usr/bin/env bash
++set -euo pipefail
++export TZ=UTC
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++AGENT_SOURCE_DIR="$PROJECT_DIR/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent"
++WORK_DIR="$(mktemp -d)"
++trap 'rm -rf -- "$WORK_DIR"' EXIT
++
++mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes" "$WORK_DIR/tests"
++tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
++  -C "$WORK_DIR/bundle"
++
++java -m jdk.compiler/com.sun.tools.javac.Main \
++  --release 17 \
++  -cp "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  -d "$WORK_DIR/classes" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/Main.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PacingRuntime.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/StreamCoreRuntime.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FboRuntime.java"
++
++mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/optlab-stubs" -type f -name '*.java' \
++  -print0 | LC_ALL=C sort -z)
++java -m jdk.compiler/com.sun.tools.javac.Main \
++  --release 17 \
++  -cp "$WORK_DIR/classes" \
++  -d "$WORK_DIR/tests" \
++  "${STUBS[@]}" \
++  "$PROJECT_DIR/tools/FeatureCompatibilityUnit.java" \
++  "$PROJECT_DIR/tools/OptLabRuntimeUnit.java"
++
++java -cp "$WORK_DIR/tests:$WORK_DIR/classes" FeatureCompatibilityUnit
++java -cp "$WORK_DIR/tests:$WORK_DIR/classes" OptLabRuntimeUnit

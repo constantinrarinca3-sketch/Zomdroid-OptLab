@@ -1,0 +1,58 @@
+name: CP3 JAssimp Direct Rebuild
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'optlab_deps/**/patches/assimp/**'
+      - 'optlab_deps/jassimp-direct-*/**'
+      - 'tools/*jassimp-direct.sh'
+      - 'app/src/main/assets/bundles/libs.tar.xz'
+      - '.github/workflows/jassimp-direct.yml'
+  push:
+    paths:
+      - 'optlab_deps/**/patches/assimp/**'
+      - 'optlab_deps/jassimp-direct-*/**'
+      - 'tools/*jassimp-direct.sh'
+      - 'app/src/main/assets/bundles/libs.tar.xz'
+      - '.github/workflows/jassimp-direct.yml'
+
+jobs:
+  rebuild-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify committed direct payload and rollback
+        run: ./tools/test-jassimp-direct.sh
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned NDK r27c
+        run: |
+          sdkmanager "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      - name: Clean rebuild Assimp 5.4.3 plus direct compatibility patch
+        env:
+          ANDROID_API_LEVEL: '30'
+          ANDROID_ABI: arm64-v8a
+          BUILD_TYPE_CMAKE: Release
+        run: ./tools/build-jassimp-direct.sh "$RUNNER_TEMP/libjassimp64.so"
+
+      - name: Upload independently rebuilt library
+        uses: actions/upload-artifact@v4
+        with:
+          name: libjassimp64-cp3-direct-arm64
+          path: |
+            ${{ runner.temp }}/libjassimp64.so
+            optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/patches/assimp/0001.patch
+            optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/patches/assimp/0002.patch

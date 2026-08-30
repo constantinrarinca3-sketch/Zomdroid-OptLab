@@ -1,0 +1,68 @@
+ZOMDROID R12 - CHECKPOINT PERSISTENT CP6.2-01
+Data UTC: 2026-08-29
+Stadiu: integrare agent/runtime demonstrata pe host; cablarea APK/UI urmeaza.
+
+ROLLBACK
+- Baseline R11 neatins: commit 925bf720334079bb3ad462ff27173e99ec9497a6
+- Metadata baseline: commit 9969eb5
+- Ramura: r12-cp6.2-direct-integration
+
+SURSE DE ADEVAR
+- Pachet CP6.2 SHA256:
+  69d81ac09ba031928c5c090ce469c648c6e3245588856dfe785df0dc562c2bd1
+- PZ 42.20 SHA256:
+  e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+- PZ 42.20.3 SHA256:
+  bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+COMPATIBILITATE CONFIRMATA
+- DefaultShader.class este identic in 42.20 si 42.20.3:
+  2a4231d4059687d285a6d460eff78643f18a7d596186ba3f6fa64b52e0e04273
+- ShaderProgram.class este identic:
+  062a78360dab7245283099312d88d09c216da5ae5c0b4deb5edd3f4a08afb621
+- ShaderProgram$Uniform.class este identic:
+  f5f17a0bfe4510a7b9964410facaadc083ff14c0316796e8ec277061aa8595c9
+- SpriteRenderer$RingBuffer.class este identic:
+  c50a46274331398ba2168a33f9b87d2d164301cc239c238830f6bd8588dfc8c3
+- Model.class este identic:
+  3dd5e7b618cecf3c27e216a386e07937b1be694a7fc083b1bc2f7c993cbee3d9
+
+IMPLEMENTAT IN ACEST CHECKPOINT
+1. CP6.1: elimina uploadurile glUniform1f redundante pentru chunkDepth folosind
+   comparatie Float.floatToRawIntBits si identitatea Uniform.
+2. CP6.2: elimina getUniform("chunkDepth") pe generatia stabila; cache-ul este
+   invalidat numai dupa onCompileSuccess terminat fara exceptie.
+3. CP6.2: in RingBuffer.render rescrie numai apelul final
+   Model.modelDrawCounts.clear() catre un helper care il omite daca mapa e goala.
+   Restul metodei PZ nu este duplicat.
+4. Orice eroare de linkage/forma dezactiveaza doar mecanismul implicat si revine
+   la codul original PZ.
+5. Agent marker actualizat la version=10 / schema=9; bundle-ul este reconstruit
+   automat prin tools/build-optlab-agent.sh.
+6. RingBuffer bulk packing NU este integrat/activat: ramane cercetare experimentala
+   deoarece device run-ul din handoff nu a demonstrat castig CPU suficient.
+7. CP6.0 rthreadProfileFast NU a fost reintrodus.
+
+REZULTATE HOST
+- tools/build-optlab-agent.sh: PASS
+- tools/test-optlab-agent-source.sh: PASS
+- FeatureCompatibilityUnit: PASS
+- OptLabRuntimeUnit: PASS
+- OptLabPremainPathfindingOnlyUnit: PASS
+- ChunkDepth 4096 apeluri identice: 1 lookup, 1 upload
+- Schimbare valoare: fara lookup nou, exact 1 upload nou
+- Recompile reusit: exact 1 lookup nou si upload fortat
+- Lookup OFF: frecventa lookup vanilla, upload redundant eliminat
+- Eroare GL simulata: fallback original, cache necomis, mecanism fail-open
+- Ring map goala: clear omis; map ne-goala: clear executat exact o data
+- DEVICE PASS: NU ESTE DECLARAT (necesita test real pe dispozitiv).
+
+BUNDLE RECONSTRUIT
+- zomdroid-agent.jar SHA256:
+  cc3a2f331661dd2a7f225c51675d1ca8a54d01ee0cadcac5fabdd098fcf1576c
+- app/src/main/assets/bundles/jars.tar SHA256:
+  94954002fc44d197451aed0511acc763cddc959b05680a71c204c99444aac2be
+
+URMATORUL PAS
+- Cablare proprietati/preferinte/registry/launcher/proof/UI in APK.
+- Validare offline a transformarii reale pe JAR-urile 42.20 si 42.20.3.
