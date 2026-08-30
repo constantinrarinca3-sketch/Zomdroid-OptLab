@@ -1,6 +1,6 @@
 # ZomDroid R15 — handoff viu pentru continuare
 
-Actualizat: 2026-08-30 UTC — checkpoint final R15-05
+Actualizat: 2026-08-30 UTC — R15-06 FINAL SOURCE PENTRU COMPILARE/DEVICE TEST
 
 ## Gata
 
@@ -35,13 +35,45 @@ Actualizat: 2026-08-30 UTC — checkpoint final R15-05
   schimbarea programului, debug ON, forma incompatibilă și erorile rămân vanilla.
 - Same-program bind este Experimental, implicit OFF în toate profilurile și a
   trecut testul semantic plus transformarea exactă pe 42.20 și 42.20.3.
-- Agentul integrat este `version=15 schema=14`; schema de preferințe rămâne 11.
+- Agentul integrat este `version=15 schema=14`; la R15-05 schema de preferințe
+  era `11`, iar seria R15-06 o ridică la `12` pentru preseturi.
 - R15-05 a trecut runnerul final unic: integritate bundle, registry-agent 1:1,
   agent/UI/native/JAssimp/MobileGL și toate transformările exacte pe ambele JAR-uri.
 - Gate-urile native-only au regresii separate: Pathfinding-only și PopMan-only
   instalează agentul unificat chiar dacă toate funcțiile Java OPT-LAB sunt OFF.
 - Auditul final nu a justificat un refactor runtime suplimentar. R15-05 nu adaugă
   o optimizare nouă și păstrează byte-identic agentul validat în R15-04.
+- R15-06-01 expune fiecare optimizare Build 42 `INTERNAL` ca toggle individual
+  persistent. Calea generică repară dependențele și marchează profilul `Custom`;
+  Safe Mode continuă să păstreze starea.
+- R15-06-01 nu schimbă agentul, bundle-ul, profilele implicite, maturitatea sau
+  fallback-urile mecanismelor.
+- R15-06-02 adaugă un catalog versionat pentru preseturi custom Build 42
+  multiple, cu snapshot complet prin ID stabil, checksum, dependency repair și
+  fail-closed fără suprascriere pe schema necunoscută.
+- Motorul R15-06-02 implementează create/apply/update/rename/duplicate/delete;
+  managerul vizual este atașat separat în R15-06-03.
+- Schema preferințelor este acum `12`, iar catalogul are schema proprie `1`.
+- R15-06-03 adaugă un singur card pe pagina Build 42 și mută toate cele șase
+  acțiuni într-o subpagină separată, fără tab nou și fără nested dialog.
+- UI-ul afișează distinct `Custom · <nume>`, `Modified · based on <nume>`,
+  preset selectat dar neaplicat, Safe Mode și catalog fail-closed.
+- Ștergerea necesită două apăsări. Toate controalele folosesc tema existentă,
+  fără culori hardcodate și fără diferență de layout între light/dark.
+- Regresia `world black` NU este declarată rezolvată; toggle-urile Internal și
+  presetul persistent permit izolarea mecanismului pe dispozitiv.
+
+## Seria R15-06 autorizată
+
+| Checkpoint | Scop | Stare |
+| --- | --- | --- |
+| R15-06-01 | Toggle-uri pentru optimizările Internal | **DONE SOURCE/HOST** |
+| R15-06-02 | Motor versionat pentru preseturi custom multiple | **DONE SOURCE/HOST** |
+| R15-06-03 | Manager UI: create/apply/update/rename/duplicate/delete | **DONE SOURCE/HOST** |
+| R15-06-04 | Localizare integrală RO/EN | **AMÂNATĂ explicit de utilizator; neinclusă** |
+
+După `R15-06-03`, utilizatorul a autorizat închiderea sursei fără pasul de
+localizare. Interfața rămâne în forma curentă pentru compilare și device test.
 
 ## Plan autorizat
 
@@ -104,13 +136,21 @@ checkpointul R15-01. Ele sunt referință, nu cod lansabil implicit.
   `22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3`
 - `app/src/main/assets/bundles/jars.tar`:
   `6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5`
+- preferences schema: `12`; custom preset schema: `1`
+- rollback persistent imediat R15-06-02:
+  `9363643e38f495cd2829073f7aeb5d70a99e1ecebf450735b9c52003ea7f4a25`
+- checkpoint curent: `CHECKPOINTS/R15-06-03-PRESET-MANAGER-UI-RO.md`
+- handoff final de compilare:
+  `CHECKPOINTS/R15-06-FINAL-COMPILE-HANDOFF-RO.md`
+- checklist validare: `CHECKPOINTS/R15-06-03-USER-VALIDATION-CHECKLIST-RO.txt`
 - patch cumulativ de cod R14 → R15:
   `72d1a34d45fc851ccd4ad2dae6b807a43a45bd162e41ab8b1a51a6985661c942`
 - detalii QA: `CHECKPOINTS/R15-05-FINAL-QA-RO.md`
 - device checklist: `CHECKPOINTS/R15-05-DEVICE-TEST-CHECKLIST-RO.txt`
 
-## Următorul pas
+## Următorul pas — compilare și device test
 
-Compilează sursa R15-05 și execută checklist-ul de dispozitiv separat pe 42.20
-și 42.20.3. Nu promova FBO inner-loop sau same-program bind în Recommended până
-nu există DEVICE PASS repetabil. CP6.14+ pornește numai din această arhivă finală.
+Compilează sursa conform `CHECKPOINTS/R15-06-FINAL-COMPILE-HANDOFF-RO.md`, apoi
+rulează `CHECKPOINTS/R15-06-03-USER-VALIDATION-CHECKLIST-RO.txt` pe APK/device.
+Localizarea RO/EN (`R15-06-04`) rămâne amânată până la o cerere explicită.
+Nu declara DEVICE PASS și nu adăuga optimizări noi înaintea verdictului real.

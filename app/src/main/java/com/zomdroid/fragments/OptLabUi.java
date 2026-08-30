@@ -7,6 +7,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -76,6 +77,22 @@ final class OptLabUi {
         void setEnabled(boolean enabled) {
             root.setEnabled(enabled);
             spinner.setEnabled(enabled);
+            root.setAlpha(enabled ? 1f : 0.55f);
+        }
+    }
+
+    static final class TextFieldCard {
+        final MaterialCardView root;
+        final EditText input;
+
+        TextFieldCard(MaterialCardView root, EditText input) {
+            this.root = root;
+            this.input = input;
+        }
+
+        void setEnabled(boolean enabled) {
+            root.setEnabled(enabled);
+            input.setEnabled(enabled);
             root.setAlpha(enabled ? 1f : 0.55f);
         }
     }
@@ -203,6 +220,23 @@ final class OptLabUi {
         return new SpinnerCard<>(card, spinner, adapter);
     }
 
+    static TextFieldCard textFieldCard(Context context, String label, String hint) {
+        MaterialCardView card = card(context);
+        LinearLayout copy = new LinearLayout(context);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setPadding(dp(context, 16), dp(context, 14), dp(context, 16),
+                dp(context, 14));
+        copy.addView(body(context, label));
+        EditText input = new EditText(context);
+        input.setSingleLine(true);
+        input.setHint(hint);
+        copy.addView(input, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        card.addView(copy);
+        return new TextFieldCard(card, input);
+    }
+
     static MaterialButton actionButton(Context context, String text) {
         MaterialButton button = new MaterialButton(context);
         button.setText(text);
@@ -213,6 +247,21 @@ final class OptLabUi {
         params.setMargins(0, 0, 0, dp(context, 8));
         button.setLayoutParams(params);
         return button;
+    }
+
+    static LinearLayout actionRow(Context context, MaterialButton first,
+                                  MaterialButton second) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams firstParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        firstParams.setMargins(0, 0, dp(context, 4), dp(context, 8));
+        LinearLayout.LayoutParams secondParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        secondParams.setMargins(dp(context, 4), 0, 0, dp(context, 8));
+        row.addView(first, firstParams);
+        row.addView(second, secondParams);
+        return row;
     }
 
     static void addCard(LinearLayout parent, View card) {

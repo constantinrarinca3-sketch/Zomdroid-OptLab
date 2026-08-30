@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.zomdroid.NativeModulesPreferences;
+import com.zomdroid.OptLabCustomPresetStore;
 import com.zomdroid.OptLabFeatureRegistry;
 import com.zomdroid.OptLabPreferences;
 import com.zomdroid.R;
@@ -79,8 +81,23 @@ public final class OptLabFragment extends Fragment {
     private FrameLayout build42Host;
     private View build42Home;
     private OptLabUi.SpinnerCard<OptLabPreferences.LabProfile> build42ProfileCard;
+    private TextView build42ProfileStatus;
     private OptLabUi.ToggleCard onlyBuild42;
     private OptLabUi.ToggleCard advancedControls;
+    private OptLabUi.NavCard customPresetCard;
+    private View customPresetPage;
+    private OptLabUi.NavCard customPresetStatusCard;
+    private OptLabUi.SpinnerCard<OptLabCustomPresetStore.Preset> customPresetSpinner;
+    private OptLabUi.TextFieldCard customPresetName;
+    private MaterialButton customPresetCreate;
+    private MaterialButton customPresetApply;
+    private MaterialButton customPresetUpdate;
+    private MaterialButton customPresetRename;
+    private MaterialButton customPresetDuplicate;
+    private MaterialButton customPresetDelete;
+    private String presetUiSelectedId;
+    private String pendingPresetDeleteId;
+    private String presetUiMessage = "";
     private final EnumMap<OptLabFeatureRegistry.Module, View> modulePages =
             new EnumMap<>(OptLabFeatureRegistry.Module.class);
     private final EnumMap<OptLabFeatureRegistry.Module, OptLabUi.NavCard> moduleCards =
@@ -90,8 +107,6 @@ public final class OptLabFragment extends Fragment {
     private final EnumMap<OptLabFeatureRegistry.Module, View> advancedNotes =
             new EnumMap<>(OptLabFeatureRegistry.Module.class);
     private final EnumMap<OptLabFeatureRegistry.Feature, OptLabUi.ToggleCard> featureCards =
-            new EnumMap<>(OptLabFeatureRegistry.Feature.class);
-    private final EnumMap<OptLabFeatureRegistry.Feature, OptLabUi.NavCard> internalCards =
             new EnumMap<>(OptLabFeatureRegistry.Feature.class);
     private final List<View> advancedOnlyViews = new ArrayList<>();
     private final List<MaterialButton> build42Buttons = new ArrayList<>();
@@ -181,8 +196,23 @@ public final class OptLabFragment extends Fragment {
         build42Host = null;
         build42Home = null;
         build42ProfileCard = null;
+        build42ProfileStatus = null;
         onlyBuild42 = null;
         advancedControls = null;
+        customPresetCard = null;
+        customPresetPage = null;
+        customPresetStatusCard = null;
+        customPresetSpinner = null;
+        customPresetName = null;
+        customPresetCreate = null;
+        customPresetApply = null;
+        customPresetUpdate = null;
+        customPresetRename = null;
+        customPresetDuplicate = null;
+        customPresetDelete = null;
+        presetUiSelectedId = null;
+        pendingPresetDeleteId = null;
+        presetUiMessage = "";
         clipper = null;
         experimentalHost = null;
         experimentalHome = null;
@@ -199,7 +229,6 @@ public final class OptLabFragment extends Fragment {
         moduleDetailCards.clear();
         advancedNotes.clear();
         featureCards.clear();
-        internalCards.clear();
         advancedOnlyViews.clear();
         build42Buttons.clear();
         super.onDestroyView();
@@ -283,7 +312,6 @@ public final class OptLabFragment extends Fragment {
         moduleDetailCards.clear();
         advancedNotes.clear();
         featureCards.clear();
-        internalCards.clear();
         advancedOnlyViews.clear();
         build42Buttons.clear();
         build42Host = new FrameLayout(requireContext());
@@ -295,12 +323,18 @@ public final class OptLabFragment extends Fragment {
                 R.drawable.optlab_ic_build42,
                 getString(R.string.opt_lab_profile_build42), LAB_PROFILES);
         OptLabUi.addCard(home.content, build42ProfileCard.root);
+        build42ProfileStatus = OptLabUi.note(requireContext(), "");
+        home.content.addView(build42ProfileStatus);
         home.content.addView(OptLabUi.note(requireContext(),
                 getString(R.string.opt_lab_profile_build42_scope)));
         onlyBuild42 = addToggle(home, getString(R.string.opt_lab_only_build42),
                 getString(R.string.opt_lab_build42_independent));
         advancedControls = addToggle(home, "Advanced controls",
                 "Afișează controalele individuale; nu modifică singur nicio optimizare");
+        customPresetCard = OptLabUi.navCard(requireContext(),
+                R.drawable.optlab_ic_profile, "Preseturi custom Build 42", "",
+                view -> showCustomPresetManager());
+        OptLabUi.addCard(home.content, customPresetCard.root);
         home.content.addView(OptLabUi.section(requireContext(), "Module Build 42"));
         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
             OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
@@ -326,6 +360,9 @@ public final class OptLabFragment extends Fragment {
             modulePages.put(module, detail);
             build42Host.addView(detail, matchParent());
         }
+        customPresetPage = buildCustomPresetManagerPage();
+        customPresetPage.setVisibility(View.GONE);
+        build42Host.addView(customPresetPage, matchParent());
         return build42Host;
     }
 
@@ -365,14 +402,12 @@ public final class OptLabFragment extends Fragment {
             if (feature.maturity != OptLabFeatureRegistry.Maturity.INTERNAL) continue;
             if (!internalFound) {
                 page.content.addView(OptLabUi.section(requireContext(),
-                        "Internal · fallback automat"));
+                        "Internal · control individual · fallback automat"));
                 internalFound = true;
             }
-            OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
-                    R.drawable.optlab_ic_build42, feature.title,
-                    featureDescription(feature), null);
-            internalCards.put(feature, card);
-            OptLabUi.addCard(page.content, card.root);
+            OptLabUi.ToggleCard card = addToggle(page, feature.title,
+                    featureDescription(feature));
+            featureCards.put(feature, card);
         }
         if (OptLabFeatureRegistry.featuresForModule(module, true).isEmpty()) {
             page.content.addView(OptLabUi.note(requireContext(),
@@ -381,6 +416,52 @@ public final class OptLabFragment extends Fragment {
         }
         page.content.addView(OptLabUi.note(requireContext(),
                 getString(R.string.opt_lab_changes_next_launch)));
+        return page.root;
+    }
+
+    private View buildCustomPresetManagerPage() {
+        OptLabUi.Page page = OptLabUi.page(requireContext());
+        MaterialButton back = OptLabUi.actionButton(requireContext(), "← Build 42");
+        back.setOnClickListener(view -> showBuild42Home());
+        page.content.addView(back);
+        page.content.addView(OptLabUi.section(requireContext(),
+                "Preseturi custom · Build 42"));
+        customPresetStatusCard = OptLabUi.navCard(requireContext(),
+                R.drawable.optlab_ic_profile, "Stare preset", "", null);
+        OptLabUi.addCard(page.content, customPresetStatusCard.root);
+
+        customPresetSpinner = OptLabUi.spinnerCard(requireContext(),
+                R.drawable.optlab_ic_profile, "Preset salvat",
+                new OptLabCustomPresetStore.Preset[0]);
+        OptLabUi.addCard(page.content, customPresetSpinner.root);
+        customPresetName = OptLabUi.textFieldCard(requireContext(),
+                "Nume pentru creare, redenumire sau duplicare",
+                "Ex.: Telefon, Oraș, Exterior");
+        OptLabUi.addCard(page.content, customPresetName.root);
+
+        customPresetCreate = OptLabUi.actionButton(requireContext(),
+                "Creează din configurația curentă");
+        customPresetApply = OptLabUi.actionButton(requireContext(), "Aplică");
+        customPresetUpdate = OptLabUi.actionButton(requireContext(), "Actualizează");
+        customPresetRename = OptLabUi.actionButton(requireContext(), "Redenumește");
+        customPresetDuplicate = OptLabUi.actionButton(requireContext(), "Duplică");
+        customPresetDelete = OptLabUi.actionButton(requireContext(), "Șterge");
+        customPresetCreate.setOnClickListener(view -> createCustomPreset());
+        customPresetApply.setOnClickListener(view -> applyCustomPreset());
+        customPresetUpdate.setOnClickListener(view -> updateCustomPreset());
+        customPresetRename.setOnClickListener(view -> renameCustomPreset());
+        customPresetDuplicate.setOnClickListener(view -> duplicateCustomPreset());
+        customPresetDelete.setOnClickListener(view -> deleteCustomPreset());
+        page.content.addView(customPresetCreate);
+        page.content.addView(OptLabUi.actionRow(requireContext(),
+                customPresetApply, customPresetUpdate));
+        page.content.addView(OptLabUi.actionRow(requireContext(),
+                customPresetRename, customPresetDuplicate));
+        page.content.addView(customPresetDelete);
+        page.content.addView(OptLabUi.note(requireContext(),
+                "Presetul salvează toate controalele Build 42 vizibile, inclusiv Internal și "
+                        + "Experimental Build 42. General, Native și Experimental independent "
+                        + "rămân neatinse. Ștergerea cere două apăsări."));
         return page.root;
     }
 
@@ -535,6 +616,24 @@ public final class OptLabFragment extends Fragment {
                     }
                     @Override public void onNothingSelected(AdapterView<?> parent) {}
                 });
+        customPresetSpinner.spinner.setOnItemSelectedListener(
+                new AdapterView.OnItemSelectedListener() {
+                    @Override public void onItemSelected(AdapterView<?> parent, View view,
+                                                          int position, long id) {
+                        if (!uiReady || updating) return;
+                        Object item = parent.getItemAtPosition(position);
+                        if (!(item instanceof OptLabCustomPresetStore.Preset)) return;
+                        OptLabCustomPresetStore.Preset preset =
+                                (OptLabCustomPresetStore.Preset) item;
+                        presetUiSelectedId = preset.getId();
+                        pendingPresetDeleteId = null;
+                        presetUiMessage = "";
+                        customPresetName.input.setText(preset.getName());
+                        updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+                                prefs.getCustomBuild42Presets(), preset);
+                    }
+                    @Override public void onNothingSelected(AdapterView<?> parent) {}
+                });
         box64.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, View view,
                                                   int position, long id) {
@@ -637,6 +736,10 @@ public final class OptLabFragment extends Fragment {
         boolean advanced = prefs.isAdvancedControls();
         select(build42ProfileCard, prefs.getBuild42LabProfile());
         build42ProfileCard.setEnabled(!safe);
+        OptLabCustomPresetStore.Preset activePreset =
+                prefs.getActiveCustomBuild42Preset();
+        build42ProfileStatus.setText(build42ProfileLabel(activePreset));
+        customPresetCard.subtitle.setText(customPresetHomeSummary(activePreset));
         onlyBuild42.toggle.setChecked(prefs.isOnlyBuild42());
         advancedControls.toggle.setChecked(advanced);
         setEnabled(!safe, onlyBuild42, advancedControls);
@@ -649,11 +752,6 @@ public final class OptLabFragment extends Fragment {
             card.toggle.setChecked(prefs.isFeatureEnabled(feature));
             card.setEnabled(!safe);
             card.subtitle.setText(featureDescription(feature));
-        }
-        for (OptLabFeatureRegistry.Feature feature : internalCards.keySet()) {
-            internalCards.get(feature).subtitle.setText(
-                    (prefs.isFeatureEnabled(feature) ? "ON · " : "OFF · ")
-                            + featureDescription(feature));
         }
         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
             String summary = moduleSummary(module, safe);
@@ -672,6 +770,239 @@ public final class OptLabFragment extends Fragment {
             experimentalNativeCard.subtitle.setText(safe ? "Safe Mode"
                     : nativeActive + "/3 active · implicit OFF");
         }
+        syncCustomPresetManager(safe);
+    }
+
+    private String build42ProfileLabel(OptLabCustomPresetStore.Preset activePreset) {
+        String label;
+        if (activePreset == null) {
+            label = "Profil activ: " + prefs.getBuild42LabProfile();
+        } else if (prefs.isActiveCustomBuild42PresetModified()) {
+            label = "Modified · based on " + activePreset.getName();
+        } else {
+            label = "Custom · " + activePreset.getName();
+        }
+        return prefs.isSafeModeEnabled() ? "Safe Mode · păstrează " + label : label;
+    }
+
+    private String customPresetHomeSummary(OptLabCustomPresetStore.Preset activePreset) {
+        if (prefs.hasCustomBuild42PresetStorageProblem()) {
+            return "Catalog indisponibil · datele existente sunt păstrate";
+        }
+        int count = prefs.getCustomBuild42Presets().size();
+        if (activePreset != null) {
+            return (prefs.isActiveCustomBuild42PresetModified()
+                    ? "Modified · based on " : "Custom · ") + activePreset.getName()
+                    + " · " + count + (count == 1 ? " preset" : " preseturi");
+        }
+        return count == 0 ? "Niciun preset salvat"
+                : count + " preseturi salvate · niciunul aplicat";
+    }
+
+    private void syncCustomPresetManager(boolean safe) {
+        List<OptLabCustomPresetStore.Preset> presets =
+                prefs.getCustomBuild42Presets();
+        OptLabCustomPresetStore.Preset selected = findPreset(presets, presetUiSelectedId);
+        if (selected == null) {
+            OptLabCustomPresetStore.Preset active = prefs.getActiveCustomBuild42Preset();
+            selected = active == null ? null : findPreset(presets, active.getId());
+        }
+        if (selected == null && !presets.isEmpty()) selected = presets.get(0);
+
+        customPresetSpinner.adapter.clear();
+        customPresetSpinner.adapter.addAll(presets);
+        customPresetSpinner.adapter.notifyDataSetChanged();
+        if (selected != null) {
+            int position = presetPosition(presets, selected.getId());
+            if (position >= 0
+                    && customPresetSpinner.spinner.getSelectedItemPosition() != position) {
+                customPresetSpinner.spinner.setSelection(position, false);
+            }
+            presetUiSelectedId = selected.getId();
+            customPresetName.input.setText(selected.getName());
+        } else {
+            presetUiSelectedId = null;
+            customPresetName.input.setText("");
+        }
+        updateSelectedPresetControls(safe, presets, selected);
+    }
+
+    private void updateSelectedPresetControls(boolean safe,
+                                              List<OptLabCustomPresetStore.Preset> presets,
+                                              OptLabCustomPresetStore.Preset selected) {
+        boolean storageProblem = prefs.hasCustomBuild42PresetStorageProblem();
+        boolean mutable = !safe && !storageProblem;
+        boolean hasSelection = selected != null;
+        customPresetSpinner.setEnabled(mutable && hasSelection);
+        customPresetName.setEnabled(mutable);
+        customPresetCreate.setEnabled(mutable);
+        customPresetApply.setEnabled(mutable && hasSelection);
+        customPresetUpdate.setEnabled(mutable && hasSelection);
+        customPresetRename.setEnabled(mutable && hasSelection);
+        customPresetDuplicate.setEnabled(mutable && hasSelection);
+        customPresetDelete.setEnabled(mutable && hasSelection);
+        customPresetDelete.setText(hasSelection
+                && selected.getId().equals(pendingPresetDeleteId)
+                ? "Confirmă ștergerea" : "Șterge");
+
+        String state;
+        if (storageProblem) {
+            state = "Catalog indisponibil · date păstrate · "
+                    + prefs.getCustomBuild42PresetStorageProblem();
+        } else if (selected == null) {
+            state = "Niciun preset salvat · configurația curentă nu este afectată";
+        } else {
+            OptLabCustomPresetStore.Preset active = prefs.getActiveCustomBuild42Preset();
+            if (active != null && active.getId().equals(selected.getId())) {
+                state = prefs.isActiveCustomBuild42PresetModified()
+                        ? "Modified · based on " + selected.getName()
+                        : "Custom · " + selected.getName() + " · exact";
+            } else {
+                state = "Selectat: " + selected.getName() + " · nu este aplicat";
+            }
+            state += " · " + presets.size()
+                    + (presets.size() == 1 ? " preset salvat" : " preseturi salvate");
+        }
+        if (safe) state = "Safe Mode · controale blocate · " + state;
+        if (!presetUiMessage.isEmpty()) state += " · " + presetUiMessage;
+        customPresetStatusCard.subtitle.setText(state);
+    }
+
+    private void createCustomPreset() {
+        try {
+            OptLabCustomPresetStore.Preset preset = prefs.createCustomBuild42Preset(
+                    requestedPresetName());
+            completePresetAction(preset, "Preset creat");
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void applyCustomPreset() {
+        OptLabCustomPresetStore.Preset selected = selectedPreset();
+        if (selected == null) {
+            failPresetAction("Selectează un preset");
+            return;
+        }
+        try {
+            completePresetAction(prefs.applyCustomBuild42Preset(selected.getId()),
+                    "Preset aplicat · restart necesar");
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void updateCustomPreset() {
+        OptLabCustomPresetStore.Preset selected = selectedPreset();
+        if (selected == null) {
+            failPresetAction("Selectează un preset");
+            return;
+        }
+        try {
+            completePresetAction(prefs.updateCustomBuild42Preset(selected.getId()),
+                    "Preset actualizat");
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void renameCustomPreset() {
+        OptLabCustomPresetStore.Preset selected = selectedPreset();
+        if (selected == null) {
+            failPresetAction("Selectează un preset");
+            return;
+        }
+        try {
+            completePresetAction(prefs.renameCustomBuild42Preset(selected.getId(),
+                    requestedPresetName()), "Preset redenumit");
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void duplicateCustomPreset() {
+        OptLabCustomPresetStore.Preset selected = selectedPreset();
+        if (selected == null) {
+            failPresetAction("Selectează un preset");
+            return;
+        }
+        try {
+            completePresetAction(prefs.duplicateCustomBuild42Preset(selected.getId(),
+                    requestedPresetName()), "Preset duplicat · nu este încă aplicat");
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void deleteCustomPreset() {
+        OptLabCustomPresetStore.Preset selected = selectedPreset();
+        if (selected == null) {
+            failPresetAction("Selectează un preset");
+            return;
+        }
+        if (!selected.getId().equals(pendingPresetDeleteId)) {
+            pendingPresetDeleteId = selected.getId();
+            presetUiMessage = "Apasă din nou pentru ștergerea definitivă";
+            updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+                    prefs.getCustomBuild42Presets(), selected);
+            return;
+        }
+        try {
+            prefs.deleteCustomBuild42Preset(selected.getId());
+            presetUiSelectedId = null;
+            pendingPresetDeleteId = null;
+            presetUiMessage = "Preset șters";
+            syncAll();
+        } catch (RuntimeException error) {
+            failPresetAction(error);
+        }
+    }
+
+    private void completePresetAction(OptLabCustomPresetStore.Preset preset,
+                                      String message) {
+        presetUiSelectedId = preset.getId();
+        pendingPresetDeleteId = null;
+        presetUiMessage = message;
+        syncAll();
+    }
+
+    private void failPresetAction(RuntimeException error) {
+        String message = error.getMessage();
+        failPresetAction(message == null || message.isEmpty()
+                ? error.getClass().getSimpleName() : message);
+    }
+
+    private void failPresetAction(String message) {
+        pendingPresetDeleteId = null;
+        presetUiMessage = "Eroare: " + message;
+        updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+                prefs.getCustomBuild42Presets(), selectedPreset());
+    }
+
+    private String requestedPresetName() {
+        CharSequence value = customPresetName.input.getText();
+        return value == null ? "" : value.toString();
+    }
+
+    private OptLabCustomPresetStore.Preset selectedPreset() {
+        return findPreset(prefs.getCustomBuild42Presets(), presetUiSelectedId);
+    }
+
+    private static OptLabCustomPresetStore.Preset findPreset(
+            List<OptLabCustomPresetStore.Preset> presets, String id) {
+        if (id == null) return null;
+        for (OptLabCustomPresetStore.Preset preset : presets) {
+            if (id.equals(preset.getId())) return preset;
+        }
+        return null;
+    }
+
+    private static int presetPosition(List<OptLabCustomPresetStore.Preset> presets,
+                                      String id) {
+        for (int index = 0; index < presets.size(); index++) {
+            if (id.equals(presets.get(index).getId())) return index;
+        }
+        return -1;
     }
 
     private String experimentalModuleSummary(OptLabFeatureRegistry.Module module,
@@ -723,7 +1054,7 @@ public final class OptLabFragment extends Fragment {
         switch (maturity) {
             case STABLE: return "STABLE";
             case EXPERIMENTAL: return "EXPERIMENTAL · implicit OFF";
-            case INTERNAL: return "INTERNAL · fără toggle";
+            case INTERNAL: return "INTERNAL · control individual";
             case ARCHIVED: return "ARCHIVED";
             default: throw new AssertionError(maturity);
         }
@@ -785,6 +1116,7 @@ public final class OptLabFragment extends Fragment {
     private void showBuild42Module(OptLabFeatureRegistry.Module selected) {
         if (build42Home == null) return;
         build42Home.setVisibility(View.GONE);
+        if (customPresetPage != null) customPresetPage.setVisibility(View.GONE);
         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
             View page = modulePages.get(module);
             if (page != null) {
@@ -799,6 +1131,15 @@ public final class OptLabFragment extends Fragment {
         build42Home.setVisibility(View.VISIBLE);
         build42Home.scrollTo(0, 0);
         for (View page : modulePages.values()) page.setVisibility(View.GONE);
+        if (customPresetPage != null) customPresetPage.setVisibility(View.GONE);
+    }
+
+    private void showCustomPresetManager() {
+        if (build42Home == null || customPresetPage == null) return;
+        build42Home.setVisibility(View.GONE);
+        for (View page : modulePages.values()) page.setVisibility(View.GONE);
+        customPresetPage.setVisibility(View.VISIBLE);
+        customPresetPage.scrollTo(0, 0);
     }
 
     private void showExperimentalModule(OptLabFeatureRegistry.Module selected) {

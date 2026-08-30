@@ -5,6 +5,7 @@ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 "$PROJECT_DIR/tools/test-optlab-tabbed-ui-compile.sh"
 "$PROJECT_DIR/tools/test-optlab-preferences-independence.sh"
+"$PROJECT_DIR/tools/test-optlab-custom-presets.sh"
 "$PROJECT_DIR/tools/test-native-modules-preferences.sh"
 
 python3 - "$PROJECT_DIR" <<'PY'
@@ -51,9 +52,16 @@ for setter in (
     'setLighting64Enabled', 'setPzClipperEnabled', 'setPathfindingEnabled',
     'setPopManEnabled', 'setGeneralProfile', 'setBuild42LabProfile'):
     assert setter in fragment, f'unmapped setter: {setter}'
+for action in ('createCustomBuild42Preset', 'applyCustomBuild42Preset',
+               'updateCustomBuild42Preset', 'renameCustomBuild42Preset',
+               'duplicateCustomBuild42Preset', 'deleteCustomBuild42Preset'):
+    assert action in fragment and action in prefs, f'unmapped custom preset action: {action}'
 
 assert 'setSafeModeEnabled' in fragment and 'isSafeModeEnabled' in fragment
-assert 'SCHEMA = 11' in prefs and 'K_SAFE_MODE' in prefs
+assert 'SCHEMA = 12' in prefs and 'K_SAFE_MODE' in prefs
+custom_presets = (root/'app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java').read_text()
+assert 'SCHEMA = 1' in custom_presets and 'ZOMDROID_BUILD42_PRESETS' in custom_presets
+assert 'feature.id' in custom_presets and '.ordinal()' not in custom_presets
 assert 'K_GENERAL_PROFILE' in prefs and 'K_BUILD42_PROFILE' in prefs
 assert 'SAFE MODE · setări păstrate' in prefs
 assert 'SCHEMA = 4' in native and 'optLab.isSafeModeEnabled()' in native
@@ -63,8 +71,16 @@ for module in ('MAIN_LOOP_PACING', 'WORLD_STREAM_CHUNK', 'FBO_RENDER_CELL', 'REN
     assert f'Module.{module}' in fragment, f'missing module page {module}'
 for token in ('LAB_PROFILES', 'showBuild42Module', 'showExperimentalModule',
               'generalProfileCard', 'build42ProfileCard', 'experimentalModuleCards',
-              'advancedControls', 'featureCards', 'internalCards', 'featuresForModule'):
+              'advancedControls', 'featureCards', 'featuresForModule'):
     assert token in fragment, f'missing modular UI token {token}'
+assert 'internalCards' not in fragment, 'Internal features still use read-only cards'
+assert 'Internal · control individual · fallback automat' in fragment
+assert 'INTERNAL · control individual' in fragment
+for token in ('buildCustomPresetManagerPage', 'showCustomPresetManager',
+              'customPresetSpinner', 'customPresetName', 'pendingPresetDeleteId',
+              'Modified · based on ', 'Custom · '):
+    assert token in fragment, f'missing custom preset manager token {token}'
+assert 'Ștergerea cere două apăsări.' in fragment
 assert 'RTHREAD_RING_BULK_PACK' not in fragment, 'archived Ring bulk leaked into UI'
 assert 'Pathfinding' in fragment and 'PopMan' in fragment
 assert 'setChunkCp2cDirtyClear' not in fragment, \
@@ -127,6 +143,7 @@ assert len(hashlib.sha256(payload).hexdigest()) == 64
 
 print('OPTLAB_TABBED_UI_SOURCE PASS full_screen=1 tabs=6 modules=7 detail_pages=1 '
       'profiles=general_build42_independent experimental=module_categories '
-      'advanced=registry_driven nested_dialogs=0 safe_mode=effective_preserve '
+      'advanced=registry_driven custom_presets=manager_actions_6 nested_dialogs=0 '
+      'safe_mode=effective_preserve '
       'theme=light_dark agent_bundle_source_matched=1')
 PY

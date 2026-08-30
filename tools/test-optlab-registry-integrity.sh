@@ -13,6 +13,7 @@ mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/preferences-stubs" \
 java -m jdk.compiler/com.sun.tools.javac.Main --release 17 \
   -d "$WORK_DIR/classes" \
   "${STUBS[@]}" \
+  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java" \

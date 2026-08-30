@@ -1,0 +1,35 @@
+ZomDroid R15-06-02 CUSTOM PRESET ENGINE — source identity
+Date: 2026-08-30 UTC
+
+STATUS: DONE (SOURCE/HOST)
+APK COMPILE: NOT RUN
+DEVICE TEST: NO
+
+Authoritative input checkpoint:
+ZomDroid-R15-06-01-INTERNAL-TOGGLES-FULL-SOURCE-2026-08-30.tar.zst
+SHA-256: f982a9979448d70c972521eb2d302863ae478df4f9a75a64e9681eb1f072ba61
+
+Rollback git commit:
+fb3c3d4fb6e4803ddc7a3a52e11213f57f4eda87
+
+Exact Project Zomboid inputs:
+42.20
+SHA-256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+42.20.3
+SHA-256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Integrated artifacts (unchanged):
+zomdroid-agent.jar
+SHA-256: 22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3
+
+app/src/main/assets/bundles/jars.tar
+SHA-256: 6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5
+
+Agent marker: version=15 schema=14 (unchanged)
+Proof schema: 14 (unchanged)
+Preferences schema: 12
+Custom preset schema: 1
+
+The full-source archive SHA-256 is calculated after packaging and reported
+beside the delivered archive. It cannot be embedded inside that same archive.

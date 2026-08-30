@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 
 import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Independent, restart-scoped settings for the single-APK optimization lab.
@@ -15,7 +16,7 @@ import java.util.EnumSet;
  * launcher settings.
  */
 public final class OptLabPreferences {
-    public static final int SCHEMA = 11;
+    public static final int SCHEMA = 12;
     public static final String EXPECTED_PZ_JAR_SHA256 =
             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
     public static final String EXPECTED_PZ_42203_JAR_SHA256 =
@@ -33,7 +34,7 @@ public final class OptLabPreferences {
     // Read-only migration input from the unified R14 profile.
     private static final String K_LAB_PROFILE = "lab_profile_v2";
     private static final String K_GENERAL_PROFILE = "general_profile_v3";
-    private static final String K_BUILD42_PROFILE = "build42_profile_v3";
+    static final String K_BUILD42_PROFILE = "build42_profile_v3";
     private static final String K_ADVANCED_CONTROLS = "advanced_controls_v1";
     private static final String K_QUIET = "quiet_runtime";
     private static final String K_STDIO = "stdio_mode";
@@ -126,9 +127,11 @@ public final class OptLabPreferences {
     }
 
     private final SharedPreferences prefs;
+    private final OptLabCustomPresetStore customPresets;
 
     private OptLabPreferences(SharedPreferences prefs) {
         this.prefs = prefs;
+        this.customPresets = new OptLabCustomPresetStore(prefs);
     }
 
     @NonNull
@@ -307,6 +310,7 @@ public final class OptLabPreferences {
         SharedPreferences.Editor editor = prefs.edit()
                 .putString(K_BUILD42_PROFILE, profile.name());
         if (profile != LabProfile.CUSTOM) {
+            customPresets.clearActive(editor);
             for (OptLabFeatureRegistry.Feature feature
                     : OptLabFeatureRegistry.Feature.values()) {
                 if (feature.category != OptLabFeatureRegistry.Category.BUILD42
@@ -322,6 +326,60 @@ public final class OptLabPreferences {
             }
         }
         commit(editor);
+    }
+
+    /** Named snapshots cover all visible registry-owned BUILD42 features only. */
+    @NonNull
+    public List<OptLabCustomPresetStore.Preset> getCustomBuild42Presets() {
+        return customPresets.list();
+    }
+
+    public OptLabCustomPresetStore.Preset getActiveCustomBuild42Preset() {
+        return customPresets.active();
+    }
+
+    public boolean isActiveCustomBuild42PresetModified() {
+        return customPresets.isActiveModified();
+    }
+
+    public boolean hasCustomBuild42PresetStorageProblem() {
+        return customPresets.hasStorageProblem();
+    }
+
+    public String getCustomBuild42PresetStorageProblem() {
+        return customPresets.storageProblem();
+    }
+
+    @NonNull
+    public OptLabCustomPresetStore.Preset createCustomBuild42Preset(
+            @NonNull String name) {
+        return customPresets.create(name);
+    }
+
+    @NonNull
+    public OptLabCustomPresetStore.Preset applyCustomBuild42Preset(@NonNull String id) {
+        return customPresets.apply(id);
+    }
+
+    @NonNull
+    public OptLabCustomPresetStore.Preset updateCustomBuild42Preset(@NonNull String id) {
+        return customPresets.update(id);
+    }
+
+    @NonNull
+    public OptLabCustomPresetStore.Preset renameCustomBuild42Preset(
+            @NonNull String id, @NonNull String name) {
+        return customPresets.rename(id, name);
+    }
+
+    @NonNull
+    public OptLabCustomPresetStore.Preset duplicateCustomBuild42Preset(
+            @NonNull String id, @NonNull String name) {
+        return customPresets.duplicate(id, name);
+    }
+
+    public void deleteCustomBuild42Preset(@NonNull String id) {
+        customPresets.delete(id);
     }
 
     /** UI disclosure only; it never changes the effective launch configuration. */
@@ -611,6 +669,7 @@ public final class OptLabPreferences {
     }
 
     public String machineReadable() {
+        OptLabCustomPresetStore.Preset activePreset = getActiveCustomBuild42Preset();
         return "schema=" + SCHEMA
                 + " safeMode=" + bool(isSafeModeEnabled())
                 + " generalProfile=" + getGeneralProfile().name()
@@ -648,6 +707,11 @@ public final class OptLabPreferences {
                 + " renderChunkDepthLookup=" + bool(isRenderChunkDepthLookup())
                 + " renderRingEmptyClear=" + bool(isRenderRingEmptyClear())
                 + " onlyBuild42=" + bool(isOnlyBuild42())
+                + " customPresetSchema=" + OptLabCustomPresetStore.SCHEMA
+                + " customPresetCount=" + getCustomBuild42Presets().size()
+                + " customPreset=" + (activePreset == null ? "none" : activePreset.getId())
+                + " customPresetModified="
+                + bool(activePreset != null && isActiveCustomBuild42PresetModified())
                 + featureMachineReadable();
     }
 

@@ -36,6 +36,13 @@ public final class OptLabRegistryIntegrityUnit {
                         "visible B42 feature without preference " + feature.id);
                 require(feature.agentProperty != null,
                         "visible B42 feature without property " + feature.id);
+                for (OptLabFeatureRegistry.Feature dependency : feature.dependencies) {
+                    require(dependency.category == OptLabFeatureRegistry.Category.BUILD42
+                                    && dependency.preferenceKey != null
+                                    && dependency.isVisible(),
+                            "B42 preset dependency escapes its scope " + feature.id
+                                    + " -> " + dependency.id);
+                }
             }
             if (feature.maturity == OptLabFeatureRegistry.Maturity.INTERNAL) {
                 require(!feature.advancedControl,
@@ -105,6 +112,16 @@ public final class OptLabRegistryIntegrityUnit {
         prefs.setAdvancedControls(false);
         require(before == prefs.build42FeatureEnabledCount(),
                 "advanced disclosure changed launch state");
+        prefs.setBuild42LabProfile(OptLabPreferences.LabProfile.RECOMMENDED);
+        OptLabFeatureRegistry.Feature internal =
+                OptLabFeatureRegistry.Feature.RTHREAD_MVP;
+        require(prefs.isFeatureEnabled(internal),
+                "Recommended did not enable the internal MVP fastpath");
+        prefs.setFeatureEnabled(internal, false);
+        require(!prefs.isFeatureEnabled(internal),
+                "internal feature cannot be disabled individually");
+        require(prefs.getBuild42LabProfile() == OptLabPreferences.LabProfile.CUSTOM,
+                "internal override did not mark the Build 42 profile Custom");
         prefs.setBuild42ProductionAllOff();
         prefs.setFeatureEnabled(
                 OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_LOOKUP, true);

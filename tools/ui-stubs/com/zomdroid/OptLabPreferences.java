@@ -2,6 +2,9 @@ package com.zomdroid;
 
 import android.content.Context;
 
+import java.util.Collections;
+import java.util.List;
+
 public final class OptLabPreferences {
     public enum Profile {
         BASELINE, RUNTIME_SAFE, ALL_TEST_ON, CUSTOM,
@@ -102,4 +105,27 @@ public final class OptLabPreferences {
     public void setFeatureEnabled(OptLabFeatureRegistry.Feature feature, boolean value) {}
     public int build42FeatureEnabledCount() { return 0; }
     public int experimentalBuild42EnabledCount() { return 0; }
+    public List<OptLabCustomPresetStore.Preset> getCustomBuild42Presets() {
+        return Collections.emptyList();
+    }
+    public OptLabCustomPresetStore.Preset getActiveCustomBuild42Preset() { return null; }
+    public boolean isActiveCustomBuild42PresetModified() { return false; }
+    public boolean hasCustomBuild42PresetStorageProblem() { return false; }
+    public String getCustomBuild42PresetStorageProblem() { return null; }
+    public OptLabCustomPresetStore.Preset createCustomBuild42Preset(String name) {
+        return null;
+    }
+    public OptLabCustomPresetStore.Preset applyCustomBuild42Preset(String id) {
+        return null;
+    }
+    public OptLabCustomPresetStore.Preset updateCustomBuild42Preset(String id) {
+        return null;
+    }
+    public OptLabCustomPresetStore.Preset renameCustomBuild42Preset(String id, String name) {
+        return null;
+    }
+    public OptLabCustomPresetStore.Preset duplicateCustomBuild42Preset(String id, String name) {
+        return null;
+    }
+    public void deleteCustomBuild42Preset(String id) {}
 }

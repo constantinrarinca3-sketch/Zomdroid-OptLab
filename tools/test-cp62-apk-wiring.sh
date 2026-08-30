@@ -28,7 +28,7 @@ assert 'addAgentFeatureProperties(jvmArgs)' in launcher, \
 for feature in ('RTHREAD_CHUNK_DEPTH_UPLOAD','RTHREAD_CHUNK_DEPTH_LOOKUP',
                 'RTHREAD_RING_RENDER_CLEAR'):
     assert feature in registry and feature in agent, f'registry/agent missing {feature}'
-assert 'public static final int SCHEMA = 11' in prefs, 'preference schema mismatch'
+assert 'public static final int SCHEMA = 12' in prefs, 'preference schema mismatch'
 assert 'isSafeModeEnabled()' in prefs and 'K_SAFE_MODE' in prefs, \
     'Safe Mode effective gate missing'
 assert 'isAnyRenderOptimizationEnabled()' in prefs, 'agent launch gate ignores Render'

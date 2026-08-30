@@ -93,13 +93,13 @@ public final class OptLabPreferencesIndependenceUnit {
         require(!prefs.isFboDirtyDedup(), "Build 42 ALL OFF clears FBO");
         require(prefs.isChunkCp2cDirtyClear(), "Build 42 ALL OFF preserves Experimental");
 
-        require(OptLabPreferences.SCHEMA == 11, "schema 11");
+        require(OptLabPreferences.SCHEMA == 12, "schema 12");
         require(OptLabPreferences.isKnownPzJarSha256(
                 OptLabPreferences.EXPECTED_PZ_42203_JAR_SHA256), "42.20.3 known");
         require(prefs.machineReadable().contains("generalProfile=")
                         && prefs.machineReadable().contains("build42Profile="),
                 "separate profiles missing from diagnostics");
-        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=11 safe_mode=1"
+        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=12 safe_mode=1"
                 + " profiles=independent");
     }
 

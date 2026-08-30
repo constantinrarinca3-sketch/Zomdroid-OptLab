@@ -1,0 +1,31 @@
+R15-06-01 HOST TEST RESULTS
+Date: 2026-08-30 UTC
+
+STATUS: PASS (SOURCE/HOST)
+APK COMPILE: NOT RUN
+DEVICE TEST: NO
+
+./tools/test-optlab-tabbed-ui-source.sh
+  OPTLAB_TABBED_UI_COMPILE PASS javac_release=17 tabs=6
+  OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=11 safe_mode=1 profiles=independent
+  NATIVE_MODULES_PREFERENCES_UNIT PASS schema=4 safe_mode=1 lighting_default_off=1
+  OPTLAB_TABBED_UI_SOURCE PASS
+
+./tools/test-optlab-registry-integrity.sh
+  OPTLAB_REGISTRY_INTEGRITY_UNIT PASS features=48 render_visible=12 archived=5
+  ids_unique=1 prefs_unique=1 properties_unique=1 cycles=0 profiles=3
+
+./tools/test-r15-final-qa.sh <42.20.jar> <42.20.3.jar>
+  R15_FINAL_QA PASS source_host=1 exact_42_20=1 exact_42_20_3=1
+  apk_compile=NOT_RUN device_test=NO
+
+Exact inputs:
+  42.20   e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+  42.20.3 bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Unchanged integrated artifacts:
+  zomdroid-agent.jar
+  22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3
+
+  app/src/main/assets/bundles/jars.tar
+  6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5
