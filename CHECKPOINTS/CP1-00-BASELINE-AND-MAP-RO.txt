@@ -1,0 +1,88 @@
+ZOMDROID OPTLAB — SNAPSHOT INTERN CP1-00
+Checkpoint oficial urmărit: CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
+Data: 2026-08-28
+
+STATUS
+======
+
+ETAPĂ: BASELINE ȘI HARTA PROBLEMEI
+IMPLEMENTARE FUNCȚIONALĂ: NEÎNCEPUTĂ
+CHECKPOINT OFICIAL 4: IN PROGRESS
+SURSA ORIGINALĂ: PĂSTRATĂ / NEMODIFICATĂ
+
+IDENTITATEA SURSEI
+==================
+
+Arhivă originală:
+ZomDroid-R3-STREAM-FBO-PACK-MGL022-LOWERCASE-PATH-FIX-SOURCE-2026-08-27.tar.zst
+
+SHA-256 arhivă originală:
+1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
+
+Fișiere-cheie înainte de modificări:
+
+GameLauncher.java
+12cdbf11ebce0af71bbdd679cf02c0fcf30c385507484b62306023d0114777d5
+
+OptLabPreferences.java
+d65e39a9327a070f3029f858334959b478923eb775d59d6d98d608fe1691e357
+
+Agent Main.java
+76af8ddd7b9f7171a075176fe6bf6f5f4134dbc80fd46880f952b8683e025046
+
+StreamCoreRuntime.java
+28faad4e92491873a19ae4a96740678c4d27765b953f60eb95ca88ac1d63f494
+
+CAUZA CONFIRMATĂ
+================
+
+1. GameLauncher calculează un singur pzJarGate folosind SHA-ul complet al
+   projectzomboid.jar.
+
+2. Agentul Main oprește toate optimizările cerute dacă acel gate global este
+   fals.
+
+3. Agentul conține deja SHA-uri separate pentru clasele țintă:
+
+- zombie/MainThread.class;
+- zombie/GameWindow.class;
+- zombie/iso/WorldStreamer.class;
+- zombie/iso/WorldStreamer$ChunkComparator.class;
+- zombie/iso/fboRenderChunk/FBORenderChunkManager.class;
+- zombie/iso/fboRenderChunk/FBORenderLevels$NLevels.class.
+
+4. Prin urmare, blocarea globală a întregului pack este inutil de strictă.
+   Un JAR B42 cu SHA diferit poate păstra neschimbate unele clase sau forme de
+   bytecode relevante.
+
+DIRECȚIA DE IMPLEMENTARE
+========================
+
+- familia jocului se transmite separat de identitatea JAR-ului;
+- fiecare feature primește propria stare de compatibilitate;
+- SHA-ul exact rămâne dovadă VERIFIED, nu poartă globală;
+- un hash de clasă necunoscut intră în PROBE;
+- PROBE poate deveni COMPATIBLE numai după validarea formei țintă;
+- o formă necunoscută sau incompletă devine UNSUPPORTED numai pentru feature-ul
+  afectat;
+- fallback-ul original rămâne funcțional;
+- OptLab General nu este blocat de incompatibilitatea unui patch B42.
+
+AUDIT STREAM CORE — OBSERVAȚII INIȚIALE
+=======================================
+
+- STREAM_WAKE are fallback corect către Thread.sleep când este dezactivat;
+- STREAM_QUEUE_FAST păstrează semantic alegerea ultimului element maxim și
+  ordinea elementelor rămase;
+- verificările actuale de shape sunt utile, dar apar prea târziu după gate-ul
+  global și nu pot ajuta un SHA B42 nou;
+- trebuie verificată separat activarea transformării, erorile ByteBuddy și
+  ruta STREAM_VELOCITY_ETA înaintea verdictului final.
+
+URMĂTORUL PAS
+=============
+
+Implementarea registrului launcher/per-feature și eliminarea dependenței UI
+generală de gate-ul unic al JAR-ului.
+
+SFÂRȘIT SNAPSHOT CP1-00

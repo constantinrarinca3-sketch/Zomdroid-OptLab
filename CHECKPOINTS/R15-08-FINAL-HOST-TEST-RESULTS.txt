@@ -1,0 +1,34 @@
+R15-08 FINAL HOST QA
+Date: 2026-08-31
+
+Command:
+  bash tools/test-r15-final-qa.sh <projectzomboid-42.20.jar> <projectzomboid-42.20.3.jar>
+
+Result:
+  R15_FINAL_QA PASS source_host=1 exact_42_20=1 exact_42_20_3=1 apk_compile=NOT_RUN device_test=NO
+
+Exact input identities:
+  42.20   e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+  42.20.3 bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Key results:
+  OPTLAB_REGISTRY_INTEGRITY_UNIT PASS features=46 render_visible=12 archived=5 ids_unique=1 prefs_unique=1 properties_unique=1 cycles=0 profiles=3 toggle_roundtrip=all
+  OPTLAB_LAUNCH_CONTRACT_UNIT PASS stale_on=removed off=authoritative
+  OPTLAB_PROCESS_ISOLATION PASS game_process=fresh restart_helper=separate game_exit=finish_then_kill fbo_governor_tuning=removed
+  OPTLAB_TABBED_UI_SOURCE PASS custom_presets=removed_migrated navigation=route_history restart=fresh_process
+  CP6_2_APK_BUNDLE PASS unified_agent=1 external_agent=0 marker=16/15 registry_owned=1
+  CP6134_BUILD_DIRECT_PARITY PASS sequences=10000 commands=243415 bulk_pack=0 fallback_pre_side_effect=1
+  CP6134_BUILD_DIRECT_EXACT_JARS PASS versions=42.20,42.20.3
+  CP6134_FBO_INNER_LOOP_PARITY PASS sequences=2000 squares=220416 light_calls_saved=40412 skip=0 defer=0
+  CHUNK_OPTIMIZATION_BOTH_REAL_JARS PASS
+  PATHFINDING_REAL_BYTECODE_TRANSFORM PASS for both exact jars
+
+Agent identities:
+  app/src/main/assets/bundles/jars.tar
+    2d8562b983fcd8e38f765d90571930496340bf7d221871a570736d26709a8805
+  embedded zomdroid-agent.jar
+    94732776a7e82e8ee97837aa5c36d3b1c629347a64b1976253aaddf198e271cf
+
+Limitations:
+  APK compile NOT RUN locally because Android SDK/Gradle distribution was unavailable.
+  DEVICE TEST NOT RUN. This file does not claim DEVICE PASS.

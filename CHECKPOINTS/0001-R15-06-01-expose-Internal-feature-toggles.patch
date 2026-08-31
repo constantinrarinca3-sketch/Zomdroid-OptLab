@@ -1,0 +1,335 @@
+From fb3c3d4fb6e4803ddc7a3a52e11213f57f4eda87 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local.invalid>
+Date: Sun, 30 Aug 2026 17:30:07 +0100
+Subject: [PATCH] R15-06-01 expose Internal feature toggles
+
+---
+ CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt   | 31 +++++++
+ CHECKPOINTS/R15-06-01-INTERNAL-TOGGLES-RO.md  | 80 +++++++++++++++++++
+ CHECKPOINTS/R15-06-01-SOURCE-IDENTITY.txt     | 35 ++++++++
+ R15-CONTINUATION-HANDOFF-RO.md                | 25 +++++-
+ .../zomdroid/fragments/OptLabFragment.java    | 21 ++---
+ tools/OptLabRegistryIntegrityUnit.java        | 10 +++
+ tools/test-optlab-tabbed-ui-source.sh         |  5 +-
+ 7 files changed, 186 insertions(+), 21 deletions(-)
+ create mode 100644 CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt
+ create mode 100644 CHECKPOINTS/R15-06-01-INTERNAL-TOGGLES-RO.md
+ create mode 100644 CHECKPOINTS/R15-06-01-SOURCE-IDENTITY.txt
+
+diff --git a/CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt b/CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt
+new file mode 100644
+index 0000000..def1e5b
+--- /dev/null
++++ b/CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt
+@@ -0,0 +1,31 @@
++R15-06-01 HOST TEST RESULTS
++Date: 2026-08-30 UTC
++
++STATUS: PASS (SOURCE/HOST)
++APK COMPILE: NOT RUN
++DEVICE TEST: NO
++
++./tools/test-optlab-tabbed-ui-source.sh
++  OPTLAB_TABBED_UI_COMPILE PASS javac_release=17 tabs=6
++  OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=11 safe_mode=1 profiles=independent
++  NATIVE_MODULES_PREFERENCES_UNIT PASS schema=4 safe_mode=1 lighting_default_off=1
++  OPTLAB_TABBED_UI_SOURCE PASS
++
++./tools/test-optlab-registry-integrity.sh
++  OPTLAB_REGISTRY_INTEGRITY_UNIT PASS features=48 render_visible=12 archived=5
++  ids_unique=1 prefs_unique=1 properties_unique=1 cycles=0 profiles=3
++
++./tools/test-r15-final-qa.sh <42.20.jar> <42.20.3.jar>
++  R15_FINAL_QA PASS source_host=1 exact_42_20=1 exact_42_20_3=1
++  apk_compile=NOT_RUN device_test=NO
++
++Exact inputs:
++  42.20   e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
++  42.20.3 bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
++
++Unchanged integrated artifacts:
++  zomdroid-agent.jar
++  22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3
++
++  app/src/main/assets/bundles/jars.tar
++  6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5
+diff --git a/CHECKPOINTS/R15-06-01-INTERNAL-TOGGLES-RO.md b/CHECKPOINTS/R15-06-01-INTERNAL-TOGGLES-RO.md
+new file mode 100644
+index 0000000..edad722
+--- /dev/null
++++ b/CHECKPOINTS/R15-06-01-INTERNAL-TOGGLES-RO.md
+@@ -0,0 +1,80 @@
++# R15-06-01 — controale individuale pentru optimizările Internal
++
++Data: 2026-08-30 UTC
++
++Status: **DONE (SOURCE/HOST)**
++
++APK COMPILE: **NOT RUN**
++
++DEVICE TEST: **NO**
++
++## Scop
++
++Checkpointul rezolvă situația în care optimizările Build 42 cu maturitate
++`INTERNAL` erau active prin profiluri, dar în pagina modulului apăreau doar ca
++informație fără control individual.
++
++## Implementare
++
++- cardurile read-only pentru funcțiile `INTERNAL` au fost înlocuite cu
++  `ToggleCard`-uri reale;
++- toate toggle-urile interne folosesc calea existentă și unică
++  `OptLabPreferences.setFeatureEnabled(...)`;
++- starea rămâne persistentă în `SharedPreferences` prin cheia stabilă a
++  funcției;
++- activarea închide automat dependențele, iar dezactivarea închide automat
++  dependenții, exact ca pentru celelalte funcții Build 42;
++- orice override individual mută profilul Build 42 în `Custom`;
++- Safe Mode dezactivează temporar controalele, fără să șteargă valorile;
++- maturitatea, profilele implicite, fallback-urile și proprietățile agentului
++  nu au fost schimbate.
++
++Agentul și bundle-ul sunt byte-identice cu R15-05. Acest checkpoint schimbă
++numai UI-ul și testele de contract pentru preferințe/registry.
++
++## Fișiere și metode modificate
++
++- `app/src/main/java/com/zomdroid/fragments/OptLabFragment.java`
++  - câmpurile de carduri Build 42;
++  - `onDestroyView()`;
++  - `buildBuild42Page()`;
++  - `buildModulePage(...)`;
++  - `syncBuild42(...)`;
++  - `maturityLabel(...)`.
++- `tools/OptLabRegistryIntegrityUnit.java`
++  - `verifyProfiles()` verifică override-ul unei funcții interne și tranziția
++    la profilul `Custom`.
++- `tools/test-optlab-tabbed-ui-source.sh`
++  - contractul UI cere toggle-uri interne și respinge vechile carduri read-only.
++
++## Validare host
++
++- compilare Java izolată a UI-ului: **PASS**;
++- independența preferințelor și profilurilor: **PASS**;
++- integritatea registry-ului: **PASS**;
++- runner final R15 pe JAR-urile exacte 42.20 și 42.20.3: **PASS**;
++- agent determinist și bundle source-matched: **PASS**;
++- APK/device: **NU AU FOST RULATE**.
++
++Rezultatele concise sunt în
++`CHECKPOINTS/R15-06-01-HOST-TEST-RESULTS.txt`.
++
++## Rollback
++
++Rollback-ul imediat este commitul local al baseline-ului autoritativ R15-05:
++
++`fdb0a742a946c64a98c74c6dbb6f3568165cace9`
++
++Arhiva de intrare rămâne:
++
++`ZomDroid-R15-05-FINAL-QA-FULL-SOURCE-2026-08-30.tar.zst`
++
++SHA-256:
++
++`93c94cde67a71046f93465afe22dcfb9d278acd45a51204ee4892c5ec05e3630`
++
++## Următorul checkpoint autorizat
++
++`R15-06-02`: motor versionat și testabil pentru mai multe preseturi custom
++Build 42, persistate prin ID-uri stabile de funcție. Nu se începe încă
++localizarea RO/EN.
+diff --git a/CHECKPOINTS/R15-06-01-SOURCE-IDENTITY.txt b/CHECKPOINTS/R15-06-01-SOURCE-IDENTITY.txt
+new file mode 100644
+index 0000000..6b32e22
+--- /dev/null
++++ b/CHECKPOINTS/R15-06-01-SOURCE-IDENTITY.txt
+@@ -0,0 +1,35 @@
++ZomDroid R15-06-01 INTERNAL TOGGLES — source identity
++Date: 2026-08-30 UTC
++
++STATUS: DONE (SOURCE/HOST)
++APK COMPILE: NOT RUN
++DEVICE TEST: NO
++
++Authoritative input archive:
++ZomDroid-R15-05-FINAL-QA-FULL-SOURCE-2026-08-30.tar.zst
++SHA-256: 93c94cde67a71046f93465afe22dcfb9d278acd45a51204ee4892c5ec05e3630
++
++Rollback git commit:
++fdb0a742a946c64a98c74c6dbb6f3568165cace9
++
++Exact Project Zomboid inputs:
++42.20
++SHA-256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
++
++42.20.3
++SHA-256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
++
++Unchanged integrated artifacts:
++zomdroid-agent.jar
++SHA-256: 22fedc09273fd7e70887e64451b9e8b53305432962dca932b24afc7c447926b3
++
++app/src/main/assets/bundles/jars.tar
++SHA-256: 6c4e67b13f6926292bf1fbe271833d6365cfeb0f89f27c62bdd00ae2abde66a5
++
++Agent marker: version=15 schema=14 (unchanged)
++Proof schema: 14 (unchanged)
++Preferences schema: 11 (unchanged)
++
++The full-source archive SHA-256 is calculated after packaging and reported
++beside the delivered archive. It cannot be embedded in the same archive without
++changing that archive's digest.
+diff --git a/R15-CONTINUATION-HANDOFF-RO.md b/R15-CONTINUATION-HANDOFF-RO.md
+index a820377..761f9cb 100644
+--- a/R15-CONTINUATION-HANDOFF-RO.md
++++ b/R15-CONTINUATION-HANDOFF-RO.md
+@@ -1,6 +1,6 @@
+ # ZomDroid R15 — handoff viu pentru continuare
+ 
+-Actualizat: 2026-08-30 UTC — checkpoint final R15-05
++Actualizat: 2026-08-30 UTC — checkpoint R15-06-01
+ 
+ ## Gata
+ 
+@@ -42,6 +42,22 @@ Actualizat: 2026-08-30 UTC — checkpoint final R15-05
+   instalează agentul unificat chiar dacă toate funcțiile Java OPT-LAB sunt OFF.
+ - Auditul final nu a justificat un refactor runtime suplimentar. R15-05 nu adaugă
+   o optimizare nouă și păstrează byte-identic agentul validat în R15-04.
++- R15-06-01 expune fiecare optimizare Build 42 `INTERNAL` ca toggle individual
++  persistent. Calea generică repară dependențele și marchează profilul `Custom`;
++  Safe Mode continuă să păstreze starea.
++- R15-06-01 nu schimbă agentul, bundle-ul, profilele implicite, maturitatea sau
++  fallback-urile mecanismelor.
++
++## Seria R15-06 autorizată
++
++| Checkpoint | Scop | Stare |
++| --- | --- | --- |
++| R15-06-01 | Toggle-uri pentru optimizările Internal | **DONE SOURCE/HOST** |
++| R15-06-02 | Motor versionat pentru preseturi custom multiple | URMĂTORUL |
++| R15-06-03 | Manager UI: create/apply/update/rename/duplicate/delete | PENDING |
++| R15-06-04 | Localizare integrală RO/EN | BLOCAT până la validarea utilizatorului după 03 |
++
++După `R15-06-03` lucrul se oprește obligatoriu pentru validarea utilizatorului.
+ 
+ ## Plan autorizat
+ 
+@@ -111,6 +127,7 @@ checkpointul R15-01. Ele sunt referință, nu cod lansabil implicit.
+ 
+ ## Următorul pas
+ 
+-Compilează sursa R15-05 și execută checklist-ul de dispozitiv separat pe 42.20
+-și 42.20.3. Nu promova FBO inner-loop sau same-program bind în Recommended până
+-nu există DEVICE PASS repetabil. CP6.14+ pornește numai din această arhivă finală.
++Implementează `R15-06-02` direct peste checkpointul persistent R15-06-01:
++catalog versionat de preseturi Build 42, snapshot explicit prin ID-uri stabile,
++validare de nume, repararea dependențelor la aplicare și teste host. Nu modifica
++agentul și nu declara APK/device PASS.
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+index d8ff35e..2ef8d9e 100644
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+@@ -91,8 +91,6 @@ public final class OptLabFragment extends Fragment {
+             new EnumMap<>(OptLabFeatureRegistry.Module.class);
+     private final EnumMap<OptLabFeatureRegistry.Feature, OptLabUi.ToggleCard> featureCards =
+             new EnumMap<>(OptLabFeatureRegistry.Feature.class);
+-    private final EnumMap<OptLabFeatureRegistry.Feature, OptLabUi.NavCard> internalCards =
+-            new EnumMap<>(OptLabFeatureRegistry.Feature.class);
+     private final List<View> advancedOnlyViews = new ArrayList<>();
+     private final List<MaterialButton> build42Buttons = new ArrayList<>();
+ 
+@@ -199,7 +197,6 @@ public final class OptLabFragment extends Fragment {
+         moduleDetailCards.clear();
+         advancedNotes.clear();
+         featureCards.clear();
+-        internalCards.clear();
+         advancedOnlyViews.clear();
+         build42Buttons.clear();
+         super.onDestroyView();
+@@ -283,7 +280,6 @@ public final class OptLabFragment extends Fragment {
+         moduleDetailCards.clear();
+         advancedNotes.clear();
+         featureCards.clear();
+-        internalCards.clear();
+         advancedOnlyViews.clear();
+         build42Buttons.clear();
+         build42Host = new FrameLayout(requireContext());
+@@ -365,14 +361,12 @@ public final class OptLabFragment extends Fragment {
+             if (feature.maturity != OptLabFeatureRegistry.Maturity.INTERNAL) continue;
+             if (!internalFound) {
+                 page.content.addView(OptLabUi.section(requireContext(),
+-                        "Internal · fallback automat"));
++                        "Internal · control individual · fallback automat"));
+                 internalFound = true;
+             }
+-            OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
+-                    R.drawable.optlab_ic_build42, feature.title,
+-                    featureDescription(feature), null);
+-            internalCards.put(feature, card);
+-            OptLabUi.addCard(page.content, card.root);
++            OptLabUi.ToggleCard card = addToggle(page, feature.title,
++                    featureDescription(feature));
++            featureCards.put(feature, card);
+         }
+         if (OptLabFeatureRegistry.featuresForModule(module, true).isEmpty()) {
+             page.content.addView(OptLabUi.note(requireContext(),
+@@ -650,11 +644,6 @@ public final class OptLabFragment extends Fragment {
+             card.setEnabled(!safe);
+             card.subtitle.setText(featureDescription(feature));
+         }
+-        for (OptLabFeatureRegistry.Feature feature : internalCards.keySet()) {
+-            internalCards.get(feature).subtitle.setText(
+-                    (prefs.isFeatureEnabled(feature) ? "ON · " : "OFF · ")
+-                            + featureDescription(feature));
+-        }
+         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
+             String summary = moduleSummary(module, safe);
+             moduleCards.get(module).subtitle.setText(summary);
+@@ -723,7 +712,7 @@ public final class OptLabFragment extends Fragment {
+         switch (maturity) {
+             case STABLE: return "STABLE";
+             case EXPERIMENTAL: return "EXPERIMENTAL · implicit OFF";
+-            case INTERNAL: return "INTERNAL · fără toggle";
++            case INTERNAL: return "INTERNAL · control individual";
+             case ARCHIVED: return "ARCHIVED";
+             default: throw new AssertionError(maturity);
+         }
+diff --git a/tools/OptLabRegistryIntegrityUnit.java b/tools/OptLabRegistryIntegrityUnit.java
+index 62dbb66..6d83787 100644
+--- a/tools/OptLabRegistryIntegrityUnit.java
++++ b/tools/OptLabRegistryIntegrityUnit.java
+@@ -105,6 +105,16 @@ public final class OptLabRegistryIntegrityUnit {
+         prefs.setAdvancedControls(false);
+         require(before == prefs.build42FeatureEnabledCount(),
+                 "advanced disclosure changed launch state");
++        prefs.setBuild42LabProfile(OptLabPreferences.LabProfile.RECOMMENDED);
++        OptLabFeatureRegistry.Feature internal =
++                OptLabFeatureRegistry.Feature.RTHREAD_MVP;
++        require(prefs.isFeatureEnabled(internal),
++                "Recommended did not enable the internal MVP fastpath");
++        prefs.setFeatureEnabled(internal, false);
++        require(!prefs.isFeatureEnabled(internal),
++                "internal feature cannot be disabled individually");
++        require(prefs.getBuild42LabProfile() == OptLabPreferences.LabProfile.CUSTOM,
++                "internal override did not mark the Build 42 profile Custom");
+         prefs.setBuild42ProductionAllOff();
+         prefs.setFeatureEnabled(
+                 OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_LOOKUP, true);
+diff --git a/tools/test-optlab-tabbed-ui-source.sh b/tools/test-optlab-tabbed-ui-source.sh
+index 9e8cdcb..5d192e4 100755
+--- a/tools/test-optlab-tabbed-ui-source.sh
++++ b/tools/test-optlab-tabbed-ui-source.sh
+@@ -63,8 +63,11 @@ for module in ('MAIN_LOOP_PACING', 'WORLD_STREAM_CHUNK', 'FBO_RENDER_CELL', 'REN
+     assert f'Module.{module}' in fragment, f'missing module page {module}'
+ for token in ('LAB_PROFILES', 'showBuild42Module', 'showExperimentalModule',
+               'generalProfileCard', 'build42ProfileCard', 'experimentalModuleCards',
+-              'advancedControls', 'featureCards', 'internalCards', 'featuresForModule'):
++              'advancedControls', 'featureCards', 'featuresForModule'):
+     assert token in fragment, f'missing modular UI token {token}'
++assert 'internalCards' not in fragment, 'Internal features still use read-only cards'
++assert 'Internal · control individual · fallback automat' in fragment
++assert 'INTERNAL · control individual' in fragment
+ assert 'RTHREAD_RING_BULK_PACK' not in fragment, 'archived Ring bulk leaked into UI'
+ assert 'Pathfinding' in fragment and 'PopMan' in fragment
+ assert 'setChunkCp2cDirtyClear' not in fragment, \

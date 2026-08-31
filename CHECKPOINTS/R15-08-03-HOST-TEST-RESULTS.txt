@@ -1,0 +1,16 @@
+R15-08-03 HOST VALIDATION — 2026-08-31
+
+PASS bash -n tools/*.sh
+PASS tools/test-optlab-process-isolation.sh
+PASS tools/test-optlab-preferences-independence.sh
+PASS tools/test-optlab-registry-integrity.sh
+PASS tools/test-optlab-launch-contract.sh
+PASS tools/test-optlab-tabbed-ui-compile.sh
+PASS tools/test-optlab-tabbed-ui-source.sh
+PASS tools/test-cp62-apk-wiring.sh
+PASS tools/test-native-modules-preferences.sh
+PASS git diff --check
+
+Gradle/APK compile: NOT RUN locally — Android SDK and Gradle distribution unavailable;
+network download blocked by the execution environment.
+DEVICE: NOT RUN / NOT CLAIMED.

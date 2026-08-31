@@ -1,0 +1,22 @@
+ZOMDROID OPT-LAB R7 — CP2-02 SOURCE IDENTITY
+Data: 2026-08-28
+
+Checkpoint: CP2-02 PopMan Native full n_saveCell bridge
+Status: DONE (source + static ABI/semantic audit)
+Version code: 14749
+Side version: 1.4.7v4-optlab-r7-cp2-popman-bridge-side
+Replace version: 1.4.7v4-optlab-r7-cp2-popman-bridge-replace
+Agent source: version 7 / proof schema 6
+
+ARM64 PopMan accepted SHA-256:
+eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+
+ARM64 PopMan accepted Build ID:
+5d14d77db7656224cc78114ec553cb9d6c363323
+
+Linux x86_64 reference SHA-256 (42.20 = 42.20.3):
+baa9213172885e82310a40886359fd831c766dc726469f60dd75831a51a2bbe0
+
+Build Android: NO — utilizatorul compilează
+Device test: NO — programat la checkpointul final
+Official CP2 PASS: NO până la testarea reală ACTIVE + EXERCISED și save/reload

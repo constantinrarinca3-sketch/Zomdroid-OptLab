@@ -1,0 +1,1 @@
+package zombie.core.random; public class Rand { public static int Next(int n){return 0;} }

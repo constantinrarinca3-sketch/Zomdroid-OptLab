@@ -1,0 +1,1 @@
+package zombie.network; import zombie.iso.IsoObject; import zombie.inventory.ItemContainer; public class GameServer { public static boolean server; public static void sendItemsInContainer(IsoObject o, ItemContainer c){} }

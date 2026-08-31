@@ -1,0 +1,1 @@
+package zombie.core.math; public class PZMath { public static int fastfloor(float f){return 0;} }

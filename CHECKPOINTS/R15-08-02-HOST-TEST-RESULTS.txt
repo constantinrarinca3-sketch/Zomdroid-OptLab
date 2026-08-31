@@ -1,0 +1,19 @@
+R15-08-02 HOST VALIDATION — 2026-08-31
+
+PASS tools/build-optlab-agent.sh
+PASS tools/test-optlab-preferences-independence.sh
+PASS tools/test-optlab-registry-integrity.sh
+PASS tools/test-optlab-launch-contract.sh
+PASS tools/test-optlab-agent-source.sh
+PASS tools/test-optlab-tabbed-ui-compile.sh
+PASS tools/test-optlab-tabbed-ui-source.sh
+PASS tools/test-cp62-apk-wiring.sh
+PASS tools/test-native-modules-preferences.sh
+PASS git diff --check
+
+Registry: features=46, visible render=12, archived/rejected=5.
+Agent marker: version=16 schema=15.
+F2/C1 bundled Main.class negative scan: PASS.
+Build 42 Safe profile ALL OFF assertion: PASS.
+
+DEVICE: NOT RUN / NOT CLAIMED.

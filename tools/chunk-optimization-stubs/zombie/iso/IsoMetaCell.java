@@ -1,0 +1,1 @@
+package zombie.iso; import java.util.ArrayList; import zombie.iso.zones.VehicleZone; public final class IsoMetaCell { public final ArrayList<VehicleZone> vehicleZones=null; public IsoMetaCell(int x,int y){} }

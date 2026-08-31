@@ -1,0 +1,1 @@
+package zombie.iso; import java.util.concurrent.locks.ReentrantLock; public final class IsoChunkMap { public static final ReentrantLock bSettingChunk = new ReentrantLock(); public boolean ignore; public boolean setChunkDirect(IsoChunk c, boolean b){return false;} }

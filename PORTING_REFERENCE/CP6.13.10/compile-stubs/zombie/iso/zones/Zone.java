@@ -1,0 +1,1 @@
+package zombie.iso.zones; public class Zone { public String name,type; public int x,y,z,w,h; public boolean isPolyline(){return false;} }

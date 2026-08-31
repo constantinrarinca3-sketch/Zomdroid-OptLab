@@ -1,0 +1,1 @@
+package zombie.inventory; public class ItemContainer { public boolean isExplored(){return false;} public void setExplored(boolean v){} public boolean isEmpty(){return false;} }

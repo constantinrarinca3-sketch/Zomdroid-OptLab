@@ -80,7 +80,7 @@ public class FileUtils {
         if (!archiveInStream.canReadEntryData(archiveEntry)) {
             throw new RuntimeException("Failed to read archive entry");
         }
-        File file = new File(destPath + "/" + archiveEntry.getName());
+        File file = ArchivePathGuard.resolve(destPath, archiveEntry.getName());
         if (archiveEntry.isDirectory()) {
             if (!file.isDirectory() && !file.mkdirs()) {
                 throw new IOException("Failed to create directory " + file);
@@ -130,6 +130,17 @@ public class FileUtils {
     }
 
     public static boolean deleteDirectory(File directory) {
+        // java.io.File follows directory symlinks for exists(), isDirectory() and listFiles().
+        // Recursing into one would therefore erase the linked directory's real contents before
+        // deleting the link itself.  ShadowBridge's doubled mod path is made from such links, so
+        // unlink them at the boundary and never descend through them.
+        if (Files.isSymbolicLink(directory.toPath())) {
+            try {
+                return Files.deleteIfExists(directory.toPath());
+            } catch (IOException e) {
+                return false;
+            }
+        }
         if (directory.exists()) {
             File[] files = directory.listFiles();
             if (files != null) {

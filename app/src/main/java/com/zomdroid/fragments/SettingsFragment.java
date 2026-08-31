@@ -343,7 +343,7 @@ public class SettingsFragment extends Fragment {
 
         updateOptLabSummary();
         binding.settingsOptLabBtn.setOnClickListener(v ->
-                OptLabDialog.show(requireContext(), this::updateOptLabSummary));
+                Navigation.findNavController(v).navigate(R.id.opt_lab_fragment));
 
         // Advanced section — collapsible
         setupCollapsible(
@@ -380,6 +380,12 @@ public class SettingsFragment extends Fragment {
 
     private static String normalizeArgs(String args) {
         return args.trim().replaceAll("\\s+", " ");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateOptLabSummary();
     }
 
     @Override

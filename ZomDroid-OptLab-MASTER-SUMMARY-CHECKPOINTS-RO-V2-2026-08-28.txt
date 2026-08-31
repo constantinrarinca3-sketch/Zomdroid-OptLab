@@ -1,0 +1,867 @@
+ZOMDROID OPTLAB - MASTER SUMMARY PE CHECKPOINT-URI
+Data: 2026-08-28
+
+SCOP
+====
+
+Documentul este împărțit pe checkpoint-uri mici și verificabile.
+
+ACTUALIZARE R11 CP4.1 V2 CHUNK OPTIMIZATION - 2026-08-29
+=========================================================
+
+- CP4.1 V2 este integrat în agentul OPT-LAB unic, fără al doilea agent și fără profilerul greu;
+- există 8 mecanisme production independente și CP2C Dirty Clear separat, experimental;
+- ramura Chunk Optimization este legată de Build 42, cu preferințe, launcher, registry și proof;
+- familia Build 42 folosește gate structural per mecanism, iar 42.20 și 42.20.3 sunt verificate exact;
+- transformarea pe ambele JAR-uri reale, testele host/statice și regresiile R10: PASS;
+- Android compile: NOT RUN; DEVICE TEST: NO;
+- primul test recomandat: Neighbour Worker + Neighbour Main + Vehicle Index, restul OFF, CP2C OFF;
+- lista completă de test este în CHECKPOINTS/CHUNK-OPTIMIZATION/CP4.1-V2-R11-FINAL-QA-RO.txt.
+
+ACTUALIZARE R10 JASSIMP DIRECT - 2026-08-29
+===========================================
+
+- sursa directă CP3 este integrată în Assimp 5.4.3 prin patch-ul PZ care restaurează
+  `bone->mOffsetMatrix = cluster->Transform()`;
+- `libs.tar.xz` livrează binarul ARM64 direct, cu SHA-256
+  a73942ea3a4cdb25cd989661306151f35368af314e5e6d5b2fd20688f6609ac4;
+- ABI-ul exportat este identic cu R9: 3.053 simboluri, inclusiv toate cele 10 intrări JNI JAssimp;
+- JAR-ul Assimp53Compat furnizat rămâne numai referință/diagnostic și nu este în `jars.tar` sau
+  în argumentele runtime `-javaagent`;
+- binarul R9 nepatch-uit este păstrat separat și are rollback automat, dar protejat explicit;
+- Gradle, toate workflow-urile aplicației și workflow-ul NDK r27c dedicat validează CP3;
+- host/static/package: PASS;
+- build Android local și regresiile KI5/model/animație pe dispozitiv: PENDING;
+- verdict oficial gameplay CP3: încă NU, până la testele pe dispozitiv.
+
+ACTUALIZARE R9 UI - 2026-08-29
+==============================
+
+- OPT-LAB păstrează dialogul și tema aplicației, dar conținutul este separat în
+  Overview, Runtime, Display, Build 42, Native și Experimental;
+- masterul general controlează numai Runtime/Display;
+- Build 42 și Native au stare independentă și persistentă;
+- profilurile generale nu mai rescriu presetările Build 42 și invers;
+- Pathfinding și PopMan sunt etichetate EXPERIMENTAL deoarece nu au încă
+  regresia comportamentală completă pe dispozitiv;
+- În livrarea istorică R9, JAssimp și regresiile native complete rămâneau checkpointul următor;
+  starea curentă CP3 este descrisă de actualizarea R10 de mai sus.
+
+Regula generală:
+
+1. se lucrează la un singur checkpoint;
+2. se face build;
+3. se testează;
+4. se păstrează rollback;
+5. se scrie summary;
+6. abia apoi se trece la următorul checkpoint.
+
+Nu se amestecă mai multe modificări mari într-un singur build experimental.
+
+
+============================================================
+CHECKPOINT 0 - STAREA ACTUALĂ
+============================================================
+
+Lighting64 Native
+Status: EXISTĂ / ESTE DEJA PORTAT
+
+PZClipper Native
+Status: EXISTĂ / ESTE DEJA PORTAT
+
+Pathfinding Native
+Status: IMPLEMENTAT ÎN SURSĂ / TESTARE PE DISPOZITIV PENDING
+
+PopMan Native
+Status: IMPLEMENTAT ÎN SURSĂ / EXPERIMENTAL / REGRESIE PE DISPOZITIV PENDING
+
+JAssimp / Assimp Fix
+Status:
+- integrat direct în Assimp / libjassimp64.so în R10;
+- sursa și payload-ul ARM64 au gate SHA/ELF/SONAME/JNI/ABI;
+- Java Agent este doar referință / diagnostic, absent din runtime;
+- testarea KI5 și skinned-FBX pe dispozitiv rămâne PENDING.
+
+OptLab Build 42 Compatibility
+Status:
+- OptLab este prea dependent de SHA-ul exact al unui anumit 42.20;
+- patch-urile 42.20.1 / 42.20.2 / 42.20.3 pot fi blocate doar pentru că SHA-ul diferă;
+- această problemă trebuie reparată ulterior fără să activăm orbește toate optimizările pe orice Build 42.
+
+
+============================================================
+CHECKPOINT 1 - PATHFINDING NATIVE + NATIVE MODULES UI
+============================================================
+
+SCOP
+====
+
+Acest checkpoint unește două lucruri care trebuie construite împreună:
+
+1. implementarea Pathfinding Native;
+2. infrastructura UI pentru toate modulele native.
+
+Motiv:
+Pathfinding trebuie oricum activat/dezactivat pentru testare.
+Nu are sens să facem Pathfinding acum și să reconstruim ulterior aceeași infrastructură pentru toggle-uri.
+
+
+PARTEA A - PATHFINDING NATIVE
+=============================
+
+Obiectiv:
+portarea părții utile din Pathfinding în native ARM64.
+
+NU trebuie presupus că tot sistemul de Pathfinding trebuie portat.
+
+Mai întâi trebuie identificate:
+
+- clasele relevante;
+- metodele relevante;
+- hotspot-urile;
+- buclele costisitoare;
+- calculele repetitive;
+- structurile de date folosite frecvent;
+- partea care poate beneficia real de native ARM64.
+
+Se portează doar ce are sens.
+
+
+CERINȚE PATHFINDING
+===================
+
+1. Identifică exact ruta reală de Pathfinding folosită de Project Zomboid Build 42.
+
+2. Identifică ce parte merită mutată în native.
+
+3. Creează implementarea native ARM64.
+
+4. Păstrează fallback către implementarea originală Java.
+
+5. Dacă ruta native eșuează:
+- jocul nu trebuie să crape;
+- se revine la implementarea originală;
+- motivul trebuie scris în log.
+
+6. Adaugă diagnostic clar:
+
+PATHFINDING_NATIVE_AVAILABLE
+PATHFINDING_NATIVE_ACTIVE
+PATHFINDING_NATIVE_EXERCISED
+PATHFINDING_NATIVE_FALLBACK
+
+Trebuie demonstrat că ruta native chiar este folosită.
+
+Nu este suficient:
+ACTIVE=1
+
+Trebuie să vedem și:
+EXERCISED=1
+
+
+PARTEA B - NATIVE MODULES UI
+============================
+
+În același checkpoint trebuie adăugată o fereastră separată:
+
+Native Modules
+
+Toggle-uri:
+
+- Lighting64 Native
+- PZClipper Native
+- Pathfinding Native
+- PopMan Native
+
+
+COMPORTAMENT UI
+===============
+
+Lighting64 Native
+- toggle real;
+- controlează implementarea reală;
+- stare persistentă.
+
+PZClipper Native
+- toggle real;
+- controlează implementarea reală;
+- stare persistentă.
+
+Pathfinding Native
+- toggle real;
+- conectat la implementarea creată în acest checkpoint;
+- stare persistentă.
+
+PopMan Native
+- apare deja în UI;
+- dar rămâne OFF / Unavailable până la Checkpoint 2;
+- nu trebuie simulat ca fiind funcțional.
+
+
+RESTART
+=======
+
+Dacă un modul nu poate fi schimbat după ce procesul jocului a pornit:
+
+afișează:
+
+Restart game required
+
+Toggle-ul trebuie să controleze starea reală folosită la următoarea pornire.
+
+
+TESTARE CHECKPOINT 1
+====================
+
+PATHFINDING:
+
+Baseline:
+Pathfinding Native OFF
+
+Candidate:
+Pathfinding Native ON
+
+Se compară în aceleași condiții.
+
+Se verifică:
+
+- frame-time;
+- stutter;
+- CPU;
+- stabilitate;
+- mișcarea zombie;
+- urmărirea jucătorului;
+- evitarea obstacolelor;
+- uși;
+- scări;
+- interior/exterior;
+- clădiri;
+- zone cu mulți zombie;
+- gameplay normal.
+
+UI:
+
+Se verifică separat:
+
+Lighting64 OFF / ON
+PZClipper OFF / ON
+Pathfinding OFF / ON
+
+Se verifică dacă setările rămân salvate după restartul aplicației.
+
+
+PASS CHECKPOINT 1
+=================
+
+Checkpoint-ul este PASS doar dacă:
+
+- Native Modules UI funcționează;
+- Lighting64 are toggle real;
+- PZClipper are toggle real;
+- Pathfinding are toggle real;
+- PopMan apare dar este indisponibil până la implementare;
+- Pathfinding Native este implementat;
+- Pathfinding Native este ACTIVE și EXERCISED;
+- nu există regresii clare;
+- fallback-ul funcționează;
+- există benchmark OFF vs ON;
+- există rollback.
+
+
+ROLLBACK
+========
+
+Păstrează:
+
+- build-ul stabil anterior;
+- implementarea Java originală;
+- librăriile native vechi;
+- configurația anterioară.
+
+
+DUPĂ PASS
+=========
+
+Creează:
+
+CHECKPOINT-1-PATHFINDING-NATIVE-AND-NATIVE-MODULES-UI-SUMMARY.txt
+
+
+============================================================
+CHECKPOINT 2 - POPMAN NATIVE
+============================================================
+
+SCOP
+====
+
+Implementarea PopMan Native folosind infrastructura Native Modules deja creată în Checkpoint 1.
+
+Nu mai trebuie refăcut UI-ul.
+
+Toggle-ul PopMan există deja.
+În acest checkpoint trebuie conectat la implementarea reală.
+
+
+CERINȚE
+=======
+
+1. Identifică exact codul PopMan relevant.
+
+2. Identifică hotspot-urile reale.
+
+3. Nu porta totul dacă nu este necesar.
+
+4. Implementează doar partea care are potențial real de beneficiu.
+
+5. Păstrează fallback.
+
+6. Adaugă:
+
+POPMAN_NATIVE_AVAILABLE
+POPMAN_NATIVE_ACTIVE
+POPMAN_NATIVE_EXERCISED
+POPMAN_NATIVE_FALLBACK
+
+7. Conectează toggle-ul PopMan Native existent în UI.
+
+
+TESTARE
+=======
+
+Se verifică:
+
+- populație zombie;
+- spawn;
+- despawn;
+- migrare;
+- celule;
+- zone dense;
+- încărcare lume;
+- gameplay lung;
+- stabilitate.
+
+Benchmark:
+
+PopMan Native OFF
+vs
+PopMan Native ON
+
+
+PASS
+====
+
+- fără regresii majore;
+- fără crash;
+- fără zombie lipsă / duplicate din cauza portării;
+- ruta native este ACTIVE și EXERCISED;
+- fallback funcțional;
+- benchmark documentat.
+
+
+DUPĂ PASS
+=========
+
+Creează:
+
+CHECKPOINT-2-POPMAN-NATIVE-SUMMARY.txt
+
+
+============================================================
+CHECKPOINT 3 - JASSIMP DIRECT FIX
+============================================================
+
+ACTUALIZARE R10
+===============
+
+Implementarea directă, payload-ul ARM64, rollback-ul și automatizarea de build/verificare sunt
+livrate. Validarea host/static/package trece. Lista de VALIDARE de mai jos trebuie încă executată
+pe dispozitiv; până atunci checkpointul este DONE (SOURCE), nu PASS oficial de gameplay.
+
+SCOP
+====
+
+Eliminarea nevoii de:
+
+-javaagent
+
+pentru fixul JAssimp.
+
+
+STAREA ACTUALĂ
+==============
+
+Fixul este deja demonstrat prin Java Agent.
+
+Dar acesta nu trebuie să rămână soluția finală.
+
+Soluția finală trebuie integrată direct în:
+
+Assimp / JAssimp / libjassimp64.so
+
+
+OBIECTIV
+========
+
+- modificare directă în sursă;
+- rebuild Android ARM64;
+- înlocuire libjassimp64.so;
+- integrare în ZomDroid;
+- test fără Java Agent.
+
+
+CERINȚE
+=======
+
+1. Găsește sursa exactă folosită pentru libjassimp64.so.
+
+2. Identifică exact comportamentul reparat de Java Agent.
+
+3. Mută fixul direct în librarie.
+
+4. Rebuild libjassimp64.so pentru ARM64.
+
+5. Înlocuiește libraria veche.
+
+6. Rebuild / package ZomDroid.
+
+7. Testează fără -javaagent.
+
+
+VALIDARE
+========
+
+Teste principale:
+
+- KI5 B700;
+- KI5 F700;
+- animația capotei;
+- alte modele FBX/skinned afectate anterior;
+- modele care funcționau deja.
+
+Java Agent rămâne doar:
+
+- referință;
+- comparație;
+- rollback;
+- diagnostic.
+
+
+PASS
+====
+
+Fixul funcționează direct din librarie fără -javaagent.
+
+
+DUPĂ PASS
+=========
+
+Creează:
+
+CHECKPOINT-3-JASSIMP-DIRECT-FIX-SUMMARY.txt
+
+
+============================================================
+CHECKPOINT 4 - OPTLAB BUILD 42 COMPATIBILITY
+============================================================
+
+SCOP
+====
+
+Rezolvarea problemei de compatibilitate OptLab cu diferitele patch-uri Build 42.
+
+
+PROBLEMA
+========
+
+OptLab este prea dependent de SHA-ul exact al unui anumit Project Zomboid 42.20.
+
+Exemplu:
+
+42.20 poate funcționa.
+
+Dar:
+
+42.20.1
+42.20.2
+42.20.3
+
+pot avea alt SHA și OptLab poate rămâne OFF chiar dacă unele optimizări sunt încă perfect compatibile.
+
+
+ONLY BUILD 42
+=============
+
+Adaugă:
+
+Only Build 42
+
+Default recomandat:
+
+ON
+
+Înseamnă:
+
+- OptLab vizează familia Build 42;
+- Build 41 și mai vechi nu sunt prioritate.
+
+NU înseamnă:
+
+Build 42 = toate optimizările ON
+
+
+REGULA CORECTĂ
+==============
+
+Build 42
++
+feature-ul respectiv este compatibil
+=
+feature-ul poate fi activat
+
+
+COMPATIBILITATE INDIVIDUALĂ
+===========================
+
+Fiecare optimizare trebuie verificată separat.
+
+Exemplu:
+
+42.20.3
+
+OPT-022 = COMPATIBLE -> ON
+OPT-023 = VERIFIED -> ON
+OPT-024 = UNSUPPORTED -> OFF
+
+Un feature incompatibil NU trebuie să dezactiveze întreg OptLab.
+
+
+STĂRI
+=====
+
+VERIFIED
+= build / SHA deja testat
+
+COMPATIBLE
+= SHA-ul general diferă, dar codul necesar feature-ului este compatibil
+
+PROBE
+= încă neconfirmat; OFF implicit
+
+UNSUPPORTED
+= incompatibil; OFF
+
+
+SHA
+===
+
+Nu elimina verificarea SHA.
+
+SHA exact rămâne util pentru build-uri deja validate.
+
+Dar:
+
+SHA diferit NU trebuie să însemne automat:
+
+tot OptLab OFF.
+
+
+LOGURI
+======
+
+Exemplu:
+
+PZ_VERSION=42.20.3
+PZ_BUILD_FAMILY=42
+PZ_SHA256=...
+
+ONLY_BUILD_42=ON
+
+OPT022=COMPATIBLE
+OPT023=VERIFIED
+OPT024=UNSUPPORTED
+
+Dacă un feature este dezactivat:
+
+OPT024_DISABLED reason=TARGET_NOT_COMPATIBLE
+
+
+PASS
+====
+
+- un SHA nou Build 42 nu mai blochează global OptLab;
+- fiecare feature are propria compatibilitate;
+- fiecare feature are propriul motiv de activare/dezactivare;
+- fallback-ul rămâne sigur.
+
+
+DUPĂ PASS
+=========
+
+Creează:
+
+CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
+
+
+============================================================
+ORDINEA FINALĂ
+============================================================
+
+CHECKPOINT 1
+Pathfinding Native + Native Modules UI
+
+CHECKPOINT 2
+PopMan Native
+
+CHECKPOINT 3
+JAssimp Direct Fix
+
+CHECKPOINT 4
+OptLab Build 42 Compatibility
+
+
+============================================================
+REGULI GENERALE PENTRU TOATE CHECKPOINT-URILE
+============================================================
+
+1. Un singur checkpoint activ.
+
+2. Nu combina Checkpoint 2, 3 sau 4 cu Checkpoint 1.
+
+3. Fiecare checkpoint trebuie să păstreze:
+
+- sursa de bază;
+- commit / SHA;
+- patch / diff;
+- build rezultat;
+- SHA256 unde este relevant;
+- test;
+- PASS / FAIL;
+- rollback;
+- summary TXT.
+
+4. Nu considera un feature gata doar pentru că compilează.
+
+5. Pentru module native trebuie demonstrat:
+
+AVAILABLE
+ACTIVE
+EXERCISED
+
+6. Fără benchmark inventat.
+
+7. Benchmark-ul trebuie făcut față de un baseline stabil.
+
+8. Orice feature nou trebuie să aibă fallback sigur.
+
+9. Următorul checkpoint începe doar din ultimul build PASS.
+
+10. Nu se activează automat feature-uri necunoscute doar pentru că jocul este Build 42.
+
+
+============================================================
+URMĂTOAREA ACȚIUNE
+============================================================
+
+START:
+
+CHECKPOINT 1
+PATHFINDING NATIVE + NATIVE MODULES UI
+
+În acest checkpoint se construiește baza pentru toate modulele native.
+
+La final trebuie să avem deja în aplicație:
+
+Lighting64 Native     toggle funcțional
+PZClipper Native      toggle funcțional
+Pathfinding Native    toggle funcțional + implementare native
+PopMan Native         vizibil, dar OFF / Unavailable
+
+După ce Checkpoint 1 este PASS, infrastructura Native Modules nu mai trebuie refăcută pentru PopMan.
+
+
+============================================================
+STATUS IMPLEMENTARE ADĂUGAT — 2026-08-28
+============================================================
+
+La decizia utilizatorului, ordinea planului a fost sărită și s-a implementat mai întâi:
+
+CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
+
+CHECKPOINT 4 DONE (SOURCE): YES
+IMPLEMENTATION: COMPLETE
+STATIC REVIEW: PASS
+DELIVERY REPAIR: PASS
+BUNDLED AGENT: VERSION 5 / SCHEMA 4
+GRADLE/CI AUTO-REBUILD: ENABLED
+BUILD: NOT RUN — USER WILL COMPILE
+DEVICE TEST: NO / PENDING
+BENCHMARK OFF vs ON: PENDING
+OFFICIAL PASS: NO — AWAITING BUILD AND DEVICE VALIDATION
+
+Detalii complete:
+CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
+
+Această propoziție descria livrarea CP4 inițială. Ulterior, PopMan a fost integrat în sursă în R8,
+iar Checkpoint 3 JAssimp Direct Fix a fost integrat în sursă în R10. Pentru ambele, verdictul
+comportamental final rămâne dependent de regresiile pe dispozitiv.
+
+Reparația de livrare CP4 a fost aplicată înainte de începerea Checkpoint 1:
+
+- jars.tar conține agentul version 5 / schema 4 și FeatureCompatibility.class;
+- Gradle preBuild reconstruiește automat bundle-ul agentului;
+- workflow-urile reconstruiesc și testează explicit agentul;
+- STREAM ALL, FBO ALL și FULL CANDIDATE sunt mutate din selectorul general în fereastra separată
+  OPT-LAB · Build 42.
+
+Checkpoint 1 a fost implementat după repararea livrării CP4:
+
+- fereastră separată Native Modules;
+- toggle-uri persistente și reale pentru Lighting64, PZClipper și Pathfinding;
+- PopMan vizibil, OFF și indisponibil până la Checkpoint 2;
+- payloadul oficial libPZPathFind64 ARM64 este livrat byte-for-byte și validat SHA/ELF/JNI;
+- gate ABI strict pe clasele identice din 42.20 și 42.20.3;
+- Pathfinding implicit OFF, activare prin Pathfind.UseNativeCode și fallback pe Java;
+- agent version 6 / schema 5 cu dovadă PATHFINDING_NATIVE_EXERCISED și fallback runtime;
+- testele sursă, runtime, ELF/JNI și smoke-agent pe ambele JAR-uri reale trec.
+
+CHECKPOINT 1 DONE (SOURCE): YES
+IMPLEMENTATION: COMPLETE
+SOURCE/HOST TESTS: PASS
+BUILD: NOT RUN — distribuția Gradle nu este disponibilă în acest mediu
+DEVICE TEST: NO / PENDING
+BENCHMARK OFF vs ON: PENDING
+OFFICIAL PASS: NO — AWAITING BUILD, ACTIVE+EXERCISED ON DEVICE AND BENCHMARK
+
+Detalii complete:
+CHECKPOINT-1-PATHFINDING-NATIVE-AND-NATIVE-MODULES-UI-SUMMARY.txt
+
+
+============================================================
+FINAL QA / HANDOFF R6 + MOBILEGL PZCOMPAT V1.2 — 2026-08-28
+============================================================
+
+IDENTITATE: versionCode 14747 / R6 CP1 QA MGL12
+
+- CP1 a primit compilare host separată pentru manageri, preferințe, registru și Native Modules UI;
+- starea OFF a unui modul nativ este raportată USER_DISABLED, nu fals ca preflight failure;
+- backupurile Lighting/PZClipper/Pathfinding păstrează fiecare payload distinct la OFF/ON repetat;
+- există validator fail-closed pentru opt-proof.log: OFF, ON cu ACTIVE+EXERCISED și FALLBACK;
+- workflow-urile rulează toate gate-urile și folosesc NDK r27d, identic cu build.gradle.kts.
+
+MobileGL default este acum PZCompat V1.2 Present Fastpath ThinLTO:
+
+- SHA-256 f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a;
+- Build ID da5508480c21ecc5a13d60539cd53d90860c46dd;
+- 14.358.432 bytes, ELF64 AArch64, SONAME libMobileGLPZ.so, LOAD 0x4000;
+- niciun export funcțional din defaultul anterior nu lipsește;
+- defaulturile vechi cunoscute sunt upgradate, custom valid este păstrat;
+- PRESENT_FASTPATH=1 și OPT_SET=002,003 sunt implicite și pot fi suprascrise de utilizator;
+- căile proof/cache sunt legate de sandboxul flavorului curent.
+
+FINAL QA SOURCE/HOST: PASS
+ANDROID BUILD: PENDING — Gradle 8.13 indisponibil local
+DEVICE ACTIVE+EXERCISED: PENDING
+BENCHMARK OFF vs ON: PENDING
+CP1 OFFICIAL PASS: NU — rămâne condiționat de dovezi reale pe dispozitiv
+
+Detalii:
+CHECKPOINT-CP1-FINAL-QA-MOBILEGL12-HANDOFF-RO.txt
+
+
+============================================================
+UPDATE R7 / CHECKPOINT 2 POPMAN — 2026-08-28
+============================================================
+
+CP2-00 POPMAN ABI AUDIT: DONE
+CP2-01 POPMAN SAFE STAGING: DONE
+CP2-02 FULL n_saveCell BRIDGE: DONE (SOURCE + AUDIT STATIC)
+
+Rezultat confirmat:
+
+- libPZPopMan64.so ARM64 este identică în 42.20 și 42.20.3;
+- payload SHA-256:
+  eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af;
+- ambele clase ZombiePopulationManager declară n_saveCell(int,int);
+- payloadul ARM64 oficial nu exportă wrapperul JNI n_saveCell;
+- activarea directă fără bridge rămâne interzisă deoarece întrerupe salvarea celulei;
+- payloadul, preferința, UI-ul, managerul, proof-ul și bridge-ul complet sunt integrate;
+- la CP2-02 agent source era version 7 / schema 6; update-ul R8 de mai jos îl
+  reconstruiește și testează ca version 8 / schema 7;
+- binarele x86_64 42.20 și 42.20.3 sunt identice și au fost folosite pentru audit;
+- bridge-ul reproduce validarea celulei, repartizarea zombilor reali, Cell::save,
+  golirea listei temporare și reciclarea în ZombiePool;
+- offseturile și layouturile sunt blocate la SHA/Build ID-ul exact al ARM64;
+- BRIDGE_SEMANTICS_VERIFIED este true după echivalența statică completă;
+- PopMan rămâne implicit OFF, iar testul real pe dispozitiv rămâne obligatoriu.
+
+CP2-02 DONE (SOURCE): YES
+IMPLEMENTATION: COMPLETE PENTRU TESTARE
+POPMAN ARM64 ACTIVE: SELECTABIL, IMPLICIT OFF
+STATIC ABI/SEMANTIC AUDIT: PASS
+SOURCE/HOST TESTS: PASS ÎN UPDATE-UL R8 DE MAI JOS
+ANDROID BUILD: NO
+DEVICE TEST: NO
+OFFICIAL CP2 PASS: NO
+
+Testele reale pe dispozitiv sunt păstrate explicit în:
+FIXES-AND-TESTS-TO-DO-AT-END-RO.txt
+
+Detalii:
+CHECKPOINTS/CP2-00-POPMAN-ABI-AUDIT-RO.txt
+CHECKPOINTS/CP2-01-POPMAN-SAFE-STAGING-RO.txt
+CHECKPOINTS/CP2-02-POPMAN-FULL-SAVECELL-BRIDGE-RO.txt
+
+
+============================================================
+UPDATE R8 — CP1 FINAL FIX + NATIVE INTEGRATION QA — 2026-08-28
+============================================================
+
+IDENTITATE: versionCode 14750 / R8 Native Final
+AGENT BUNDLED: version 8 / proof schema 7
+
+- al doilea gate al agentului acceptă Pathfinding-only și PopMan-only;
+- regresia apelează Main.premain și confirmă exact un transformer pentru
+  Pathfinding ON cu Pacing/Stream/FBO/PopMan OFF;
+- secțiunea Build 42 este imediat sub Native Modules și înainte de Runtime/JVM;
+- build-ul agentului include PopManRuntime și jars.tar a fost reconstruit;
+- testele vechi PopMan placeholder au fost actualizate pentru toggle-ul real;
+- payloadul și bridge-ul PopMan au gate host/static dedicat;
+- ambele JAR-uri reale 42.20 și 42.20.3 trec transformarea Pathfinding și
+  validarea clasei PopMan;
+- integrarea Stream Core rămâne neschimbată și suita sa runtime trece;
+- toate scripturile host/statice trec într-o rulare finală curată.
+
+CP1 FINAL FIX = DONE
+CP2-02 SOURCE INTEGRATION QA = PASS
+SOURCE/HOST/STATIC TESTS = PASS
+ANDROID BUILD = NO — utilizatorul compilează
+DEVICE TEST = NO
+OFFICIAL DEVICE PASS = PENDING
+
+Detalii:
+CHECKPOINTS/CP1-FINAL-FIX-HOST-STATIC-RO.txt
+CHECKPOINTS/R8-NATIVE-FINAL-SOURCE-IDENTITY.txt
+FIXES-AND-TESTS-TO-DO-AT-END-RO.txt
+
+
+============================================================
+UPDATE R14 — CP6.6 + OPT-LAB MODULAR — 2026-08-29
+============================================================
+
+CP6.6-01 UNIFIED AGENT: DONE / HOST PASS / DEVICE TEST NO
+CP6.6-02 REGISTRY + PROFILES: DONE / HOST PASS / DEVICE TEST NO
+CP6.6-03 MODULAR UI: DONE / HOST PASS / DEVICE TEST NO
+R14 FINAL SOURCE QA: PASS (fără Android compile și fără device test)
+
+- agent unic version 11 / proof schema 10;
+- CP6.6 verificat pe JAR-urile reale 42.20 și 42.20.3;
+- registru unic cu 46 feature-uri, 27 proprietăți agent fără dubluri;
+- profile Safe / Recommended / Aggressive / Custom;
+- module Build 42 și pagini detaliate generate din registru;
+- Internal fără toggle, Experimental implicit OFF, Archived imposibil de lansat;
+- dependențe tranzitive și fallback individual;
+- ALL OFF Build 42 păstrează CP2C experimental;
+- Android compile și device test rămân explicit NO.
+
+Detalii complete și lista de test device:
+R14-CP6.6-FINAL-HANDOFF-RO.txt

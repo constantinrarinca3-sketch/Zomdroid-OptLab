@@ -1,0 +1,57 @@
+ZomDroid R15-09 — NEIGHBOUR CP4.1 FIDELITY FIX
+Data: 2026-08-31
+
+STATUS
+SOURCE FIX: DONE
+HOST / STATIC QA: PASS
+PROJECT ZOMBOID 42.20 TRANSFORM TEST: PASS
+PROJECT ZOMBOID 42.20.3 TRANSFORM TEST: PASS
+APK COMPILE: NOT RUN
+DEVICE TEST: NO
+
+CAUZA CONFIRMATA
+Portarea R15 a invalidarii Neighbour nu respecta invariantul original CP4.1.
+La finalul unui RecalcProperties real, runtime-ul incrementa versiunea patratului,
+dar apoi stergea si toate perechile din scope si starea pending. Astfel, o modificare
+locala A invalida inclusiv perechi independente C-D si impiedica inregistrarea corecta
+a perechii aflate in curs.
+
+FIX APLICAT
+- onRecalcPropertiesCompleted() incrementeaza numai versiunea patratului modificat;
+- nu mai sterge global cache-ul de perechi;
+- nu mai sterge perechea pending inainte de afterRecalc2/afterRecalc3;
+- perechile care ating patratul modificat devin invalide prin versiune;
+- perechile independente raman reutilizabile, exact conform CP4.1;
+- Worker si Main folosesc acelasi contract, dar au gate-uri/scope-uri separate.
+
+SIGURANTA UI / PRESET
+- Neighbour Worker si Neighbour Main au fost scoase din Recommended;
+- ambele sunt marcate EXPERIMENTAL + NEEDS_VALIDATION;
+- raman OFF in Safe si Recommended;
+- raman disponibile individual in Advanced/Custom si in Aggressive;
+- nu vor fi promovate din nou pana la retestare pe dispozitiv.
+
+TEST DE REGRESIE ADAUGAT
+tools/NeighbourFidelityUnit.java valideaza executabil:
+1. perechea A-B devine invalida dupa schimbarea lui A;
+2. perechea independenta C-D ramane valida;
+3. perechea pending supravietuieste hook-ului RecalcProperties si este reinregistrata;
+4. schimbarea identitatii getter-ului invalideaza acoperirea;
+5. acelasi contract functioneaza in Worker si Main.
+
+REZULTATE
+NEIGHBOUR_FIDELITY_UNIT PASS cp41_versioned_pairs=1 unrelated_preserved=1 pending_preserved=1 worker=1 main=1
+OPTLAB_REGISTRY_INTEGRITY_UNIT PASS
+CHUNK_OPTIMIZATION_BOTH_REAL_JARS PASS
+
+TEST MINIM PE DISPOZITIV INAINTE DE PROMOVARE
+1. pornire cu Safe si incarcare lume;
+2. Custom: numai Neighbour Worker ON, Main OFF; mers si traversare intre chunkuri;
+3. Custom: Worker OFF, numai Neighbour Main ON; aceeasi scena;
+4. ambele ON; mers, zombi in urmarire, usi/ferestre, schimbari de vizibilitate;
+5. confirma lume randata corect, coliziuni corecte si absenta exceptiilor/fallback-urilor;
+6. pastreaza logul [ZD-OPT-PROOF] pentru fiecare configuratie.
+
+NOTA
+Acest checkpoint corecteaza strict fidelitatea Neighbour CP4.1. Nu declara DEVICE PASS
+si nu schimba semantic celelalte optimizari ale pachetului.

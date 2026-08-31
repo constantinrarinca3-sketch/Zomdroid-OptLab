@@ -1,0 +1,1 @@
+package zombie.inventory; import zombie.characters.IsoPlayer; import zombie.iso.IsoObject; public class ItemPickerJava { public static void fillContainer(ItemContainer c,IsoPlayer p){} public static void updateOverlaySprite(IsoObject o){} }

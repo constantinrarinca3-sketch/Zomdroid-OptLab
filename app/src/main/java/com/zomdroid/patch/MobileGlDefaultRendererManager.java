@@ -15,14 +15,16 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 
-/** Ensures that the APK uses the audited MobileGL OPT-LAB V3 022 renderer by default. */
+/** Ensures that the APK uses the audited MobileGL PZCompat V1.2 renderer by default. */
 public final class MobileGlDefaultRendererManager {
     private static final String LOG_TAG = "ZD-MOBILEGL-DEFAULT";
     private static final String SOURCE_NAME = "libMobileGLPZDefault.so";
     private static final String ACTIVE_NAME = "libMobileGLPZ.so";
-    private static final long DEFAULT_SIZE = 14_876_840L;
+    private static final long DEFAULT_SIZE = 14_358_432L;
     private static final long MIN_CUSTOM_SIZE = 512L * 1024L;
     private static final String DEFAULT_SHA256 =
+            "f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a";
+    private static final String PREVIOUS_MGL022_DEFAULT_SHA256 =
             "8dc064f0386d01fccab8b94681921fdf9c304ed8995e87e07f1906119728310f";
     private static final String LEGACY_PZF23D4_SHA256 =
             "f5b280fac78f2189daeac41d7d6b456747e1e1970754bcf807135ae33af82e8d";
@@ -58,9 +60,9 @@ public final class MobileGlDefaultRendererManager {
     }
 
     /**
-     * Keeps a valid user-injected AArch64 renderer. If none exists, installs exact OPT-LAB V3
-     * 022 from the APK. The previous packaged PZF23D4 default is upgraded automatically, while
-     * an unknown custom or invalid renderer is preserved.
+     * Keeps a valid user-injected AArch64 renderer. If none exists, installs exact PZCompat V1.2
+     * from the APK. Both known packaged predecessors are upgraded automatically, while an unknown
+     * custom or invalid renderer is preserved.
      */
     public static Result ensureAvailable(boolean required) {
         File target = new File(AppStorage.requireSingleton().getHomePath(),
@@ -71,20 +73,22 @@ public final class MobileGlDefaultRendererManager {
         }
 
         String invalidReason = null;
-        boolean upgradeLegacyDefault = false;
+        boolean upgradeKnownDefault = false;
         if (target.isFile()) {
             try {
                 validateArm64Renderer(target, "active renderer");
                 String activeHash = sha256(target);
                 if (DEFAULT_SHA256.equals(activeHash)) {
-                    Result result = new Result(true, true, "MGL022_DEFAULT_PRESENT", activeHash,
+                    Result result = new Result(true, true, "MGL12_DEFAULT_PRESENT", activeHash,
                             target.length(), target.getAbsolutePath());
                     Log.i(LOG_TAG, result.machineReadable());
                     return result;
                 }
-                if (LEGACY_PZF23D4_SHA256.equals(activeHash)) {
-                    upgradeLegacyDefault = true;
-                    invalidReason = "LEGACY_PZF23D4_DEFAULT";
+                if (PREVIOUS_MGL022_DEFAULT_SHA256.equals(activeHash)
+                        || LEGACY_PZF23D4_SHA256.equals(activeHash)) {
+                    upgradeKnownDefault = true;
+                    invalidReason = PREVIOUS_MGL022_DEFAULT_SHA256.equals(activeHash)
+                            ? "PREVIOUS_MGL022_DEFAULT" : "LEGACY_PZF23D4_DEFAULT";
                 } else {
                     Result result = new Result(true, true, "CUSTOM_ARM64_PRESERVED", activeHash,
                             target.length(), target.getAbsolutePath());
@@ -101,8 +105,8 @@ public final class MobileGlDefaultRendererManager {
             validateExactDefault(source);
             ensureDirectory(target.getParentFile());
             if (target.isFile()) {
-                if (upgradeLegacyDefault) {
-                    Log.i(LOG_TAG, "Upgrading packaged PZF23D4 default to MobileGL 022");
+                if (upgradeKnownDefault) {
+                    Log.i(LOG_TAG, "Upgrading known packaged MobileGL default to PZCompat V1.2");
                 } else {
                     File backup = preserveInvalid(target);
                     Log.w(LOG_TAG, "Preserved invalid injected renderer as " + backup.getName()
@@ -112,8 +116,8 @@ public final class MobileGlDefaultRendererManager {
             copyVerified(source, target, DEFAULT_SHA256);
             validateArm64Renderer(target, "installed default renderer");
 
-            Result result = new Result(true, true, upgradeLegacyDefault
-                    ? "MGL022_DEFAULT_UPGRADED" : "MGL022_DEFAULT_INSTALLED",
+            Result result = new Result(true, true, upgradeKnownDefault
+                    ? "MGL12_DEFAULT_UPGRADED" : "MGL12_DEFAULT_INSTALLED",
                     sha256(target), target.length(), target.getAbsolutePath());
             Log.w(LOG_TAG, result.machineReadable());
             return result;

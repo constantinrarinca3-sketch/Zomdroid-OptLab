@@ -1,0 +1,361 @@
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/.github/workflows/android.yml b/.github/workflows/android.yml
+--- a/.github/workflows/android.yml	2026-08-28 17:00:00.000000000 +0300
++++ b/.github/workflows/android.yml	2026-08-28 18:15:46.399015544 +0300
+@@ -20,6 +20,11 @@
+           distribution: temurin
+           java-version: '17'
+ 
++      - name: Prepare and test OPT-LAB agent bundle
++        run: |
++          ./tools/build-optlab-agent.sh
++          ./tools/test-optlab-agent-source.sh
++
+       - name: Build Debug APK
+         run: ./gradlew assembleDebug --stacktrace
+ 
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/.github/workflows/build.yml b/.github/workflows/build.yml
+--- a/.github/workflows/build.yml	2026-08-28 17:00:00.000000000 +0300
++++ b/.github/workflows/build.yml	2026-08-28 18:15:47.059028748 +0300
+@@ -20,6 +20,11 @@
+           distribution: temurin
+           java-version: '17'
+ 
++      - name: Prepare and test OPT-LAB agent bundle
++        run: |
++          ./tools/build-optlab-agent.sh
++          ./tools/test-optlab-agent-source.sh
++
+       - name: Build Debug APK
+         run: ./gradlew assembleDebug --stacktrace
+ 
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/.github/workflows/workflow-zomdroid.yml b/.github/workflows/workflow-zomdroid.yml
+--- a/.github/workflows/workflow-zomdroid.yml	2026-08-28 17:00:00.000000000 +0300
++++ b/.github/workflows/workflow-zomdroid.yml	2026-08-28 18:15:47.719041950 +0300
+@@ -29,6 +29,11 @@
+         java-version: '17'
+         distribution: 'temurin'
+ 
++    - name: Prepare and test OPT-LAB agent bundle
++      run: |
++        ./tools/build-optlab-agent.sh
++        ./tools/test-optlab-agent-source.sh
++
+     - name: Setup Android SDK
+       uses: android-actions/setup-android@v3
+ 
+@@ -84,6 +89,11 @@
+         java-version: '17'
+         distribution: 'temurin'
+ 
++    - name: Prepare and test OPT-LAB agent bundle
++      run: |
++        ./tools/build-optlab-agent.sh
++        ./tools/test-optlab-agent-source.sh
++
+     - name: Run unit tests
+       run: ./gradlew test
+ 
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt b/CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt
+--- a/CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt	2026-08-28 17:00:00.000000000 +0300
++++ b/CHECKPOINT-4-BUILD42-COMPAT-SUMMARY.txt	2026-08-28 18:16:31.419915410 +0300
+@@ -8,6 +8,9 @@
+ CHECKPOINT 4 DONE (SOURCE): YES
+ IMPLEMENTATION: COMPLETE
+ STATIC REVIEW: PASS
++DELIVERY REPAIR: PASS
++BUNDLED AGENT: version 5 / schema 4
++GRADLE/CI AUTO-REBUILD: ENABLED
+ BUILD: NOT RUN — USER WILL COMPILE
+ DEVICE TEST: NO / PENDING
+ BENCHMARK OFF vs ON: PENDING
+@@ -32,8 +35,10 @@
+ 
+ 4. Un build B42 cu SHA general diferit nu mai oprește automat tot OPT-LAB.
+ 
+-5. Pacing, Stream Core și FBO sunt mutate într-o fereastră separată „OPT-LAB · Build 42”.
+-Setările generale Runtime/Box64/Surface/Input rămân în fereastra principală.
++5. Pacing, Stream Core și FBO sunt mutate într-o fereastră separată „OPT-LAB · Build 42”,
++deschisă prin buton (nu este un tab Android). Preseturile STREAM ALL, FBO ALL și FULL CANDIDATE
++sunt disponibile în acea fereastră și nu mai apar în selectorul general. Setările generale
++Runtime/Box64/Surface/Input rămân în fereastra principală.
+ 
+ 6. A fost adăugată politica persistentă „Only Build 42”, implicit ON:
+ 
+@@ -129,19 +134,33 @@
+ - bash -n pentru scripturile agentului: PASS;
+ - strings.xml well-formed: PASS;
+ - patch cumulativ aplicabil peste sursa originală cu patch --dry-run: PASS.
+-
+-Compilarea Android completă nu a fost executată deoarece Gradle 8.13 nu este disponibil local și
+-wrapperul nu poate descărca distribuția în acest mediu. Aceasta rămâne explicit sarcina
+-utilizatorului, conform cererii de livrare „doar sursa”.
++- jars.tar reconstruit: PASS;
++- agentul împachetat raportează version=5 schema=4: PASS;
++- FeatureCompatibility.class prezent în agentul împachetat: PASS;
++- build-optlab-agent.sh verifică explicit versiunea/schema și clasa de compatibilitate: PASS;
++- test-optlab-agent-source.sh respinge un bundle vechi înaintea testelor: PASS;
++- Gradle preBuild reconstruiește automat agentul: CONFIGURAT;
++- toate workflow-urile pregătesc și testează explicit bundle-ul: CONFIGURAT;
++- profilurile STREAM ALL / FBO ALL / FULL CANDIDATE absente din selectorul general: PASS static;
++- strings.xml well-formed după completarea UI: PASS.
++
++Compilarea Android completă a fost încercată, dar Gradle 8.13 nu este disponibil local, iar mediul
++nu permite accesul la services.gradle.org. Eșecul este anterior configurării proiectului
++(descărcarea distribuției), nu o eroare de compilare a sursei. Build-ul Android și testul pe
++dispozitiv rămân pași externi.
+ 
+ BUILD UTILIZATOR
+ ================
+ 
+ Din rădăcina sursei:
+ 
+-1. bash tools/test-optlab-agent-source.sh
+-2. ./tools/build-optlab-agent.sh
+-3. ./gradlew :app:assembleSideBySideDebug
++1. ./gradlew :app:assembleSideBySideDebug
++
++Task-ul app:preBuild rulează automat tools/build-optlab-agent.sh înainte ca assets să fie
++împachetate. Pentru o verificare manuală independentă de Android/Gradle:
++
++1. ./tools/build-optlab-agent.sh
++2. ./tools/test-optlab-agent-source.sh
+ 
+ Pentru varianta care înlocuiește identitatea R1, folosește task-ul flavorului replaceR1 numai dacă
+ aceasta este intenția ta explicită. Varianta sideBySide rămâne calea sigură de test.
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt b/ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt
+--- a/ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt	2026-08-28 17:00:00.000000000 +0300
++++ b/ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt	2026-08-28 18:16:32.139929799 +0300
+@@ -642,6 +642,9 @@
+ CHECKPOINT 4 DONE (SOURCE): YES
+ IMPLEMENTATION: COMPLETE
+ STATIC REVIEW: PASS
++DELIVERY REPAIR: PASS
++BUNDLED AGENT: VERSION 5 / SCHEMA 4
++GRADLE/CI AUTO-REBUILD: ENABLED
+ BUILD: NOT RUN — USER WILL COMPILE
+ DEVICE TEST: NO / PENDING
+ BENCHMARK OFF vs ON: PENDING
+@@ -652,3 +655,11 @@
+ 
+ Checkpoint 1 Pathfinding Native + Native Modules UI, Checkpoint 2 PopMan Native și Checkpoint 3
+ JAssimp Direct Fix nu sunt declarate implementate de această livrare.
++
++Reparația de livrare CP4 a fost aplicată înainte de începerea Checkpoint 1:
++
++- jars.tar conține agentul version 5 / schema 4 și FeatureCompatibility.class;
++- Gradle preBuild reconstruiește automat bundle-ul agentului;
++- workflow-urile reconstruiesc și testează explicit agentul;
++- STREAM ALL, FBO ALL și FULL CANDIDATE sunt mutate din selectorul general în fereastra separată
++  OPT-LAB · Build 42.
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts	2026-08-28 17:00:00.000000000 +0300
++++ b/app/build.gradle.kts	2026-08-28 18:15:25.326594365 +0300
+@@ -18,6 +18,24 @@
+     "RELEASE_KEY_PASSWORD"
+ ).all { localProperties[it] != null }
+ 
++val prepareOptLabAgentBundle by tasks.registering(Exec::class) {
++    group = "build"
++    description = "Rebuilds and verifies the OPT-LAB Java agent bundled in jars.tar"
++    workingDir = rootProject.projectDir
++    commandLine("bash", rootProject.file("tools/build-optlab-agent.sh").absolutePath)
++
++    inputs.file(rootProject.file("tools/build-optlab-agent.sh"))
++    inputs.files(fileTree(rootProject.file(
++        "optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/" +
++                "zomdroid-agent/src/main/java"
++    )) { include("**/*.java") })
++    outputs.file(file("src/main/assets/bundles/jars.tar"))
++
++    // The committed bundle is an input seed as well as the output. Always rebuilding keeps a
++    // direct Gradle/Android Studio build from packaging a stale agent after source handoff.
++    outputs.upToDateWhen { false }
++}
++
+ android {
+     namespace = "com.zomdroid"
+     compileSdk = 35
+@@ -178,3 +196,7 @@
+     androidTestImplementation(libs.ext.junit)
+     androidTestImplementation(libs.espresso.core)
+ }
++
++tasks.named("preBuild") {
++    dependsOn(prepareOptLabAgentBundle)
++}
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+--- a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java	2026-08-28 17:00:00.000000000 +0300
++++ b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java	2026-08-28 18:15:26.778623462 +0300
+@@ -2,6 +2,7 @@
+ 
+ import android.content.Context;
+ import android.graphics.Typeface;
++import android.widget.Button;
+ import android.widget.LinearLayout;
+ import android.widget.ScrollView;
+ import android.widget.TextView;
+@@ -37,6 +38,14 @@
+         masterOff.setPadding(0, dp(context, 4), 0, dp(context, 4));
+         content.addView(masterOff);
+ 
++        addSection(content, context, context.getString(R.string.opt_lab_build42_presets));
++        Button streamAll = preset(context, OptLabPreferences.Profile.STREAM_ALL);
++        Button fboAll = preset(context, OptLabPreferences.Profile.FBO_ALL);
++        Button fullCandidate = preset(context, OptLabPreferences.Profile.FULL_CANDIDATE);
++        content.addView(streamAll);
++        content.addView(fboAll);
++        content.addView(fullCandidate);
++
+         addSection(content, context, context.getString(R.string.opt_lab_runtime_b42_section));
+         SwitchCompat pacing = toggle(context, context.getString(R.string.opt_lab_pacing),
+                 prefs.isMainloopPacing());
+@@ -123,6 +132,18 @@
+         coordinator.setOnCheckedChangeListener((view, checked) -> {
+             if (!updating[0]) prefs.setStreamFboCoordinator(checked);
+         });
++        streamAll.setOnClickListener(view -> {
++            prefs.setProfile(OptLabPreferences.Profile.STREAM_ALL);
++            sync.run();
++        });
++        fboAll.setOnClickListener(view -> {
++            prefs.setProfile(OptLabPreferences.Profile.FBO_ALL);
++            sync.run();
++        });
++        fullCandidate.setOnClickListener(view -> {
++            prefs.setProfile(OptLabPreferences.Profile.FULL_CANDIDATE);
++            sync.run();
++        });
+ 
+         sync.run();
+         ScrollView scroll = new ScrollView(context);
+@@ -143,6 +164,12 @@
+         return toggle;
+     }
+ 
++    private static Button preset(Context context, OptLabPreferences.Profile profile) {
++        Button button = new Button(context);
++        button.setText(profile.toString());
++        return button;
++    }
++
+     private static TextView text(Context context, String value, boolean bold) {
+         TextView view = new TextView(context);
+         view.setText(value);
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java	2026-08-28 17:00:00.000000000 +0300
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabDialog.java	2026-08-28 18:15:26.058609028 +0300
+@@ -19,6 +19,13 @@
+ 
+ /** Compact runtime-built UI so every lab switch lives in one restart-scoped panel. */
+ public final class OptLabDialog {
++    private static final OptLabPreferences.Profile[] GENERAL_PROFILES = {
++            OptLabPreferences.Profile.BASELINE,
++            OptLabPreferences.Profile.RUNTIME_SAFE,
++            OptLabPreferences.Profile.ALL_TEST_ON,
++            OptLabPreferences.Profile.CUSTOM
++    };
++
+     private OptLabDialog() {}
+ 
+     public static void show(Context context, Runnable onClosed) {
+@@ -35,7 +42,7 @@
+         content.addView(intro);
+ 
+         addLabel(content, context, context.getString(R.string.opt_lab_profile));
+-        Spinner profile = spinner(context, OptLabPreferences.Profile.values(), prefs.getProfile());
++        Spinner profile = spinner(context, GENERAL_PROFILES, generalProfile(prefs.getProfile()));
+         content.addView(profile);
+ 
+         SwitchCompat master = toggle(context, context.getString(R.string.opt_lab_master),
+@@ -94,7 +101,7 @@
+         final boolean[] suppressProfileCallback = {false};
+         Runnable sync = () -> {
+             OptLabPreferences now = OptLabPreferences.from(context);
+-            int effectiveProfile = now.getProfile().ordinal();
++            int effectiveProfile = indexOf(GENERAL_PROFILES, generalProfile(now.getProfile()));
+             if (profile.getSelectedItemPosition() != effectiveProfile) {
+                 suppressProfileCallback[0] = true;
+                 profile.setSelection(effectiveProfile, false);
+@@ -126,7 +133,7 @@
+ 
+         final boolean[] firstProfileCallback = {true};
+         Runnable showCustomProfile = () -> {
+-            int custom = OptLabPreferences.Profile.CUSTOM.ordinal();
++            int custom = indexOf(GENERAL_PROFILES, OptLabPreferences.Profile.CUSTOM);
+             if (profile.getSelectedItemPosition() != custom) {
+                 suppressProfileCallback[0] = true;
+                 profile.setSelection(custom, false);
+@@ -247,6 +254,24 @@
+         return spinner;
+     }
+ 
++    private static OptLabPreferences.Profile generalProfile(OptLabPreferences.Profile profile) {
++        switch (profile) {
++            case STREAM_ALL:
++            case FBO_ALL:
++            case FULL_CANDIDATE:
++                return OptLabPreferences.Profile.CUSTOM;
++            default:
++                return profile;
++        }
++    }
++
++    private static <T> int indexOf(T[] values, T selected) {
++        for (int index = 0; index < values.length; index++) {
++            if (values[index].equals(selected)) return index;
++        }
++        return 0;
++    }
++
+     private static SwitchCompat toggle(Context context, String label, boolean checked) {
+         SwitchCompat toggle = new SwitchCompat(context);
+         toggle.setText(label);
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+--- a/app/src/main/res/values/strings.xml	2026-08-28 17:00:00.000000000 +0300
++++ b/app/src/main/res/values/strings.xml	2026-08-28 18:15:27.734642609 +0300
+@@ -609,6 +609,7 @@
+     <string name="opt_lab_build42_intro" translatable="false">Pacing, Stream Core și FBO sunt izolate aici. Fiecare mecanism are verificare proprie; un target incompatibil revine la codul original fără să oprească restul OPT-LAB.</string>
+     <string name="opt_lab_only_build42" translatable="false">Only Build 42 (recomandat: ON)</string>
+     <string name="opt_lab_build42_master_off" translatable="false">Master OPT-LAB este OFF. Activează-l din fereastra principală.</string>
++    <string name="opt_lab_build42_presets" translatable="false">Preseturi Build 42</string>
+     <string name="opt_lab_runtime_b42_section" translatable="false">MAIN LOOP · BUILD 42</string>
+     <string name="opt_lab_build42_restart_warning" translatable="false">Restart game required. VERIFIED = hash cunoscut; PROBE = verificare structurală; COMPATIBLE = proba a trecut; UNSUPPORTED = doar acel mecanism rămâne pe codul original.</string>
+     <string name="opt_lab_quiet" translatable="false">O1 · Quiet runtime (fără debug forțat)</string>
+@@ -631,5 +632,5 @@
+     <string name="opt_lab_analog" translatable="false">Input · suprimă axe neschimbate</string>
+     <string name="opt_lab_coalesce" translatable="false">Input · coalescing cursor / axe</string>
+     <string name="opt_lab_mgl_log" translatable="false">Păstrează fișierul de log MobileGL</string>
+-    <string name="opt_lab_restart_warning" translatable="false">Fiecare mecanism nou este independent; preset-urile STREAM ALL, FBO ALL și FULL CANDIDATE le combină fără build-uri separate. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
++    <string name="opt_lab_restart_warning" translatable="false">Preseturile Pacing/Stream/FBO sunt disponibile numai în fereastra Build 42. F2 nu amână niciodată un FBO nou și păstrează dirty la defer. SQLite rămâne în afara acestui pack. Revino la ALL OFF dacă apar crash, chunk negru sau artefacte.</string>
+ </resources>
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/tools/build-optlab-agent.sh b/tools/build-optlab-agent.sh
+--- a/tools/build-optlab-agent.sh	2026-08-28 17:00:00.000000000 +0300
++++ b/tools/build-optlab-agent.sh	2026-08-28 18:15:23.930566402 +0300
+@@ -45,4 +45,8 @@
+ unzip -tq "$WORK_DIR/zomdroid-agent.jar"
+ unzip -p "$WORK_DIR/zomdroid-agent.jar" META-INF/MANIFEST.MF \
+   | grep -q '^Premain-Class: com.zomdroid.agent.Main'
++unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
++unzip -p "$WORK_DIR/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=5 schema=4 loaded'
+ sha256sum "$WORK_DIR/zomdroid-agent.jar" "$BUNDLE_PATH"
+diff -ruN '--exclude=inspect_bundle' '--exclude=jars.tar' '--exclude=CP4-COMPILE-READY*' a/tools/test-optlab-agent-source.sh b/tools/test-optlab-agent-source.sh
+--- a/tools/test-optlab-agent-source.sh	2026-08-28 17:00:00.000000000 +0300
++++ b/tools/test-optlab-agent-source.sh	2026-08-28 18:15:24.614580109 +0300
+@@ -11,6 +11,14 @@
+ tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
+   -C "$WORK_DIR/bundle"
+ 
++# Reject a source/bundle mismatch before tests can accidentally validate freshly compiled
++# classes while the APK would still package an older agent.
++unzip -tq "$WORK_DIR/bundle/zomdroid-agent.jar"
++unzip -Z1 "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
++unzip -p "$WORK_DIR/bundle/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=5 schema=4 loaded'
++
+ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+   -cp "$WORK_DIR/bundle/zomdroid-agent.jar" \
+
