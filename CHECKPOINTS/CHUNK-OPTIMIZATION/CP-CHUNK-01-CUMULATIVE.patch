@@ -1,0 +1,2567 @@
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/BRANCH-INFO.txt ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/BRANCH-INFO.txt
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/BRANCH-INFO.txt	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/BRANCH-INFO.txt	2026-08-29 12:47:22.623648780 +0500
+@@ -0,0 +1,8 @@
++BRANCH LOGIC: R11-CHUNK-OPTIMIZATION
++BASE: R10-JASSIMP-DIRECT
++SOURCE TREE: ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE
++CREATED: 2026-08-29
++
++R10 JAssimp Direct must remain intact.
++CP4.1 V2 production mechanisms are merged into the existing ZomDroid agent.
++No second javaagent is shipped or loaded.
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-BASELINE-AND-TARGET-MAP-RO.txt ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-BASELINE-AND-TARGET-MAP-RO.txt
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-BASELINE-AND-TARGET-MAP-RO.txt	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-BASELINE-AND-TARGET-MAP-RO.txt	2026-08-29 12:47:22.227649275 +0500
+@@ -0,0 +1,72 @@
++ZOMDROID R11 — CHUNK OPTIMIZATION
++CP-CHUNK-00 — BASELINE SI HARTA TINTELOR
++Data: 2026-08-29
++
++STATUS CHECKPOINT: DONE
++DEVICE TEST: NO
++MODIFICARI FUNCTIONALE: NU
++
++SCOP
++----
++Acest checkpoint fixeaza punctul de plecare reconstructibil pentru integrarea
++CP4.1 V2 in agentul unic ZomDroid. Ramura logica de lucru este:
++
++  ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE
++
++R10 JAssimp Direct ramane baza si nu este inlocuit, eliminat sau separat intr-un
++al doilea agent.
++
++IDENTITATE INPUTURI
++-------------------
++Sursa R10:
++  fisier: ZomDroid-R10-JASSIMP-DIRECT-SOURCE-2026-08-29.tar.zst
++  sha256: 2e3e8d8724a9c88f505252eb5a5fe0271da3fe886defe1d4fc367d720c586bbb
++
++Pachet referinta CP4.1 V2:
++  fisier: MGLPZ-ChunkProfiler-CP4.1-V2-PACK(1).zip
++  sha256: b25a5a74983c6854b18507c03aa00fea144b8830225ee5aba9ec003872e3347e
++
++Project Zomboid Build 42.20:
++  fisier primit: projectzomboid(7).jar
++  sha256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
++
++Project Zomboid Build 42.20.3:
++  fisier primit: projectzomboid(8).jar
++  sha256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
++  observatie: corespunde exact tintei declarate de CP4.1 V2.
++
++REGULI DE INTEGRARE
++-------------------
++1. Un singur javaagent ZomDroid; JAR-ul profilerului nu se injecteaza separat.
++2. Compatibilitate per mecanism, nu un gate global pe SHA-ul intregului joc.
++3. 42.20 si 42.20.3 sunt tinte de verificare explicite.
++4. Hotfixurile B42 necunoscute pot trece doar prin verificarea structurala a
++   clasei si metodei cerute de fiecare mecanism.
++5. Orice mecanism incompatibil cade individual pe vanilla (fail-open).
++6. Profilerul greu, ThreadMXBean, sumarizarea periodica si logarea per apel nu
++   intra in calea normala de joc.
++7. Vehicle Zone Index si Neighbour Main V2 sunt incluse: utilizatorul le-a
++   validat separat ca aducand stabilitate.
++8. CP2C ramane experimental si implicit OFF pana la testarea finala pe device.
++9. Toate modificarile se aplica la urmatoarea pornire completa a jocului.
++
++DESTINATIE UI
++-------------
++Overview -> Build 42 -> Chunk Optimization
++
++Sectiunea Build 42 va contine Stream/FBO si o ramura separata Chunk
++Optimization. Native ARM64 ramane separat, imediat dupa Build 42 in Overview.
++
++TINTE CHUNK PLANIFICATE
++----------------------
++- Neighbour Worker V2
++- Neighbour Main V2
++- Vehicle Zone Index
++- Foraging
++- Grid / Load
++- Randomized Buildings
++- Lua MapObjects
++- WorldGen biome
++
++CP-CHUNK-00 fixeaza numai baseline-ul. Implementarea si testele host urmeaza in
++checkpointurile CP-CHUNK-01 si ulterioare.
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-MANIFEST.sha256 ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-MANIFEST.sha256
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-MANIFEST.sha256	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-MANIFEST.sha256	2026-08-29 12:47:34.979633188 +0500
+@@ -0,0 +1,2 @@
++114bb4c1c49a9668654422821a686207c26dce473036af1b94be2929aa477b4a  CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-00-BASELINE-AND-TARGET-MAP-RO.txt
++3767c9ce703839bb63251191b920c7d44e4c9f96cd63ee2cff84de0f3b96cd92  CHECKPOINTS/CHUNK-OPTIMIZATION/BRANCH-INFO.txt
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-01-UNIFIED-AGENT-AND-REAL-JARS-RO.txt ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-01-UNIFIED-AGENT-AND-REAL-JARS-RO.txt
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-01-UNIFIED-AGENT-AND-REAL-JARS-RO.txt	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/CHECKPOINTS/CHUNK-OPTIMIZATION/CP-CHUNK-01-UNIFIED-AGENT-AND-REAL-JARS-RO.txt	2026-08-29 13:04:18.213940713 +0500
+@@ -0,0 +1,80 @@
++ZOMDROID R11 — CHUNK OPTIMIZATION
++CP-CHUNK-01 — AGENT UNIC SI VERIFICARE PE JAR-URI REALE
++Data: 2026-08-29
++
++STATUS CHECKPOINT: DONE
++DEVICE TEST: NO
++UI / LAUNCHER WIRING: NU INCA (urmeaza in CP-CHUNK-02)
++
++REZULTAT
++--------
++Mecanismele de productie CP4.1 V2 au fost portate in javaagentul ZomDroid
++existent. JAR-ul MGLPZ-ChunkProfiler nu este livrat si nu este injectat ca al
++doilea agent.
++
++Agent ZomDroid:
++  version=9
++  proof schema=8
++
++MECANISME INTEGRATE
++-------------------
++- CHUNK_FORAGING
++- CHUNK_NEIGHBOUR_WORKER
++- CHUNK_NEIGHBOUR_MAIN
++- CHUNK_GRID_LOAD
++- CHUNK_VEHICLE_INDEX
++- CHUNK_RANDOMIZED_BUILDINGS
++- CHUNK_LUA_MAPOBJECTS
++- CHUNK_WORLDGEN_BIOME
++- CHUNK_CP2C_DIRTY_CLEAR (experimental, destinat sa ramana implicit OFF)
++
++MODIFICARI FATA DE PROFILERUL CP4.1
++----------------------------------
++1. Eliminat din runtime-ul normal:
++   - System.nanoTime pe fiecare metoda;
++   - ThreadMXBean / deep split;
++   - thread de sumarizare periodica;
++   - stderr sincronizat si flush per linie;
++   - wrapping general pe 33 clase / 89 metode.
++2. Sunt transformate numai clasele si metodele cerute de toggle-urile active.
++3. Fiecare mecanism are gate propriu si fallback propriu la metoda vanilla.
++4. Contoarele de diagnostic ramase sunt non-atomice si nu controleaza semantica.
++5. Proof-ul EXERCISED este limitat la prima lovire a fiecarui fast path.
++
++HARDENING SUPLIMENTAR
++---------------------
++- Neighbour: orice RecalcProperties real invalideaza conservator toate perechile
++  din scope. Astfel o modificare a unui al treilea patrat consultat de
++  CalculateCollide / CalculateVisionBlocked nu poate lasa un hit invechit.
++- Vehicles: indexul verifica exact identitatea si geometria fiecarei zone. O
++  mutatie in-place cu aceeasi dimensiune a listei reconstruieste indexul.
++- Advice scope exit ruleaza si pe exceptii, deci contextul ThreadLocal nu ramane
++  armat dupa o eroare vanilla.
++
++COMPATIBILITATE B42
++-------------------
++- 42.20: hashuri de clasa cunoscute si acceptate per mecanism.
++- 42.20.3: hashuri de clasa cunoscute si acceptate per mecanism.
++- alte hotfixuri B42: PROBE structural per mecanism; nu exista kill-switch global
++  dupa SHA-ul intregului projectzomboid.jar.
++
++TESTE HOST
++----------
++PASS — build-optlab-agent.sh
++PASS — test-optlab-agent-source.sh
++PASS — transformare bytecode reala pe projectzomboid 42.20
++PASS — transformare bytecode reala pe projectzomboid 42.20.3
++PASS — toate cele 9 decizii ajung ACTIVE separat pe ambele JAR-uri
++PASS — niciun UNSUPPORTED / BLOCKED_INSTALL pe cele doua tinte
++
++Observatie: clasele jocului sunt Java classfile 69 (Java 25), iar hostul este
++Java 17. Testul real foloseste exact transformerul instalat de Main.premain pe
++bytes-ii claselor din fiecare JAR, fara sa incerce executarea claselor Java 25 pe
++host. Verificarea efectiva a semanticii in joc ramane DEVICE TEST = NO.
++
++RECONSTRUCTIE
++-------------
++Aplicarea patchului cumulativ CP-CHUNK-01 peste arhiva R10 identificata in
++CP-CHUNK-00, apoi rularea tools/build-optlab-agent.sh, reconstruieste agentul si
++jars.tar. JAR-urile Project Zomboid sunt doar inputuri de test si nu intra in
++sursa livrata.
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java	2026-08-29 05:00:00.000000000 +0500
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java	2026-08-29 12:59:55.066281026 +0500
+@@ -1,6 +1,7 @@
+ package com.zomdroid.agent;
+ 
+ import com.zomdroid.agent.decorators.ShaderUnit;
++import com.zomdroid.agent.optimization.ChunkOptimizationRuntime;
+ import com.zomdroid.agent.optimization.FeatureCompatibility;
+ import com.zomdroid.agent.optimization.FboRuntime;
+ import com.zomdroid.agent.optimization.PacingRuntime;
+@@ -19,6 +20,7 @@
+ import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
+ import net.bytebuddy.dynamic.scaffold.TypeValidation;
+ import net.bytebuddy.implementation.Implementation;
++import net.bytebuddy.implementation.bytecode.assign.Assigner;
+ import net.bytebuddy.jar.asm.MethodVisitor;
+ import net.bytebuddy.jar.asm.Opcodes;
+ import net.bytebuddy.matcher.ElementMatcher;
+@@ -47,6 +49,26 @@
+             "f94aa259d6a371f4fd22f3e86e48aac47b4c823b0a13ebcccdbb9fa69671c7aa";
+     private static final String FBO_NLEVELS_SHA256 =
+             "0f78747d927cd4f86ee3be38bd4afdf6220b7666c9b2af2c59d57ff75636056b";
++    private static final String ZONE_GENERATOR_SHA256 =
++            "10ed8c0fef67cdbf3a0f355f2142bf35e401df82e0578b473206f3baccafba29";
++    private static final String BIOME_MAP_SHA256 =
++            "88de846d99f7b0d91bc9765e86f8b829b610aef83cb8afc41edcb57127879f07";
++    private static final String ISO_CHUNK_4220_SHA256 =
++            "2e12c5a39b467423a00b33415ac01c6205bdd19f9e3baa90f355674c420f9c72";
++    private static final String ISO_CHUNK_42203_SHA256 =
++            "68431ace471b30c842ff7c2a6e706d8ba48d7a84ae07f876484153c0d62a794b";
++    private static final String ISO_GRID_SQUARE_4220_SHA256 =
++            "552c13fbfda06612be082faeb98b89a65f30832dbae669e0920d8a09888fa86a";
++    private static final String ISO_GRID_SQUARE_42203_SHA256 =
++            "cf5ef9005829d258f6ef28394a9f514350fa8fa1ea5f6209cc7836a656f0b0eb";
++    private static final String LOAD_GRID_WORKAROUND_SHA256 =
++            "a4fe7b5b8f0fbc4d1a10deafc46e8dc20e53e1a6b10ba0c83ba6cf3b34190ab4";
++    private static final String MAP_OBJECTS_SHA256 =
++            "e4b4ccfb0225ba2bb3c4e1313d571235a5fbdef9489a01b9a82526674bc1e715";
++    private static final String WORLD_GEN_CHUNK_SHA256 =
++            "e64f53da69877398e1715b79df4cefc881fa7571844887569cfce3b4a64daea3";
++    private static final String VEHICLE_ZONE_SHA256 =
++            "6bd45f0a288b6a179201b2e93d0a8258425b943d00835a29886e65eed18f0bd7";
+ 
+     private Main() {}
+ 
+@@ -55,7 +77,7 @@
+         FeatureCompatibility.configureFromProperties();
+         PathfindingRuntime.configureFromProperties();
+         PopManRuntime.configureFromProperties();
+-        System.out.println("[ZD-OPT-LAB-AGENT] version=8 schema=7 loaded");
++        System.out.println("[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded");
+ 
+         String renderer = System.getProperty("zomdroid.renderer", "");
+         if ("GL4ES".equals(renderer)) installLegacyShaderPatch(instrumentation);
+@@ -67,11 +89,27 @@
+         boolean dirtyDedupRequested = flag("zomdroid.optlab.fbo.dirty.dedup");
+         boolean fboBudgetRequested = flag("zomdroid.optlab.fbo.frame.budget");
+         boolean coordinatorRequested = flag("zomdroid.optlab.stream.fbo.coordinator");
++        boolean chunkForageRequested = flag("zomdroid.optlab.chunk.forage");
++        boolean chunkNeighbourWorkerRequested = flag(
++                "zomdroid.optlab.chunk.neighbour.worker");
++        boolean chunkNeighbourMainRequested = flag(
++                "zomdroid.optlab.chunk.neighbour.main");
++        boolean chunkGridRequested = flag("zomdroid.optlab.chunk.grid.load");
++        boolean chunkVehiclesRequested = flag("zomdroid.optlab.chunk.vehicles");
++        boolean chunkBuildingsRequested = flag(
++                "zomdroid.optlab.chunk.randomized.buildings");
++        boolean chunkLuaRequested = flag("zomdroid.optlab.chunk.lua.mapobjects");
++        boolean chunkWorldgenRequested = flag("zomdroid.optlab.chunk.worldgen.biome");
++        boolean chunkCp2cRequested = flag("zomdroid.optlab.chunk.cp2c.dirty.clear");
+         boolean pathfindingProofRequested = PathfindingRuntime.isProofEnabled();
+         boolean popManProofRequested = PopManRuntime.isProofEnabled();
+         boolean anyRequested = pacingRequested || wakeRequested || queueRequested
+                 || lookaheadRequested || dirtyDedupRequested || fboBudgetRequested
+-                || coordinatorRequested || pathfindingProofRequested || popManProofRequested;
++                || coordinatorRequested || chunkForageRequested
++                || chunkNeighbourWorkerRequested || chunkNeighbourMainRequested
++                || chunkGridRequested || chunkVehiclesRequested || chunkBuildingsRequested
++                || chunkLuaRequested || chunkWorldgenRequested || chunkCp2cRequested
++                || pathfindingProofRequested || popManProofRequested;
+ 
+         if (!anyRequested) {
+             ProofRuntime.state("PACK", "ALL_OFF", "no_transformers_installed");
+@@ -86,6 +124,17 @@
+                 "zombie/iso/fboRenderChunk/FBORenderChunkManager.class");
+         String fboNLevelsHash = resourceSha256(
+                 "zombie/iso/fboRenderChunk/FBORenderLevels$NLevels.class");
++        String zoneGeneratorHash = resourceSha256(
++                "zombie/iso/worldgen/zones/ZoneGenerator.class");
++        String biomeMapHash = resourceSha256("zombie/iso/worldgen/maps/BiomeMap.class");
++        String isoChunkHash = resourceSha256("zombie/iso/IsoChunk.class");
++        String isoGridSquareHash = resourceSha256("zombie/iso/IsoGridSquare.class");
++        String loadGridWorkaroundHash = resourceSha256(
++                "zombie/LoadGridsquarePerformanceWorkaround.class");
++        String mapObjectsHash = resourceSha256("zombie/Lua/MapObjects.class");
++        String worldGenChunkHash = resourceSha256(
++                "zombie/iso/worldgen/WorldGenChunk.class");
++        String vehicleZoneHash = resourceSha256("zombie/iso/zones/VehicleZone.class");
+ 
+         FeatureCompatibility.Requirement mainThread = requirement(
+                 "main_thread", MAIN_THREAD_SHA256, mainThreadHash);
+@@ -99,6 +148,25 @@
+                 "fbo_manager", FBO_MANAGER_SHA256, fboManagerHash);
+         FeatureCompatibility.Requirement fboNLevels = requirement(
+                 "fbo_nlevels", FBO_NLEVELS_SHA256, fboNLevelsHash);
++        FeatureCompatibility.Requirement zoneGenerator = requirement(
++                "zone_generator", ZONE_GENERATOR_SHA256, zoneGeneratorHash);
++        FeatureCompatibility.Requirement biomeMap = requirement(
++                "biome_map", BIOME_MAP_SHA256, biomeMapHash);
++        FeatureCompatibility.Requirement isoChunk = requirementAny(
++                "iso_chunk", isoChunkHash, ISO_CHUNK_4220_SHA256,
++                ISO_CHUNK_42203_SHA256);
++        FeatureCompatibility.Requirement isoGridSquare = requirementAny(
++                "iso_grid_square", isoGridSquareHash, ISO_GRID_SQUARE_4220_SHA256,
++                ISO_GRID_SQUARE_42203_SHA256);
++        FeatureCompatibility.Requirement loadGridWorkaround = requirement(
++                "load_grid_workaround", LOAD_GRID_WORKAROUND_SHA256,
++                loadGridWorkaroundHash);
++        FeatureCompatibility.Requirement mapObjects = requirement(
++                "map_objects", MAP_OBJECTS_SHA256, mapObjectsHash);
++        FeatureCompatibility.Requirement worldGenChunk = requirement(
++                "world_gen_chunk", WORLD_GEN_CHUNK_SHA256, worldGenChunkHash);
++        FeatureCompatibility.Requirement vehicleZone = requirement(
++                "vehicle_zone", VEHICLE_ZONE_SHA256, vehicleZoneHash);
+ 
+         final FeatureCompatibility.Decision pacing = FeatureCompatibility.evaluate(
+                 "PACING", pacingRequested, 2, mainThread, gameWindow);
+@@ -117,10 +185,36 @@
+                         coordinatorRequested, 2, worldStreamer, fboManager)
+                 : FeatureCompatibility.unsupported("STREAM_FBO_COORDINATOR",
+                         coordinatorRequested, "requires_fbo_frame_budget");
++        final FeatureCompatibility.Decision chunkForage = FeatureCompatibility.evaluate(
++                "CHUNK_FORAGING", chunkForageRequested, 1, zoneGenerator, biomeMap);
++        final FeatureCompatibility.Decision chunkNeighbourWorker = FeatureCompatibility.evaluate(
++                "CHUNK_NEIGHBOUR_WORKER", chunkNeighbourWorkerRequested, 2,
++                isoChunk, isoGridSquare);
++        final FeatureCompatibility.Decision chunkNeighbourMain = FeatureCompatibility.evaluate(
++                "CHUNK_NEIGHBOUR_MAIN", chunkNeighbourMainRequested, 2,
++                isoChunk, isoGridSquare);
++        final FeatureCompatibility.Decision chunkGrid = FeatureCompatibility.evaluate(
++                "CHUNK_GRID_LOAD", chunkGridRequested, 1, loadGridWorkaround);
++        final FeatureCompatibility.Decision chunkVehicles = FeatureCompatibility.evaluate(
++                "CHUNK_VEHICLE_INDEX", chunkVehiclesRequested, 1, isoChunk, vehicleZone);
++        final FeatureCompatibility.Decision chunkBuildings = FeatureCompatibility.evaluate(
++                "CHUNK_RANDOMIZED_BUILDINGS", chunkBuildingsRequested, 1, isoChunk);
++        final FeatureCompatibility.Decision chunkLua = FeatureCompatibility.evaluate(
++                "CHUNK_LUA_MAPOBJECTS", chunkLuaRequested, 1, mapObjects);
++        final FeatureCompatibility.Decision chunkWorldgen = FeatureCompatibility.evaluate(
++                "CHUNK_WORLDGEN_BIOME", chunkWorldgenRequested, 2, worldGenChunk);
++        final FeatureCompatibility.Decision chunkCp2c = FeatureCompatibility.evaluate(
++                "CHUNK_CP2C_DIRTY_CLEAR", chunkCp2cRequested, 3,
++                isoChunk, isoGridSquare);
+ 
+         if (!(pacing.isCandidate() || wake.isCandidate() || queueFast.isCandidate()
+                 || lookahead.isCandidate() || dirtyDedup.isCandidate()
+                 || fboBudget.isCandidate() || coordinator.isCandidate()
++                || chunkForage.isCandidate() || chunkNeighbourWorker.isCandidate()
++                || chunkNeighbourMain.isCandidate() || chunkGrid.isCandidate()
++                || chunkVehicles.isCandidate() || chunkBuildings.isCandidate()
++                || chunkLua.isCandidate() || chunkWorldgen.isCandidate()
++                || chunkCp2c.isCandidate()
+                 || pathfindingProofRequested || popManProofRequested)) return;
+ 
+         try {
+@@ -129,6 +223,11 @@
+                     lookahead.isCandidate());
+             FboRuntime.configure(dirtyDedup.isCandidate(), fboBudget.isCandidate(),
+                     coordinator.isCandidate());
++            ChunkOptimizationRuntime.configure(chunkForage.isCandidate(),
++                    chunkNeighbourWorker.isCandidate(), chunkNeighbourMain.isCandidate(),
++                    chunkGrid.isCandidate(), chunkVehicles.isCandidate(),
++                    chunkBuildings.isCandidate(), chunkLua.isCandidate(),
++                    chunkWorldgen.isCandidate(), chunkCp2c.isCandidate());
+ 
+             AgentBuilder builder = new AgentBuilder.Default()
+                     .disableClassFormatChanges()
+@@ -256,6 +355,232 @@
+                                                 .and(returns(void.class))));
+                         });
+             }
++            if (chunkForage.isCandidate()) {
++                builder = builder.type(named("zombie.iso.worldgen.zones.ZoneGenerator"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int methods = methodCount(type, "genForaging", "(II)V");
++                            if (methods != 1) {
++                                ChunkOptimizationRuntime.disable("CHUNK_FORAGING");
++                                chunkForage.fallback("zone_generator_shape genForaging=" + methods);
++                                return target;
++                            }
++                            chunkForage.passPart("zone_generator_gen_foraging");
++                            return target.visit(Advice.to(ChunkForageAdvice.class).on(
++                                    named("genForaging").and(takesArguments(int.class, int.class))
++                                            .and(returns(void.class))));
++                        });
++            }
++            if (chunkGrid.isCandidate()) {
++                builder = builder.type(named("zombie.LoadGridsquarePerformanceWorkaround"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int methods = methodCount(type, "LoadGridsquare",
++                                    "(Lzombie/iso/IsoGridSquare;)V");
++                            if (methods != 1) {
++                                ChunkOptimizationRuntime.disable("CHUNK_GRID_LOAD");
++                                chunkGrid.fallback("load_grid_shape LoadGridsquare=" + methods);
++                                return target;
++                            }
++                            chunkGrid.passPart("load_grid_square");
++                            return target.visit(Advice.to(ChunkGridLoadAdvice.class).on(
++                                    named("LoadGridsquare").and(isStatic())
++                                            .and(takesArguments(1)).and(returns(void.class))));
++                        });
++            }
++            if (chunkLua.isCandidate()) {
++                builder = builder.type(named("zombie.Lua.MapObjects"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int methods = methodCount(type, "newGridSquare",
++                                    "(Lzombie/iso/IsoGridSquare;)V");
++                            if (methods != 1) {
++                                ChunkOptimizationRuntime.disable("CHUNK_LUA_MAPOBJECTS");
++                                chunkLua.fallback("map_objects_shape newGridSquare=" + methods);
++                                return target;
++                            }
++                            chunkLua.passPart("map_objects_new_grid_square");
++                            return target.visit(Advice.to(ChunkLuaAdvice.class).on(
++                                    named("newGridSquare").and(isStatic())
++                                            .and(takesArguments(1)).and(returns(void.class))));
++                        });
++            }
++            if (chunkWorldgen.isCandidate()) {
++                builder = builder.type(named("zombie.iso.worldgen.WorldGenChunk"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int scopes = methodCount(type, "generateChunks",
++                                    "(Lzombie/iso/worldgen/ChunksCache;)V");
++                            int lookups = methodCount(type, "getMapBiome",
++                                    "(IILjava/lang/String;)"
++                                            + "Lzombie/iso/worldgen/biomes/IBiome;");
++                            if (scopes != 1 || lookups != 1) {
++                                ChunkOptimizationRuntime.disable("CHUNK_WORLDGEN_BIOME");
++                                chunkWorldgen.fallback("worldgen_shape generateChunks=" + scopes
++                                        + " getMapBiome=" + lookups);
++                                return target;
++                            }
++                            chunkWorldgen.passPart("worldgen_scope");
++                            chunkWorldgen.passPart("worldgen_map_biome");
++                            return target
++                                    .visit(Advice.to(ChunkWorldgenScopeAdvice.class).on(
++                                            named("generateChunks").and(takesArguments(1))
++                                                    .and(returns(void.class))))
++                                    .visit(Advice.to(ChunkMapBiomeAdvice.class).on(
++                                            named("getMapBiome").and(takesArguments(3))));
++                        });
++            }
++            if (chunkNeighbourWorker.isCandidate() || chunkNeighbourMain.isCandidate()
++                    || chunkVehicles.isCandidate() || chunkBuildings.isCandidate()
++                    || chunkCp2c.isCandidate()) {
++                builder = builder.type(named("zombie.iso.IsoChunk"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int workerScopes = methodCount(type,
++                                    "loadInWorldStreamerThread", "()V");
++                            int mainScopes = methodCount(type, "loadInMainThread", "()V");
++                            int addVehicles = methodCount(type, "AddVehicles", "()V");
++                            int randomize = methodCount(type, "randomizeBuildingsEtc",
++                                    "(Ljava/util/ArrayList;)V");
++
++                            boolean workerNeeded = chunkNeighbourWorker.isCandidate()
++                                    || chunkCp2c.isCandidate();
++                            if (workerNeeded && workerScopes != 1) {
++                                if (chunkNeighbourWorker.isCandidate()) {
++                                    chunkNeighbourWorker.fallback(
++                                            "iso_chunk_worker_scope=" + workerScopes);
++                                    ChunkOptimizationRuntime.disable(
++                                            "CHUNK_NEIGHBOUR_WORKER");
++                                }
++                                if (chunkCp2c.isCandidate()) {
++                                    chunkCp2c.fallback("iso_chunk_worker_scope=" + workerScopes);
++                                    ChunkOptimizationRuntime.disable(
++                                            "CHUNK_CP2C_DIRTY_CLEAR");
++                                }
++                            } else if (workerNeeded) {
++                                target = target.visit(Advice.to(ChunkWorkerScopeAdvice.class).on(
++                                        named("loadInWorldStreamerThread")
++                                                .and(takesArguments(0))
++                                                .and(returns(void.class))));
++                                if (chunkNeighbourWorker.isCandidate()) {
++                                    chunkNeighbourWorker.passPart("iso_chunk_worker_scope");
++                                }
++                                if (chunkCp2c.isCandidate()) {
++                                    chunkCp2c.passPart("iso_chunk_worker_scope");
++                                }
++                            }
++
++                            if (chunkNeighbourMain.isCandidate()) {
++                                if (mainScopes != 1) {
++                                    chunkNeighbourMain.fallback(
++                                            "iso_chunk_main_scope=" + mainScopes);
++                                    ChunkOptimizationRuntime.disable("CHUNK_NEIGHBOUR_MAIN");
++                                } else {
++                                    target = target.visit(Advice.to(ChunkMainScopeAdvice.class).on(
++                                            named("loadInMainThread").and(takesArguments(0))
++                                                    .and(returns(void.class))));
++                                    chunkNeighbourMain.passPart("iso_chunk_main_scope");
++                                }
++                            }
++
++                            if (chunkVehicles.isCandidate()) {
++                                if (addVehicles != 1 || !vehicleHelperShape(type)) {
++                                    chunkVehicles.fallback("iso_chunk_vehicle_shape addVehicles="
++                                            + addVehicles + " helpers=" + vehicleHelperShape(type));
++                                    ChunkOptimizationRuntime.disable("CHUNK_VEHICLE_INDEX");
++                                } else {
++                                    target = target.visit(Advice.to(ChunkVehiclesAdvice.class).on(
++                                            named("AddVehicles").and(takesArguments(0))
++                                                    .and(returns(void.class))));
++                                    chunkVehicles.passPart("iso_chunk_add_vehicles");
++                                }
++                            }
++
++                            if (chunkBuildings.isCandidate()) {
++                                if (randomize != 1) {
++                                    chunkBuildings.fallback(
++                                            "iso_chunk_randomize_shape=" + randomize);
++                                    ChunkOptimizationRuntime.disable(
++                                            "CHUNK_RANDOMIZED_BUILDINGS");
++                                } else {
++                                    target = target.visit(Advice.to(ChunkBuildingsAdvice.class).on(
++                                            named("randomizeBuildingsEtc").and(takesArguments(1))
++                                                    .and(returns(void.class))));
++                                    chunkBuildings.passPart("iso_chunk_randomized_buildings");
++                                }
++                            }
++                            return target;
++                        });
++            }
++            if (chunkNeighbourWorker.isCandidate() || chunkNeighbourMain.isCandidate()
++                    || chunkCp2c.isCandidate()) {
++                builder = builder.type(named("zombie.iso.IsoGridSquare"))
++                        .transform((target, type, loader, module, domain) -> {
++                            int recalc2 = methodCount(type, "ReCalculateAll",
++                                    "(Lzombie/iso/IsoGridSquare;"
++                                            + "Lzombie/iso/IsoGridSquare$GetSquare;)V");
++                            int recalc3 = methodCount(type, "ReCalculateAll",
++                                    "(ZLzombie/iso/IsoGridSquare;"
++                                            + "Lzombie/iso/IsoGridSquare$GetSquare;)V");
++                            int recalcProperties = methodCount(type, "RecalcProperties", "()V");
++                            int recalcNeighbours = methodCount(type, "RecalcAllWithNeighbours",
++                                    "(ZLzombie/iso/IsoGridSquare$GetSquare;)V");
++                            boolean pairShape = recalc2 == 1 && recalc3 == 1
++                                    && recalcProperties == 1;
++
++                            if ((chunkNeighbourWorker.isCandidate()
++                                    || chunkNeighbourMain.isCandidate()) && !pairShape) {
++                                String reason = "iso_grid_pair_shape recalc2=" + recalc2
++                                        + " recalc3=" + recalc3
++                                        + " recalcProperties=" + recalcProperties;
++                                if (chunkNeighbourWorker.isCandidate()) {
++                                    chunkNeighbourWorker.fallback(reason);
++                                    ChunkOptimizationRuntime.disable(
++                                            "CHUNK_NEIGHBOUR_WORKER");
++                                }
++                                if (chunkNeighbourMain.isCandidate()) {
++                                    chunkNeighbourMain.fallback(reason);
++                                    ChunkOptimizationRuntime.disable("CHUNK_NEIGHBOUR_MAIN");
++                                }
++                            } else if (pairShape && (chunkNeighbourWorker.isCandidate()
++                                    || chunkNeighbourMain.isCandidate())) {
++                                target = target
++                                        .visit(Advice.to(ChunkRecalc2Advice.class).on(
++                                                named("ReCalculateAll").and(takesArguments(2))))
++                                        .visit(Advice.to(ChunkRecalc3Advice.class).on(
++                                                named("ReCalculateAll").and(takesArguments(3))));
++                                if (chunkNeighbourWorker.isCandidate()) {
++                                    chunkNeighbourWorker.passPart("iso_grid_pair_fast_path");
++                                }
++                                if (chunkNeighbourMain.isCandidate()) {
++                                    chunkNeighbourMain.passPart("iso_grid_pair_fast_path");
++                                }
++                            }
++
++                            boolean needsPropertiesAdvice = pairShape
++                                    && (chunkNeighbourWorker.isCandidate()
++                                            || chunkNeighbourMain.isCandidate());
++                            if (chunkCp2c.isCandidate()) {
++                                if (recalcProperties != 1 || recalcNeighbours != 1) {
++                                    chunkCp2c.fallback("cp2c_shape recalcProperties="
++                                            + recalcProperties + " recalcNeighbours="
++                                            + recalcNeighbours);
++                                    ChunkOptimizationRuntime.disable(
++                                            "CHUNK_CP2C_DIRTY_CLEAR");
++                                } else {
++                                    needsPropertiesAdvice = true;
++                                    target = target.visit(
++                                            Advice.to(ChunkRecalcNeighboursScopeAdvice.class).on(
++                                                    named("RecalcAllWithNeighbours")
++                                                            .and(takesArguments(2))
++                                                            .and(returns(void.class))));
++                                    chunkCp2c.passPart("iso_grid_recalc_neighbours_scope");
++                                    chunkCp2c.passPart("iso_grid_recalc_properties");
++                                }
++                            }
++                            if (needsPropertiesAdvice) {
++                                target = target.visit(Advice.to(ChunkRecalcPropertiesAdvice.class)
++                                        .on(named("RecalcProperties").and(takesArguments(0))
++                                                .and(returns(void.class))));
++                            }
++                            return target;
++                        });
++            }
+             if (pathfindingProofRequested) {
+                 builder = builder
+                         .type(named("zombie.pathfind.nativeCode.PathfindNative"))
+@@ -314,6 +639,8 @@
+             PacingRuntime.disable();
+             StreamCoreRuntime.configure(false, false, false);
+             FboRuntime.configure(false, false, false);
++            ChunkOptimizationRuntime.configure(false, false, false, false, false,
++                    false, false, false, false);
+             ProofRuntime.state("PACK", "BLOCKED_INSTALL", error.getClass().getSimpleName());
+             System.err.println("[ZD-OPT-LAB-AGENT] install failed: " + error);
+             error.printStackTrace(System.err);
+@@ -329,6 +656,12 @@
+         return new FeatureCompatibility.Requirement(label, expectedSha256, actualSha256);
+     }
+ 
++    private static FeatureCompatibility.Requirement requirementAny(
++            String label, String actualSha256, String... expectedSha256) {
++        return new FeatureCompatibility.Requirement(label,
++                String.join("|", expectedSha256), actualSha256);
++    }
++
+     private static int methodCount(TypeDescription type, String name, String descriptor) {
+         int count = 0;
+         for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
+@@ -340,6 +673,28 @@
+         return count;
+     }
+ 
++    private static boolean vehicleHelperShape(TypeDescription type) {
++        String zone = "Lzombie/iso/zones/Zone;";
++        String vehicleZone = "Lzombie/iso/zones/VehicleZone;";
++        String string = "Ljava/lang/String;";
++        return methodCount(type, "AddVehicles_ForTest", "(" + zone + ")V") == 1
++                && methodCount(type, "AddVehicles_OnZone",
++                        "(" + vehicleZone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_OnZonePolyline",
++                        "(" + vehicleZone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_TrafficJam_W",
++                        "(" + zone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_TrafficJam_E",
++                        "(" + zone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_TrafficJam_S",
++                        "(" + zone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_TrafficJam_N",
++                        "(" + zone + string + ")V") == 1
++                && methodCount(type, "AddVehicles_TrafficJam_Polyline",
++                        "(" + zone + string + ")V") == 1
++                && methodCount(type, "addRandomCarCrash", "(" + zone + "Z)V") == 1;
++    }
++
+     private static int signalMethodCount(TypeDescription type) {
+         int count = 0;
+         for (MethodDescription.InDefinedShape method : type.getDeclaredMethods()) {
+@@ -431,6 +786,158 @@
+         }
+     }
+ 
++    public static final class ChunkForageAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object receiver,
++                                    @Advice.Argument(0) int chunkX,
++                                    @Advice.Argument(1) int chunkY) {
++            return ChunkOptimizationRuntime.handleGenForaging(receiver, chunkX, chunkY);
++        }
++    }
++
++    public static final class ChunkGridLoadAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.Argument(0) Object square) {
++            return ChunkOptimizationRuntime.handleLoadGridSquare(square);
++        }
++    }
++
++    public static final class ChunkVehiclesAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object chunk) {
++            return ChunkOptimizationRuntime.handleAddVehicles(chunk);
++        }
++    }
++
++    public static final class ChunkBuildingsAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object chunk,
++                                    @Advice.Argument(0) java.util.ArrayList<?> buildings) {
++            return ChunkOptimizationRuntime.handleRandomizeBuildings(chunk, buildings);
++        }
++    }
++
++    public static final class ChunkLuaAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.Argument(0) Object square) {
++            return ChunkOptimizationRuntime.handleLuaNewSquare(square);
++        }
++    }
++
++    public static final class ChunkWorkerScopeAdvice {
++        @Advice.OnMethodEnter public static void enter() {
++            ChunkOptimizationRuntime.workerEnter();
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class) public static void exit() {
++            ChunkOptimizationRuntime.workerExit();
++        }
++    }
++
++    public static final class ChunkMainScopeAdvice {
++        @Advice.OnMethodEnter public static void enter() {
++            ChunkOptimizationRuntime.mainEnter();
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class) public static void exit() {
++            ChunkOptimizationRuntime.mainExit();
++        }
++    }
++
++    public static final class ChunkRecalcPropertiesAdvice {
++        @Advice.OnMethodExit(onThrowable = Throwable.class)
++        public static void exit(@Advice.This Object square,
++                                @Advice.Thrown Throwable error) {
++            if (error == null) ChunkOptimizationRuntime.onRecalcPropertiesCompleted(square);
++        }
++    }
++
++    public static final class ChunkRecalcNeighboursScopeAdvice {
++        @Advice.OnMethodEnter public static void enter() {
++            ChunkOptimizationRuntime.recalcNeighboursEnter();
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class) public static void exit() {
++            ChunkOptimizationRuntime.recalcNeighboursExit();
++        }
++    }
++
++    public static final class ChunkRecalc2Advice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object self,
++                                    @Advice.Argument(0) Object other,
++                                    @Advice.Argument(1) Object getter) {
++            return ChunkOptimizationRuntime.skipRecalc2(self, other, getter);
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class)
++        public static void exit(@Advice.This Object self,
++                                @Advice.Argument(0) Object other,
++                                @Advice.Argument(1) Object getter,
++                                @Advice.Enter boolean skipped,
++                                @Advice.Thrown Throwable error) {
++            if (!skipped && error == null) {
++                ChunkOptimizationRuntime.afterRecalc2(self, other, getter);
++            }
++        }
++    }
++
++    public static final class ChunkRecalc3Advice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object self,
++                                    @Advice.Argument(0) boolean both,
++                                    @Advice.Argument(1) Object other,
++                                    @Advice.Argument(2) Object getter) {
++            return ChunkOptimizationRuntime.skipRecalc3(self, both, other, getter);
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class)
++        public static void exit(@Advice.This Object self,
++                                @Advice.Argument(0) boolean both,
++                                @Advice.Argument(1) Object other,
++                                @Advice.Argument(2) Object getter,
++                                @Advice.Enter boolean skipped,
++                                @Advice.Thrown Throwable error) {
++            if (!skipped && error == null) {
++                ChunkOptimizationRuntime.afterRecalc3(self, both, other, getter);
++            }
++        }
++    }
++
++    public static final class ChunkWorldgenScopeAdvice {
++        @Advice.OnMethodEnter public static void enter() {
++            ChunkOptimizationRuntime.worldgenScopeEnter();
++        }
++    }
++
++    public static final class ChunkMapBiomeAdvice {
++        @Advice.OnMethodEnter(skipOn = Advice.OnNonDefaultValue.class)
++        public static boolean enter(@Advice.This Object owner,
++                                    @Advice.Argument(0) int x,
++                                    @Advice.Argument(1) int y,
++                                    @Advice.Argument(2) String name,
++                                    @Advice.Local("cachedBiome") Object cachedBiome) {
++            boolean hit = ChunkOptimizationRuntime.mapBiomeHas(owner, x, y, name);
++            if (hit) cachedBiome = ChunkOptimizationRuntime.mapBiomeLast();
++            return hit;
++        }
++
++        @Advice.OnMethodExit(onThrowable = Throwable.class)
++        public static void exit(@Advice.This Object owner,
++                                @Advice.Argument(0) int x,
++                                @Advice.Argument(1) int y,
++                                @Advice.Argument(2) String name,
++                                @Advice.Enter boolean hit,
++                                @Advice.Local("cachedBiome") Object cachedBiome,
++                                @Advice.Return(readOnly = false,
++                                        typing = Assigner.Typing.DYNAMIC) Object result,
++                                @Advice.Thrown Throwable error) {
++            if (error != null) return;
++            if (hit) result = cachedBiome;
++            else ChunkOptimizationRuntime.mapBiomePut(owner, x, y, name, result);
++        }
++    }
++
+     public static final class PathfindingRequestAdvice {
+         @Advice.OnMethodExit(onThrowable = Throwable.class)
+         public static void exit(@Advice.Return(readOnly = false) int result,
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java	2026-08-29 12:55:14.666690402 +0500
+@@ -0,0 +1,1253 @@
++package com.zomdroid.agent.optimization;
++
++import java.lang.reflect.Field;
++import java.lang.reflect.Method;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.HashMap;
++import java.util.IdentityHashMap;
++import java.util.Map;
++import java.util.WeakHashMap;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.atomic.AtomicBoolean;
++
++import zombie.GameWindow;
++import zombie.SandboxOptions;
++import zombie.LoadGridsquarePerformanceWorkaround;
++import zombie.Lua.LuaManager;
++import zombie.Lua.MapObjects;
++import zombie.VirtualZombieManager;
++import zombie.characters.IsoPlayer;
++import zombie.core.logger.ExceptionLogger;
++import zombie.core.math.PZMath;
++import zombie.core.physics.WorldSimulation;
++import zombie.core.random.Rand;
++import zombie.core.stash.StashSystem;
++import zombie.debug.DebugLog;
++import zombie.inventory.ItemContainer;
++import zombie.inventory.ItemConfigurator;
++import zombie.inventory.ItemPickerJava;
++import zombie.iso.BuildingDef;
++import zombie.iso.ContainerOverlays;
++import zombie.iso.IsoChunk;
++import zombie.iso.IsoGridSquare;
++import zombie.iso.IsoMetaCell;
++import zombie.iso.IsoMetaChunk;
++import zombie.iso.IsoMetaGrid;
++import zombie.iso.IsoObject;
++import zombie.iso.IsoWorld;
++import zombie.iso.RoomDef;
++import zombie.iso.TileOverlays;
++import zombie.iso.areas.IsoBuilding;
++import zombie.iso.areas.IsoRoom;
++import zombie.iso.enums.MetaCellPresence;
++import zombie.iso.objects.IsoWorldInventoryObject;
++import zombie.iso.sprite.IsoSprite;
++import zombie.iso.worldgen.maps.BiomeMap;
++import zombie.iso.worldgen.zones.ZoneGenerator;
++import zombie.iso.zones.VehicleZone;
++import zombie.iso.zones.Zone;
++import zombie.network.GameClient;
++import zombie.network.GameServer;
++import zombie.randomizedWorld.randomizedBuilding.RandomizedBuildingBase;
++import zombie.util.StringUtils;
++import zombie.util.list.PZArrayList;
++import zombie.vehicles.VehicleType;
++
++/**
++ * Production CP4.1 multi-fix runtime for Project Zomboid Build 42.
++ *
++ * Every optimization has an independent gate. Fastpaths either preserve the original operation
++ * order/side effects or decline the fast path before side effects so the original method runs.
++ * No async/deferred chunk work is introduced. Heavy profiling, per-call clock reads and periodic
++ * logger threads from the diagnostic pack are deliberately absent.
++ */
++public final class ChunkOptimizationRuntime {
++    private static volatile boolean forage;
++    private static volatile boolean neighbourWorker;
++    private static volatile boolean neighbourMain;
++    private static volatile boolean grid;
++    private static volatile boolean vehicles;
++    private static volatile boolean buildings;
++    private static volatile boolean lua;
++    private static volatile boolean worldgen;
++    private static volatile boolean cp2c;
++
++    private static final AtomicBoolean FORAGE_FAIL = new AtomicBoolean(false);
++    private static final AtomicBoolean GRID_FAIL = new AtomicBoolean(false);
++    private static final AtomicBoolean VEHICLE_FAIL = new AtomicBoolean(false);
++    private static final AtomicBoolean BUILDING_FAIL = new AtomicBoolean(false);
++    private static final AtomicBoolean LUA_FAIL = new AtomicBoolean(false);
++    private static final AtomicBoolean NEIGHBOUR_FAIL = new AtomicBoolean(false);
++
++    private static final FastCounter FORAGE_HANDLED = new FastCounter();
++    private static final FastCounter GRID_HANDLED = new FastCounter();
++    private static final FastCounter VEHICLE_HANDLED = new FastCounter();
++    private static final FastCounter VEHICLE_INDEX_BUILDS = new FastCounter();
++    private static final FastCounter VEHICLE_CANDIDATE_CHECKS = new FastCounter();
++    private static final FastCounter VEHICLE_EXACT_REJECTS = new FastCounter();
++    private static final FastCounter BUILDING_HANDLED = new FastCounter();
++    private static final FastCounter LUA_HANDLED = new FastCounter();
++    private static final FastCounter NEIGHBOUR_SKIP2 = new FastCounter();
++    private static final FastCounter NEIGHBOUR_SKIP3 = new FastCounter();
++    private static final FastCounter NEIGHBOUR_VERSION_BUMPS = new FastCounter();
++    private static final FastCounter NEIGHBOUR_PAIR_RECORDS = new FastCounter();
++    private static final FastCounter NEIGHBOUR_WORKER_SKIP2 = new FastCounter();
++    private static final FastCounter NEIGHBOUR_WORKER_SKIP3 = new FastCounter();
++    private static final FastCounter NEIGHBOUR_MAIN_SKIP2 = new FastCounter();
++    private static final FastCounter NEIGHBOUR_MAIN_SKIP3 = new FastCounter();
++    private static final FastCounter WORLDGEN_HIT = new FastCounter();
++    private static final FastCounter WORLDGEN_MISS = new FastCounter();
++
++    private static final int HIT_FORAGE = 0;
++    private static final int HIT_NEIGHBOUR_WORKER = 1;
++    private static final int HIT_NEIGHBOUR_MAIN = 2;
++    private static final int HIT_GRID = 3;
++    private static final int HIT_VEHICLES = 4;
++    private static final int HIT_BUILDINGS = 5;
++    private static final int HIT_LUA = 6;
++    private static final int HIT_WORLDGEN = 7;
++    private static final int HIT_CP2C = 8;
++    private static final boolean[] FIRST_HIT = new boolean[9];
++
++    private static volatile Field zoneGeneratorMapField;
++    private static volatile Field propertiesDirtyField;
++    private static volatile Field solidFloorCachedField;
++
++    private static final ConcurrentHashMap<String, Boolean> CONTAINER_OVERLAY_BY_SPRITE =
++            new ConcurrentHashMap<String, Boolean>();
++
++    private static final ThreadLocal<ArrayList<RoomDef>> ROOM_DEFS = new ThreadLocal<ArrayList<RoomDef>>() {
++        @Override protected ArrayList<RoomDef> initialValue() { return new ArrayList<RoomDef>(64); }
++    };
++    private static final ThreadLocal<IdentityHashMap<IsoBuilding, Boolean>> BUILDING_SEEN =
++            new ThreadLocal<IdentityHashMap<IsoBuilding, Boolean>>() {
++                @Override protected IdentityHashMap<IsoBuilding, Boolean> initialValue() {
++                    return new IdentityHashMap<IsoBuilding, Boolean>(64);
++                }
++            };
++
++    private static final ThreadLocal<NeighbourCtx> NEIGHBOUR = new ThreadLocal<NeighbourCtx>() {
++        @Override protected NeighbourCtx initialValue() { return new NeighbourCtx(); }
++    };
++
++    private static final ThreadLocal<MapBiomeCache> MAP_BIOME_CACHE = new ThreadLocal<MapBiomeCache>() {
++        @Override protected MapBiomeCache initialValue() { return new MapBiomeCache(128); }
++    };
++
++    private static final Object VEHICLE_INDEX_LOCK = new Object();
++    private static final WeakHashMap<IsoMetaCell, VehicleIndex> VEHICLE_INDEX =
++            new WeakHashMap<IsoMetaCell, VehicleIndex>();
++    private static volatile VehicleMethods vehicleMethods;
++
++    private static volatile MapObjectsAccess mapObjectsAccess;
++    private static final ThreadLocal<Object[]> LUA_SNAPSHOT = new ThreadLocal<Object[]>() {
++        @Override protected Object[] initialValue() { return new Object[16]; }
++    };
++    private static final ThreadLocal<Object[]> LUA_PARAMS = new ThreadLocal<Object[]>() {
++        @Override protected Object[] initialValue() { return new Object[1]; }
++    };
++
++    private ChunkOptimizationRuntime() {}
++
++    public static void configure(boolean forageRequested,
++                                 boolean neighbourWorkerRequested,
++                                 boolean neighbourMainRequested,
++                                 boolean gridRequested,
++                                 boolean vehiclesRequested,
++                                 boolean buildingsRequested,
++                                 boolean luaRequested,
++                                 boolean worldgenRequested,
++                                 boolean cp2cRequested) {
++        forage = forageRequested;
++        neighbourWorker = neighbourWorkerRequested;
++        neighbourMain = neighbourMainRequested;
++        grid = gridRequested;
++        vehicles = vehiclesRequested;
++        buildings = buildingsRequested;
++        lua = luaRequested;
++        worldgen = worldgenRequested;
++        cp2c = cp2cRequested;
++        Arrays.fill(FIRST_HIT, false);
++        ProofRuntime.state("CHUNK_OPTIMIZATION", anyEnabled() ? "ARMED" : "OFF",
++                "forage=" + bit(forage)
++                        + " neighbour_worker=" + bit(neighbourWorker)
++                        + " neighbour_main=" + bit(neighbourMain)
++                        + " grid=" + bit(grid)
++                        + " vehicles=" + bit(vehicles)
++                        + " buildings=" + bit(buildings)
++                        + " lua=" + bit(lua)
++                        + " worldgen=" + bit(worldgen)
++                        + " cp2c=" + bit(cp2c));
++    }
++
++    public static void disable(String mechanism) {
++        if ("CHUNK_FORAGING".equals(mechanism)) forage = false;
++        else if ("CHUNK_NEIGHBOUR_WORKER".equals(mechanism)) neighbourWorker = false;
++        else if ("CHUNK_NEIGHBOUR_MAIN".equals(mechanism)) neighbourMain = false;
++        else if ("CHUNK_GRID_LOAD".equals(mechanism)) grid = false;
++        else if ("CHUNK_VEHICLE_INDEX".equals(mechanism)) vehicles = false;
++        else if ("CHUNK_RANDOMIZED_BUILDINGS".equals(mechanism)) buildings = false;
++        else if ("CHUNK_LUA_MAPOBJECTS".equals(mechanism)) lua = false;
++        else if ("CHUNK_WORLDGEN_BIOME".equals(mechanism)) worldgen = false;
++        else if ("CHUNK_CP2C_DIRTY_CLEAR".equals(mechanism)) cp2c = false;
++    }
++
++    // ---------------------------------------------------------------------
++    // Foraging: semantic rewrite of ZoneGenerator.genForaging without Streams,
++    // per-zone Boolean[1024], Set allocation, or boxing in the 32x32 scan.
++    // ---------------------------------------------------------------------
++
++    public static boolean handleGenForaging(Object receiver, int chunkX, int chunkY) {
++        if (!forage || !(receiver instanceof ZoneGenerator)) return false;
++        final ZoneGenerator zg = (ZoneGenerator)receiver;
++        final BiomeMap map;
++        try {
++            map = zoneGeneratorMap(zg);
++        } catch (Throwable t) {
++            failOnce(FORAGE_FAIL, "forage", t);
++            return false;
++        }
++        if (map == null) return false;
++        firstHit(HIT_FORAGE, "CHUNK_FORAGING");
++
++        // From this point the routine mirrors vanilla ordering. Unexpected exceptions are allowed
++        // to propagate rather than invoking vanilla after partial zone registration.
++        IsoMetaGrid meta = IsoWorld.instance.getMetaGrid();
++        int cellX = PZMath.fastfloor(((float)chunkX) / 32.0f);
++        int cellY = PZMath.fastfloor(((float)chunkY) / 32.0f);
++        if (meta.hasCellData(cellX, cellY) == MetaCellPresence.NOT_LOADED) {
++            meta.setCellData(cellX, cellY, new IsoMetaCell(cellX, cellY));
++        }
++        IsoMetaChunk requested = meta.getChunkData(chunkX, chunkY);
++        if (meta.hasCellData(cellX, cellY) != MetaCellPresence.LOADED || requested.doesHaveForaging()) {
++            FORAGE_HANDLED.incrementAndGet();
++            return true;
++        }
++
++        int tileBaseX = cellX * 256;
++        int tileBaseY = cellY * 256;
++        int baseChunkX = PZMath.fastfloor(((float)tileBaseX) / 8.0f);
++        int baseChunkY = PZMath.fastfloor(((float)tileBaseY) / 8.0f);
++
++        HashMap<Integer, boolean[]> grids = new HashMap<Integer, boolean[]>(16);
++        for (int dx = 0; dx < 32; dx++) {
++            for (int dy = 0; dy < 32; dy++) {
++                int idx = dy * 32 + dx;
++                int[] ids;
++                try {
++                    ids = map.getZones(baseChunkX + dx, baseChunkY + dy, BiomeMap.Type.ZONE);
++                    if (ids == null) throw new NullPointerException("BiomeMap.getZones returned null");
++                } catch (ArrayIndexOutOfBoundsException e) {
++                    ids = FALLBACK_ZONE_255;
++                } catch (NullPointerException e) {
++                    ids = FALLBACK_ZONE_255;
++                }
++                boolean alreadyForaging = meta.getChunkData(baseChunkX + dx, baseChunkY + dy).doesHaveForaging();
++                for (int i = 0; i < ids.length; i++) {
++                    int id = ids[i];
++                    boolean duplicate = false;
++                    for (int j = 0; j < i; j++) {
++                        if (ids[j] == id) { duplicate = true; break; }
++                    }
++                    if (duplicate) continue;
++                    Integer key = Integer.valueOf(id);
++                    boolean[] flags = grids.get(key);
++                    if (flags == null) {
++                        flags = new boolean[1024];
++                        Arrays.fill(flags, true);
++                        grids.put(key, flags);
++                    }
++                    flags[idx] = alreadyForaging;
++                }
++            }
++        }
++
++        for (Integer id : grids.keySet()) {
++            ItemConfigurator.registerZone(map.getZoneName(id.intValue()));
++        }
++
++        for (Map.Entry<Integer, boolean[]> entry : grids.entrySet()) {
++            int zoneId = entry.getKey().intValue();
++            String zoneName = map.getZoneName(zoneId);
++            if (zoneName == null) {
++                DebugLog.log("Unknown foraging zone id=" + zoneId);
++                continue;
++            }
++            boolean[] flags = entry.getValue();
++            int row = 0;
++            while (!allTrue(flags)) {
++                int start = 0;
++                boolean found = false;
++                for (int col = 0; col < 32; col++) {
++                    if (!flags[row * 32 + col]) {
++                        start = col;
++                        found = true;
++                        break;
++                    }
++                }
++                if (!found) {
++                    row++;
++                    continue;
++                }
++
++                int end = start;
++                for (int col = start; col <= 32; col++) {
++                    if (col == 32 || flags[row * 32 + col]) {
++                        end = col - 1;
++                        break;
++                    }
++                }
++
++                int bottom = 32;
++                outer:
++                for (int r = row + 1; r < 32; r++) {
++                    for (int col = start; col <= end; col++) {
++                        if (flags[r * 32 + col]) {
++                            bottom = r;
++                            break outer;
++                        }
++                    }
++                }
++
++                meta.registerZone("", zoneName,
++                        (start + baseChunkX) * 8,
++                        (row + baseChunkY) * 8,
++                        0,
++                        (end + 1 - start) * 8,
++                        (bottom - row) * 8);
++
++                // Vanilla rechecks every cell using doesHaveZone(zoneName) after each rectangle.
++                // This preserves its handling of existing/overlapping same-name zones.
++                for (int dx = 0; dx < 32; dx++) {
++                    for (int dy = 0; dy < 32; dy++) {
++                        int idx = dy * 32 + dx;
++                        if (!flags[idx]) {
++                            flags[idx] = meta.getChunkData(baseChunkX + dx, baseChunkY + dy)
++                                    .doesHaveZone(zoneName);
++                        }
++                    }
++                }
++                row = 0;
++            }
++        }
++        FORAGE_HANDLED.incrementAndGet();
++        return true;
++    }
++
++    private static final int[] FALLBACK_ZONE_255 = new int[]{255};
++
++    private static boolean allTrue(boolean[] a) {
++        for (int i = 0; i < a.length; i++) if (!a[i]) return false;
++        return true;
++    }
++
++    private static BiomeMap zoneGeneratorMap(ZoneGenerator z) throws Exception {
++        Field f = zoneGeneratorMapField;
++        if (f == null) {
++            f = ZoneGenerator.class.getDeclaredField("map");
++            f.setAccessible(true);
++            zoneGeneratorMapField = f;
++        }
++        return (BiomeMap)f.get(z);
++    }
++
++    // ---------------------------------------------------------------------
++    // Neighbour V2: exact identity-pair cache + per-square versions.
++    //
++    // CP4 cleared the entire edge cache after every real RecalcProperties(). That was safe but
++    // unnecessarily destructive: one dirty square could erase thousands of already-proven pairs
++    // elsewhere in the same worker pass. CP4.1 keeps exact directed (A,B) identity pairs and
++    // records the version of A and B at the moment vanilla completed the calculation. A real
++    // RecalcProperties bumps only that square's version; pairs touching it stop matching while
++    // unrelated pairs remain reusable. No coordinate hash is used for equality, so collisions
++    // cannot turn an uncovered pair into a hit.
++    // ---------------------------------------------------------------------
++
++    public static void workerEnter() {
++        if (neighbourWorker || cp2c) neighbourScopeEnter(1);
++    }
++
++    public static void workerExit() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (c.active && c.scope == 1) neighbourScopeExit();
++    }
++
++    public static void mainEnter() {
++        if (neighbourMain) neighbourScopeEnter(2);
++    }
++
++    public static void mainExit() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (c.active && c.scope == 2) neighbourScopeExit();
++    }
++
++    private static void neighbourScopeEnter(int scope) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        c.active = true;
++        c.clear();
++        c.scope = scope;
++    }
++
++    private static void neighbourScopeExit() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        c.active = false;
++        c.clear();
++    }
++
++    public static void recalcNeighboursEnter() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (cp2c && c.active && c.scope == 1) c.cp2cDepth++;
++    }
++
++    public static void recalcNeighboursExit() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (c.cp2cDepth > 0) c.cp2cDepth--;
++    }
++
++    /** Called only after an actual RecalcProperties body completed successfully. */
++    public static void onRecalcPropertiesCompleted(Object squareObj) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (!c.active || !(squareObj instanceof IsoGridSquare)) return;
++        IsoGridSquare square = (IsoGridSquare)squareObj;
++
++        if (neighbourEnabled(c.scope)) {
++            c.versions.bump(square);
++            // CalculateCollide/CalculateVisionBlocked may consult squares beyond the two explicit
++            // endpoints. Clearing all proven pairs on any real property mutation is conservative
++            // and prevents a third-square change from creating a stale hit.
++            c.pairs.clear();
++            c.clearPending();
++            NEIGHBOUR_VERSION_BUMPS.incrementAndGet();
++        }
++
++        if (cp2c && c.scope == 1 && c.cp2cDepth > 0 && clearPropertiesDirty(square)) {
++            firstHit(HIT_CP2C, "CHUNK_CP2C_DIRTY_CLEAR");
++        }
++    }
++
++    /** Compatibility/fail-safe entry point for old callers: clear pair coverage only. */
++    public static void invalidateNeighbourCache() {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (c.active) c.pairs.clear();
++    }
++
++    public static boolean skipRecalc2(Object selfObj, Object otherObj, Object getter) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (!neighbourEnabled(c.scope) || !c.active
++                || !(selfObj instanceof IsoGridSquare)
++                || !(otherObj instanceof IsoGridSquare)) return false;
++        IsoGridSquare self = (IsoGridSquare)selfObj;
++        IsoGridSquare other = (IsoGridSquare)otherObj;
++        if (other == null || other == self) return true; // identical to vanilla early return
++        if (!prepareGetter(c, getter)) return false;
++        if (isDirty(self) || isDirty(other)) return false;
++        int va = c.versions.get(self), vb = c.versions.get(other);
++        if (c.pairs.contains(self, other, va, vb) && c.pairs.contains(other, self, vb, va)) {
++            if (!clearSolidFloor(self, other)) return false;
++            NEIGHBOUR_SKIP2.incrementAndGet();
++            if (c.scope == 2) {
++                NEIGHBOUR_MAIN_SKIP2.incrementAndGet();
++                firstHit(HIT_NEIGHBOUR_MAIN, "CHUNK_NEIGHBOUR_MAIN");
++            } else {
++                NEIGHBOUR_WORKER_SKIP2.incrementAndGet();
++                firstHit(HIT_NEIGHBOUR_WORKER, "CHUNK_NEIGHBOUR_WORKER");
++            }
++            return true;
++        }
++        c.pendingA = self; c.pendingB = other; c.pendingBoth = true;
++        return false;
++    }
++
++    public static void afterRecalc2(Object selfObj, Object otherObj, Object getter) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (!c.active || !neighbourEnabled(c.scope)) return;
++        if (c.pendingA != null && c.pendingB != null) {
++            int va = c.versions.get(c.pendingA), vb = c.versions.get(c.pendingB);
++            if (c.pairs.put(c.pendingA, c.pendingB, va, vb)) NEIGHBOUR_PAIR_RECORDS.incrementAndGet();
++            if (c.pairs.put(c.pendingB, c.pendingA, vb, va)) NEIGHBOUR_PAIR_RECORDS.incrementAndGet();
++        }
++        c.clearPending();
++    }
++
++    public static boolean skipRecalc3(Object selfObj, boolean both, Object otherObj, Object getter) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (!neighbourEnabled(c.scope) || !c.active
++                || !(selfObj instanceof IsoGridSquare)
++                || !(otherObj instanceof IsoGridSquare)) return false;
++        IsoGridSquare self = (IsoGridSquare)selfObj;
++        IsoGridSquare other = (IsoGridSquare)otherObj;
++        if (other == null || other == self) return true; // identical to vanilla early return
++        if (!prepareGetter(c, getter)) return false;
++        if (isDirty(self) || (both && isDirty(other))) return false;
++        int va = c.versions.get(self), vb = c.versions.get(other);
++        boolean covered = c.pairs.contains(self, other, va, vb);
++        if (both) covered = covered && c.pairs.contains(other, self, vb, va);
++        if (covered) {
++            // Vanilla invalidates solid-floor cache on both squares even when both=false.
++            if (!clearSolidFloor(self, other)) return false;
++            NEIGHBOUR_SKIP3.incrementAndGet();
++            if (c.scope == 2) {
++                NEIGHBOUR_MAIN_SKIP3.incrementAndGet();
++                firstHit(HIT_NEIGHBOUR_MAIN, "CHUNK_NEIGHBOUR_MAIN");
++            } else {
++                NEIGHBOUR_WORKER_SKIP3.incrementAndGet();
++                firstHit(HIT_NEIGHBOUR_WORKER, "CHUNK_NEIGHBOUR_WORKER");
++            }
++            return true;
++        }
++        c.pendingA = self; c.pendingB = other; c.pendingBoth = both;
++        return false;
++    }
++
++    public static void afterRecalc3(Object selfObj, boolean both, Object otherObj, Object getter) {
++        NeighbourCtx c = NEIGHBOUR.get();
++        if (!c.active || !neighbourEnabled(c.scope)) return;
++        if (c.pendingA != null && c.pendingB != null) {
++            int va = c.versions.get(c.pendingA), vb = c.versions.get(c.pendingB);
++            if (c.pairs.put(c.pendingA, c.pendingB, va, vb)) NEIGHBOUR_PAIR_RECORDS.incrementAndGet();
++            if (c.pendingBoth && c.pairs.put(c.pendingB, c.pendingA, vb, va)) NEIGHBOUR_PAIR_RECORDS.incrementAndGet();
++        }
++        c.clearPending();
++    }
++
++    private static boolean neighbourEnabled(int scope) {
++        return scope == 1 ? neighbourWorker : scope == 2 && neighbourMain;
++    }
++
++    private static boolean prepareGetter(NeighbourCtx c, Object getter) {
++        if (c.getter == null) { c.getter = getter; return true; }
++        if (c.getter != getter) {
++            // A different provider can expose a different neighbourhood for CalculateCollide/
++            // CalculateVisionBlocked. Pair coverage is therefore not transferable.
++            c.pairs.clear();
++            c.getter = getter;
++        }
++        return true;
++    }
++
++    private static boolean isDirty(IsoGridSquare s) {
++        try {
++            Field f = propertiesDirtyField;
++            if (f == null) {
++                f = IsoGridSquare.class.getDeclaredField("propertiesDirty");
++                f.setAccessible(true);
++                propertiesDirtyField = f;
++            }
++            return f.getBoolean(s);
++        } catch (Throwable t) {
++            failOnce(NEIGHBOUR_FAIL, "neighbour_dirty_field", t);
++            return true; // fail closed: dirty => do not skip
++        }
++    }
++
++    private static boolean clearPropertiesDirty(IsoGridSquare square) {
++        try {
++            Field f = propertiesDirtyField;
++            if (f == null) {
++                f = IsoGridSquare.class.getDeclaredField("propertiesDirty");
++                f.setAccessible(true);
++                propertiesDirtyField = f;
++            }
++            if (!f.getBoolean(square)) return false;
++            f.setBoolean(square, false);
++            return true;
++        } catch (Throwable t) {
++            failOnce(NEIGHBOUR_FAIL, "cp2c_properties_dirty", t);
++            cp2c = false;
++            return false;
++        }
++    }
++
++    private static boolean clearSolidFloor(IsoGridSquare a, IsoGridSquare b) {
++        try {
++            Field f = solidFloorCachedField;
++            if (f == null) {
++                f = IsoGridSquare.class.getDeclaredField("solidFloorCached");
++                f.setAccessible(true);
++                solidFloorCachedField = f;
++            }
++            f.setBoolean(a, false);
++            f.setBoolean(b, false);
++            return true;
++        } catch (Throwable t) {
++            failOnce(NEIGHBOUR_FAIL, "neighbour_solid_floor_field", t);
++            return false;
++        }
++    }
++
++    // ---------------------------------------------------------------------
++    // Grid square load workaround: same side effects, fewer repeated lookups and
++    // cached ContainerOverlays.hasOverlays(spriteName), which is name-only in 42.20.3.
++    // ---------------------------------------------------------------------
++
++    public static boolean handleLoadGridSquare(Object squareObj) {
++        if (!grid || !(squareObj instanceof IsoGridSquare)) return false;
++        IsoGridSquare square = (IsoGridSquare)squareObj;
++        firstHit(HIT_GRID, "CHUNK_GRID_LOAD");
++        try {
++            if (square.isOverlayDone()) {
++                GRID_HANDLED.incrementAndGet();
++                return true;
++            }
++            PZArrayList<IsoObject> objects = square.getObjects();
++            Object[] elements = objects.getElements();
++            int count = objects.size();
++            boolean client = GameClient.client;
++            for (int i = 0; i < count; i++) {
++                IsoObject obj = (IsoObject)elements[i];
++                if (obj instanceof IsoWorldInventoryObject) continue;
++                if (!client) fastItemPickerCheck(obj);
++                IsoSprite sprite = obj.sprite;
++                String name = sprite == null ? null : sprite.name;
++                if (name != null && !containerHasOverlays(name, obj)) {
++                    TileOverlays.instance.updateTileOverlaySprite(obj);
++                }
++            }
++            square.setOverlayDone(true);
++            GRID_HANDLED.incrementAndGet();
++            return true;
++        } catch (Throwable t) {
++            // This method normally runs under IsoChunk.loadGridSquareIfNeeded's Throwable catch.
++            // Re-throwing preserves the vanilla error path; only structural setup failures fall back.
++            if (t instanceof RuntimeException) throw (RuntimeException)t;
++            throw new RuntimeException(t);
++        }
++    }
++
++    private static void fastItemPickerCheck(IsoObject obj) {
++        IsoSprite sprite = obj.getSprite();
++        if (sprite == null || sprite.getName() == null) return;
++        ItemContainer c = obj.getContainer();
++        if (c != null && !c.isExplored()) {
++            ItemPickerJava.fillContainer(c, IsoPlayer.getInstance());
++            c.setExplored(true);
++            if (GameServer.server) GameServer.sendItemsInContainer(obj, c);
++        }
++        if (c != null && c.isEmpty()) return;
++        ItemPickerJava.updateOverlaySprite(obj);
++    }
++
++    private static boolean containerHasOverlays(String spriteName, IsoObject obj) {
++        Boolean cached = CONTAINER_OVERLAY_BY_SPRITE.get(spriteName);
++        if (cached != null) return cached.booleanValue();
++        boolean v = ContainerOverlays.instance.hasOverlays(obj);
++        Boolean old = CONTAINER_OVERLAY_BY_SPRITE.putIfAbsent(spriteName, Boolean.valueOf(v));
++        return old == null ? v : old.booleanValue();
++    }
++
++    // ---------------------------------------------------------------------
++    // AddVehicles: build an ordered spatial index once per IsoMetaCell. Vanilla scans
++    // every VehicleZone for every chunk; CP4.1 presents the exact same intersecting zones,
++    // in original order, then invokes the same private spawn helpers.
++    // ---------------------------------------------------------------------
++
++    public static boolean handleAddVehicles(Object chunkObj) {
++        if (!vehicles || !(chunkObj instanceof IsoChunk)) return false;
++        IsoChunk chunk = (IsoChunk)chunkObj;
++        VehicleMethods vm;
++        try {
++            vm = vehicleMethods();
++        } catch (Throwable t) {
++            failOnce(VEHICLE_FAIL, "vehicles_reflection", t);
++            return false;
++        }
++        firstHit(HIT_VEHICLES, "CHUNK_VEHICLE_INDEX");
++        try {
++            if (SandboxOptions.instance.carSpawnRate.getValue() == 1) {
++                VEHICLE_HANDLED.incrementAndGet(); return true;
++            }
++            if (VehicleType.vehicles.isEmpty()) VehicleType.init();
++            if (GameClient.client) { VEHICLE_HANDLED.incrementAndGet(); return true; }
++            if (!SandboxOptions.instance.enableVehicles.getValue()) {
++                VEHICLE_HANDLED.incrementAndGet(); return true;
++            }
++            if (!GameServer.server) WorldSimulation.instance.create();
++
++            IsoMetaCell cell = IsoWorld.instance.getMetaGrid().getCellData(chunk.wx / 32, chunk.wy / 32);
++            ArrayList<VehicleZone> zones = cell == null ? null : cell.vehicleZones;
++            if (zones != null) {
++                ArrayList<VehicleZone> candidates = vehicleCandidates(cell, zones, chunk.wx, chunk.wy);
++                boolean traffic = SandboxOptions.instance.trafficJam.getValue();
++                for (int i = 0; i < candidates.size(); i++) {
++                    VehicleZone zone = candidates.get(i);
++                    VEHICLE_CANDIDATE_CHECKS.incrementAndGet();
++                    // Hardening: the index is only a candidate accelerator. Re-run the exact
++                    // vanilla B42.20.3 overlap predicate before any RNG/callback side effect.
++                    if (!vehicleZoneIntersectsChunk(zone, chunk.wx, chunk.wy)) {
++                        VEHICLE_EXACT_REJECTS.incrementAndGet();
++                        continue;
++                    }
++                    String name = zone.name;
++                    if (name.isEmpty()) name = zone.type;
++                    if (traffic) {
++                        if (zone.isPolyline()) {
++                            if ("TrafficJam".equalsIgnoreCase(name)) {
++                                vm.trafficPolyline.invoke(chunk, zone, name);
++                                continue;
++                            }
++                            if ("RTrafficJam".equalsIgnoreCase(name) && Rand.Next(100) < 10) {
++                                vm.trafficPolyline.invoke(chunk, zone, name.replaceFirst("rtraffic", "traffic"));
++                                continue;
++                            }
++                        }
++                        if ("TrafficJamW".equalsIgnoreCase(name)) vm.trafficW.invoke(chunk, zone, name);
++                        if ("TrafficJamE".equalsIgnoreCase(name)) vm.trafficE.invoke(chunk, zone, name);
++                        if ("TrafficJamS".equalsIgnoreCase(name)) vm.trafficS.invoke(chunk, zone, name);
++                        if ("TrafficJamN".equalsIgnoreCase(name)) vm.trafficN.invoke(chunk, zone, name);
++                        if ("RTrafficJamW".equalsIgnoreCase(name) && Rand.Next(100) < 10)
++                            vm.trafficW.invoke(chunk, zone, name.replaceFirst("rtraffic", "traffic"));
++                        if ("RTrafficJamE".equalsIgnoreCase(name) && Rand.Next(100) < 10)
++                            vm.trafficE.invoke(chunk, zone, name.replaceFirst("rtraffic", "traffic"));
++                        if ("RTrafficJamS".equalsIgnoreCase(name) && Rand.Next(100) < 10)
++                            vm.trafficS.invoke(chunk, zone, name.replaceFirst("rtraffic", "traffic"));
++                        if ("RTrafficJamN".equalsIgnoreCase(name) && Rand.Next(100) < 10)
++                            vm.trafficN.invoke(chunk, zone, name.replaceFirst("rtraffic", "traffic"));
++                    }
++                    if (StringUtils.containsIgnoreCase(name, "TrafficJam")) continue;
++                    if ("TestVehicles".equals(name)) {
++                        vm.forTest.invoke(chunk, zone);
++                        continue;
++                    }
++                    if (!VehicleType.hasTypeForZone(name)) continue;
++                    if (zone.isPolyline()) vm.onZonePolyline.invoke(chunk, zone, name);
++                    else vm.onZone.invoke(chunk, zone, name);
++                }
++            }
++
++            IsoMetaChunk metaChunk = IsoWorld.instance.getMetaChunk(chunk.wx, chunk.wy);
++            if (metaChunk != null) {
++                for (int i = 0; i < metaChunk.getZonesSize(); i++) {
++                    vm.randomCrash.invoke(chunk, metaChunk.getZone(i), Boolean.FALSE);
++                }
++            }
++            VEHICLE_HANDLED.incrementAndGet();
++            return true;
++        } catch (Throwable t) {
++            // Private spawn helpers may throw exactly as vanilla would. Unwrap reflection wrapper.
++            Throwable c = t instanceof java.lang.reflect.InvocationTargetException
++                    ? ((java.lang.reflect.InvocationTargetException)t).getCause() : t;
++            if (c instanceof RuntimeException) throw (RuntimeException)c;
++            if (c instanceof Error) throw (Error)c;
++            throw new RuntimeException(c);
++        }
++    }
++
++
++    private static boolean vehicleZoneIntersectsChunk(VehicleZone zone, int wx, int wy) {
++        int x0 = wx * 8;
++        int y0 = wy * 8;
++        int x1 = (wx + 1) * 8;
++        int y1 = (wy + 1) * 8;
++        // Exact bytecode predicate from IsoChunk.AddVehicles() B42.20.3:
++        // x+w >= x0 && y+h >= y0 && x < x1 && y < y1
++        return zone.x + zone.w >= x0 && zone.y + zone.h >= y0 && zone.x < x1 && zone.y < y1;
++    }
++
++    private static ArrayList<VehicleZone> vehicleCandidates(IsoMetaCell cell,
++                                                             ArrayList<VehicleZone> zones,
++                                                             int wx, int wy) {
++        VehicleIndex idx;
++        synchronized (VEHICLE_INDEX_LOCK) {
++            idx = VEHICLE_INDEX.get(cell);
++            if (idx == null || !idx.matches(zones)) {
++                idx = new VehicleIndex(zones);
++                VEHICLE_INDEX.put(cell, idx);
++                VEHICLE_INDEX_BUILDS.incrementAndGet();
++            }
++        }
++        return idx.get(wx, wy);
++    }
++
++    private static VehicleMethods vehicleMethods() throws Exception {
++        VehicleMethods v = vehicleMethods;
++        if (v != null) return v;
++        synchronized (ChunkOptimizationRuntime.class) {
++            v = vehicleMethods;
++            if (v == null) vehicleMethods = v = new VehicleMethods();
++        }
++        return v;
++    }
++
++    // ---------------------------------------------------------------------
++    // randomizeBuildingsEtc: same callbacks/order; optimize only duplicate collection
++    // and loop-invariant values. IsoBuilding does not override equals in 42.20.3, so an
++    // IdentityHashMap is equivalent to ArrayList.contains for this list.
++    // ---------------------------------------------------------------------
++
++    public static boolean handleRandomizeBuildings(Object chunkObj, ArrayList<?> buildingsObj) {
++        if (!buildings || !(chunkObj instanceof IsoChunk) || buildingsObj == null) return false;
++        IsoChunk chunk = (IsoChunk)chunkObj;
++        firstHit(HIT_BUILDINGS, "CHUNK_RANDOMIZED_BUILDINGS");
++        @SuppressWarnings("unchecked") ArrayList<IsoBuilding> buildingList = (ArrayList<IsoBuilding>)buildingsObj;
++        try {
++            ArrayList<RoomDef> roomDefs = ROOM_DEFS.get();
++            roomDefs.clear();
++            IsoWorld.instance.metaGrid.getRoomsIntersecting(chunk.wx * 8 - 1, chunk.wy * 8 - 1, 9, 9, roomDefs);
++            IdentityHashMap<IsoBuilding, Boolean> seen = BUILDING_SEEN.get();
++            seen.clear();
++            for (int i = 0; i < buildingList.size(); i++) seen.put(buildingList.get(i), Boolean.TRUE);
++            for (int i = 0; i < roomDefs.size(); i++) {
++                IsoRoom room = roomDefs.get(i).getIsoRoom();
++                if (room == null) continue;
++                IsoBuilding b = room.getBuilding();
++                if (!seen.containsKey(b)) {
++                    buildingList.add(b);
++                    seen.put(b, Boolean.TRUE);
++                }
++            }
++
++            boolean client = GameClient.client;
++            for (int i = 0; i < buildingList.size(); i++) {
++                IsoBuilding b = buildingList.get(i);
++                if (!client && b != null && b.def != null && b.def.isFullyStreamedIn()) {
++                    StashSystem.doBuildingStash(b.def);
++                    if (b.def != null && StashSystem.isStashBuilding(b.def)) StashSystem.visitedBuilding(b.def);
++                }
++                RandomizedBuildingBase.ChunkLoaded(b);
++            }
++
++            if (!client && !buildingList.isEmpty()) {
++                int minX = chunk.wx * 8;
++                int minY = chunk.wy * 8;
++                VirtualZombieManager vzm = VirtualZombieManager.instance;
++                for (int i = 0; i < buildingList.size(); i++) {
++                    IsoBuilding b = buildingList.get(i);
++                    for (int j = 0; j < b.rooms.size(); j++) {
++                        IsoRoom room = b.rooms.get(j);
++                        RoomDef def = room.def;
++                        if (!def.doneSpawn) continue;
++                        if (chunk.isSpawnedRoom(def.id)) continue;
++                        if (!vzm.shouldSpawnZombiesOnLevel(def.level)) continue;
++                        if (!def.intersects(minX, minY, 8, 8)) continue;
++                        chunk.addSpawnedRoom(def.id);
++                        vzm.addIndoorZombiesToChunk(chunk, room);
++                    }
++                }
++            }
++            BUILDING_HANDLED.incrementAndGet();
++            return true;
++        } catch (Throwable t) {
++            // No partial fallback after callbacks; propagate like vanilla.
++            if (t instanceof RuntimeException) throw (RuntimeException)t;
++            if (t instanceof Error) throw (Error)t;
++            throw new RuntimeException(t);
++        }
++    }
++
++    // ---------------------------------------------------------------------
++    // MapObjects.newGridSquare: preserve callback snapshot and mutation checks while
++    // replacing the shared ArrayList snapshot with a reusable Object[] and caching
++    // reflective access to immutable Callback metadata.
++    // ---------------------------------------------------------------------
++
++    public static boolean handleLuaNewSquare(Object squareObj) {
++        if (!lua || !(squareObj instanceof IsoGridSquare)) return false;
++        firstHit(HIT_LUA, "CHUNK_LUA_MAPOBJECTS");
++        final MapObjectsAccess access;
++        try {
++            access = mapObjectsAccess();
++        } catch (Throwable t) {
++            failOnce(LUA_FAIL, "lua_access", t);
++            return false;
++        }
++        IsoGridSquare square = (IsoGridSquare)squareObj;
++        if (square == null || square.getObjects().isEmpty()) { LUA_HANDLED.incrementAndGet(); return true; }
++        PZArrayList<IsoObject> objects = square.getObjects();
++        int n = objects.size();
++        Object[] snap = LUA_SNAPSHOT.get();
++        if (snap.length < n) {
++            int cap = snap.length;
++            while (cap < n) cap <<= 1;
++            snap = new Object[cap];
++            LUA_SNAPSHOT.set(snap);
++        }
++        Object[] elements = objects.getElements();
++        System.arraycopy(elements, 0, snap, 0, n);
++        Object[] params = LUA_PARAMS.get();
++        for (int i = 0; i < n; i++) {
++            IsoObject obj = (IsoObject)snap[i];
++            if (!objects.contains(obj)) continue;
++            if (obj instanceof IsoWorldInventoryObject || obj == null || obj.sprite == null) continue;
++            String spriteName = obj.sprite.name != null ? obj.sprite.name : obj.spriteName;
++            if (spriteName == null || spriteName.isEmpty()) continue;
++            Object callback = access.onNew.get(spriteName);
++            if (callback == null) continue;
++            CallbackData cb = access.callback(callback);
++            params[0] = obj;
++            for (int f = 0; f < cb.functions.size(); f++) {
++                try {
++                    LuaManager.caller.protectedCallVoid(LuaManager.thread, cb.functions.get(f), params);
++                } catch (Throwable t) {
++                    ExceptionLogger.logException(t);
++                }
++                String current = obj.sprite == null ? obj.spriteName
++                        : (obj.sprite.name != null ? obj.sprite.name : obj.spriteName);
++                if (!objects.contains(obj) || obj.sprite == null || !cb.spriteName.equals(current)) break;
++            }
++        }
++        for (int i = 0; i < n; i++) snap[i] = null;
++        LUA_HANDLED.incrementAndGet();
++        return true;
++    }
++
++    private static MapObjectsAccess mapObjectsAccess() throws Exception {
++        MapObjectsAccess a = mapObjectsAccess;
++        if (a != null) return a;
++        synchronized (ChunkOptimizationRuntime.class) {
++            a = mapObjectsAccess;
++            if (a == null) mapObjectsAccess = a = new MapObjectsAccess();
++        }
++        return a;
++    }
++
++    // ---------------------------------------------------------------------
++    // Worldgen map-biome memoization. Cache is cleared at the beginning of each
++    // generateChunks scope; this only removes duplicate deterministic noise/registry lookups.
++    // ---------------------------------------------------------------------
++
++    public static void worldgenScopeEnter() {
++        if (worldgen) MAP_BIOME_CACHE.get().clear();
++    }
++
++    public static boolean mapBiomeHas(Object owner, int x, int y, String name) {
++        if (!worldgen) return false;
++        firstHit(HIT_WORLDGEN, "CHUNK_WORLDGEN_BIOME");
++        MapBiomeCache c = MAP_BIOME_CACHE.get();
++        boolean hit = c.find(owner, x, y, name);
++        if (hit) WORLDGEN_HIT.incrementAndGet(); else WORLDGEN_MISS.incrementAndGet();
++        return hit;
++    }
++
++    public static Object mapBiomeLast() {
++        return MAP_BIOME_CACHE.get().last;
++    }
++
++    public static void mapBiomePut(Object owner, int x, int y, String name, Object value) {
++        if (worldgen) MAP_BIOME_CACHE.get().put(owner, x, y, name, value);
++    }
++
++    // ---------------------------------------------------------------------
++
++    public static String summaryLine() {
++        return "MGLPZ_CP4.1_OPT_SUMMARY"
++                + " forage_handled=" + FORAGE_HANDLED.get()
++                + " neighbour_skip2=" + NEIGHBOUR_SKIP2.get()
++                + " neighbour_skip3=" + NEIGHBOUR_SKIP3.get()
++                + " neighbour_version_bumps=" + NEIGHBOUR_VERSION_BUMPS.get()
++                + " neighbour_pair_records=" + NEIGHBOUR_PAIR_RECORDS.get()
++                + " neighbour_worker_skip2=" + NEIGHBOUR_WORKER_SKIP2.get()
++                + " neighbour_worker_skip3=" + NEIGHBOUR_WORKER_SKIP3.get()
++                + " neighbour_main_skip2=" + NEIGHBOUR_MAIN_SKIP2.get()
++                + " neighbour_main_skip3=" + NEIGHBOUR_MAIN_SKIP3.get()
++                + " grid_handled=" + GRID_HANDLED.get()
++                + " vehicles_handled=" + VEHICLE_HANDLED.get()
++                + " vehicle_index_builds=" + VEHICLE_INDEX_BUILDS.get()
++                + " vehicle_candidate_checks=" + VEHICLE_CANDIDATE_CHECKS.get()
++                + " vehicle_exact_rejects=" + VEHICLE_EXACT_REJECTS.get()
++                + " buildings_handled=" + BUILDING_HANDLED.get()
++                + " lua_handled=" + LUA_HANDLED.get()
++                + " worldgen_cache_hit=" + WORLDGEN_HIT.get()
++                + " worldgen_cache_miss=" + WORLDGEN_MISS.get();
++    }
++
++    private static void failOnce(AtomicBoolean once, String mechanism, Throwable t) {
++        if (once.compareAndSet(false, true)) {
++            ProofRuntime.state("CHUNK_GUARD_" + mechanism.toUpperCase(java.util.Locale.ROOT),
++                    "FALLBACK", "error=" + t.getClass().getName()
++                            + " action=original_game_code");
++        }
++    }
++
++    private static boolean anyEnabled() {
++        return forage || neighbourWorker || neighbourMain || grid || vehicles || buildings
++                || lua || worldgen || cp2c;
++    }
++
++    private static void firstHit(int index, String mechanism) {
++        // A benign race can emit at most one extra bounded proof line; keeping this non-atomic
++        // removes a memory barrier from the chunk hot paths after the first hit.
++        if (!FIRST_HIT[index]) {
++            FIRST_HIT[index] = true;
++            ProofRuntime.state(mechanism, "EXERCISED", "production_fast_path_hit=1");
++        }
++    }
++
++    private static int bit(boolean value) { return value ? 1 : 0; }
++
++    /** Diagnostic counters are deliberately non-atomic: their values never control semantics. */
++    private static final class FastCounter {
++        private long value;
++        void incrementAndGet() { value++; }
++        long get() { return value; }
++    }
++
++    private static final class LongSet {
++        private long[] keys;
++        private byte[] used;
++        private int size;
++        LongSet(int cap) { resize(cap); }
++        void clear() { Arrays.fill(used, (byte)0); size = 0; }
++        boolean contains(long k) {
++            int m = keys.length - 1;
++            int i = mix(k) & m;
++            while (used[i] != 0) {
++                if (keys[i] == k) return true;
++                i = (i + 1) & m;
++            }
++            return false;
++        }
++        void add(long k) {
++            if ((size + 1) * 10 >= keys.length * 7) rehash(keys.length << 1);
++            int m = keys.length - 1;
++            int i = mix(k) & m;
++            while (used[i] != 0) {
++                if (keys[i] == k) return;
++                i = (i + 1) & m;
++            }
++            used[i] = 1; keys[i] = k; size++;
++        }
++        private void resize(int requested) {
++            int n = 1; while (n < requested) n <<= 1;
++            keys = new long[n]; used = new byte[n]; size = 0;
++        }
++        private void rehash(int n) {
++            long[] oldK = keys; byte[] oldU = used;
++            resize(n);
++            for (int i=0;i<oldK.length;i++) if (oldU[i] != 0) add(oldK[i]);
++        }
++        private static int mix(long x) {
++            x ^= x >>> 33; x *= 0xff51afd7ed558ccdL; x ^= x >>> 33;
++            return (int)x;
++        }
++    }
++
++    private static final class NeighbourCtx {
++        boolean active;
++        int scope;
++        int cp2cDepth;
++        Object getter;
++        final SquareVersions versions = new SquareVersions(2048);
++        final DirectedPairCache pairs = new DirectedPairCache(8192);
++        IsoGridSquare pendingA, pendingB;
++        boolean pendingBoth;
++        void clear() {
++            scope=0; cp2cDepth=0; getter=null; versions.clear(); pairs.clear(); clearPending();
++        }
++        void clearPending() { pendingA=null; pendingB=null; pendingBoth=false; }
++    }
++
++    /** Reusable identity->version map. No boxing and no coordinate aliasing. */
++    private static final class SquareVersions {
++        private IsoGridSquare[] keys;
++        private int[] values;
++        private int size;
++        SquareVersions(int cap) { resize(cap); }
++        void clear() { Arrays.fill(keys, null); size = 0; }
++        int get(IsoGridSquare k) {
++            int m = keys.length - 1;
++            int i = mixIdentity(k) & m;
++            while (keys[i] != null) {
++                if (keys[i] == k) return values[i];
++                i = (i + 1) & m;
++            }
++            return 0;
++        }
++        void bump(IsoGridSquare k) {
++            if ((size + 1) * 10 >= keys.length * 7) rehash(keys.length << 1);
++            int m = keys.length - 1;
++            int i = mixIdentity(k) & m;
++            while (keys[i] != null) {
++                if (keys[i] == k) { values[i]++; return; }
++                i = (i + 1) & m;
++            }
++            keys[i] = k; values[i] = 1; size++;
++        }
++        private void resize(int requested) {
++            int n=1; while (n<requested) n<<=1;
++            keys=new IsoGridSquare[n]; values=new int[n]; size=0;
++        }
++        private void rehash(int n) {
++            IsoGridSquare[] ok=keys; int[] ov=values;
++            resize(n);
++            for (int j=0;j<ok.length;j++) if (ok[j]!=null) putRaw(ok[j],ov[j]);
++        }
++        private void putRaw(IsoGridSquare k, int v) {
++            int m=keys.length-1, i=mixIdentity(k)&m;
++            while(keys[i]!=null) i=(i+1)&m;
++            keys[i]=k; values[i]=v; size++;
++        }
++    }
++
++    /** Exact directed identity pair cache storing endpoint versions at calculation time. */
++    private static final class DirectedPairCache {
++        private IsoGridSquare[] a, b;
++        private int[] va, vb;
++        private int size;
++        DirectedPairCache(int cap) { resize(cap); }
++        void clear() { Arrays.fill(a,null); Arrays.fill(b,null); size=0; }
++        boolean contains(IsoGridSquare ka, IsoGridSquare kb, int kva, int kvb) {
++            int m=a.length-1, i=mixPair(ka,kb)&m;
++            while(a[i]!=null) {
++                if(a[i]==ka && b[i]==kb) return va[i]==kva && vb[i]==kvb;
++                i=(i+1)&m;
++            }
++            return false;
++        }
++        /** @return true when a new identity pair was inserted, false when existing record updated. */
++        boolean put(IsoGridSquare ka, IsoGridSquare kb, int kva, int kvb) {
++            if ((size + 1) * 10 >= a.length * 7) rehash(a.length << 1);
++            int m=a.length-1, i=mixPair(ka,kb)&m;
++            while(a[i]!=null) {
++                if(a[i]==ka && b[i]==kb) { va[i]=kva; vb[i]=kvb; return false; }
++                i=(i+1)&m;
++            }
++            a[i]=ka; b[i]=kb; va[i]=kva; vb[i]=kvb; size++; return true;
++        }
++        private void resize(int requested) {
++            int n=1; while(n<requested) n<<=1;
++            a=new IsoGridSquare[n]; b=new IsoGridSquare[n]; va=new int[n]; vb=new int[n]; size=0;
++        }
++        private void rehash(int n) {
++            IsoGridSquare[] oa=a, ob=b; int[] ova=va, ovb=vb;
++            resize(n);
++            for(int j=0;j<oa.length;j++) if(oa[j]!=null) put(oa[j],ob[j],ova[j],ovb[j]);
++        }
++    }
++
++    private static int mixIdentity(Object o) {
++        int x = System.identityHashCode(o);
++        x ^= x >>> 16; x *= 0x7feb352d; x ^= x >>> 15; x *= 0x846ca68b; x ^= x >>> 16;
++        return x;
++    }
++    private static int mixPair(Object a, Object b) {
++        int x = mixIdentity(a) * 0x9E3779B9 + Integer.rotateLeft(mixIdentity(b), 13);
++        x ^= x >>> 16; x *= 0x7feb352d; x ^= x >>> 15;
++        return x;
++    }
++
++    private static final class VehicleIndex {
++        final ArrayList<VehicleZone> source;
++        final int size;
++        final VehicleZone[] members;
++        final int[] geometry;
++        final HashMap<Long, ArrayList<VehicleZone>> byChunk = new HashMap<Long, ArrayList<VehicleZone>>();
++        VehicleIndex(ArrayList<VehicleZone> zones) {
++            source = zones;
++            size = zones.size();
++            members = new VehicleZone[size];
++            geometry = new int[size * 4];
++            for (int i=0;i<zones.size();i++) {
++                VehicleZone z = zones.get(i);
++                members[i] = z;
++                int base = i * 4;
++                geometry[base] = z.x;
++                geometry[base + 1] = z.y;
++                geometry[base + 2] = z.w;
++                geometry[base + 3] = z.h;
++                int minX = Math.floorDiv(z.x, 8);
++                int maxX = Math.floorDiv(z.x + z.w, 8);
++                int minY = Math.floorDiv(z.y, 8);
++                int maxY = Math.floorDiv(z.y + z.h, 8);
++                for (int cx=minX; cx<=maxX; cx++) {
++                    for (int cy=minY; cy<=maxY; cy++) {
++                        long key = (((long)cx) << 32) ^ (cy & 0xffffffffL);
++                        ArrayList<VehicleZone> l = byChunk.get(Long.valueOf(key));
++                        if (l == null) { l = new ArrayList<VehicleZone>(4); byChunk.put(Long.valueOf(key), l); }
++                        l.add(z);
++                    }
++                }
++            }
++        }
++        boolean matches(ArrayList<VehicleZone> zones) {
++            if (source != zones || size != zones.size()) return false;
++            // Exact identity + geometry validation closes the same-size in-place mutation hole.
++            // Name/type changes do not affect index membership and are read live from each zone.
++            for (int i = 0; i < size; i++) {
++                VehicleZone z = zones.get(i);
++                int base = i * 4;
++                if (z != members[i]
++                        || z.x != geometry[base]
++                        || z.y != geometry[base + 1]
++                        || z.w != geometry[base + 2]
++                        || z.h != geometry[base + 3]) return false;
++            }
++            return true;
++        }
++        ArrayList<VehicleZone> get(int x, int y) {
++            long key = (((long)x) << 32) ^ (y & 0xffffffffL);
++            ArrayList<VehicleZone> l = byChunk.get(Long.valueOf(key));
++            return l == null ? EMPTY_VEHICLE_ZONES : l;
++        }
++    }
++    private static final ArrayList<VehicleZone> EMPTY_VEHICLE_ZONES = new ArrayList<VehicleZone>(0);
++
++    private static final class VehicleMethods {
++        final Method forTest, onZone, onZonePolyline, trafficW, trafficE, trafficS, trafficN, trafficPolyline, randomCrash;
++        VehicleMethods() throws Exception {
++            forTest = method("AddVehicles_ForTest", Zone.class);
++            onZone = method("AddVehicles_OnZone", VehicleZone.class, String.class);
++            onZonePolyline = method("AddVehicles_OnZonePolyline", VehicleZone.class, String.class);
++            trafficW = method("AddVehicles_TrafficJam_W", Zone.class, String.class);
++            trafficE = method("AddVehicles_TrafficJam_E", Zone.class, String.class);
++            trafficS = method("AddVehicles_TrafficJam_S", Zone.class, String.class);
++            trafficN = method("AddVehicles_TrafficJam_N", Zone.class, String.class);
++            trafficPolyline = method("AddVehicles_TrafficJam_Polyline", Zone.class, String.class);
++            randomCrash = method("addRandomCarCrash", Zone.class, boolean.class);
++        }
++        private static Method method(String n, Class<?>... p) throws Exception {
++            Method m = IsoChunk.class.getDeclaredMethod(n, p); m.setAccessible(true); return m;
++        }
++    }
++
++    private static final class MapObjectsAccess {
++        final HashMap<String,Object> onNew;
++        final Field cbSprite, cbFunctions;
++        final IdentityHashMap<Object, CallbackData> cache = new IdentityHashMap<Object, CallbackData>();
++        @SuppressWarnings("unchecked") MapObjectsAccess() throws Exception {
++            Field f = MapObjects.class.getDeclaredField("onNew"); f.setAccessible(true);
++            onNew = (HashMap<String,Object>)f.get(null);
++            Class<?> cb = Class.forName("zombie.Lua.MapObjects$Callback", false, MapObjects.class.getClassLoader());
++            cbSprite = cb.getDeclaredField("spriteName"); cbSprite.setAccessible(true);
++            cbFunctions = cb.getDeclaredField("functions"); cbFunctions.setAccessible(true);
++        }
++        @SuppressWarnings("unchecked") CallbackData callback(Object o) {
++            CallbackData d = cache.get(o);
++            if (d != null) return d;
++            try {
++                d = new CallbackData((String)cbSprite.get(o), (ArrayList<Object>)cbFunctions.get(o));
++                cache.put(o,d); return d;
++            } catch (Exception e) { throw new RuntimeException(e); }
++        }
++    }
++    private static final class CallbackData {
++        final String spriteName; final ArrayList<Object> functions;
++        CallbackData(String s, ArrayList<Object> f) { spriteName=s; functions=f; }
++    }
++
++    private static final class MapBiomeCache {
++        final Object[] owners, values;
++        final String[] names;
++        final int[] xs, ys;
++        final byte[] used;
++        final int mask;
++        Object last;
++        MapBiomeCache(int cap) {
++            int n=1; while(n<cap)n<<=1;
++            owners=new Object[n]; values=new Object[n]; names=new String[n]; xs=new int[n]; ys=new int[n]; used=new byte[n]; mask=n-1;
++        }
++        void clear() { Arrays.fill(used,(byte)0); Arrays.fill(owners,null); Arrays.fill(values,null); Arrays.fill(names,null); last=null; }
++        boolean find(Object o,int x,int y,String n) {
++            int i=slot(o,x,y,n);
++            if (used[i]!=0 && owners[i]==o && xs[i]==x && ys[i]==y && eq(names[i],n)) { last=values[i]; return true; }
++            last=null; return false;
++        }
++        void put(Object o,int x,int y,String n,Object v) {
++            int i=slot(o,x,y,n); used[i]=1; owners[i]=o; xs[i]=x; ys[i]=y; names[i]=n; values[i]=v; last=v;
++        }
++        int slot(Object o,int x,int y,String n) {
++            int h=System.identityHashCode(o); h=31*h+x; h=31*h+y; h=31*h+(n==null?0:n.hashCode()); h^=h>>>16; return h&mask;
++        }
++        static boolean eq(Object a,Object b){return a==b||(a!=null&&a.equals(b));}
++    }
++}
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java	2026-08-29 05:00:00.000000000 +0500
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java	2026-08-29 12:58:39.330388382 +0500
+@@ -33,7 +33,11 @@
+         }
+ 
+         private boolean exact() {
+-            return expectedSha256.equals(actualSha256);
++            String[] accepted = expectedSha256.split("\\|");
++            for (String hash : accepted) {
++                if (hash.equals(actualSha256)) return true;
++            }
++            return false;
+         }
+ 
+         private boolean available() {
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java	2026-08-29 05:00:00.000000000 +0500
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java	2026-08-29 13:03:33.093999423 +0500
+@@ -23,7 +23,7 @@
+     public static void configureFromProperties() {
+         path = System.getProperty("zomdroid.optlab.proof.path", "").trim();
+         session = System.getProperty("zomdroid.optlab.session", "unknown").trim();
+-        emit("SESSION", "START", "schema=7 path=" + clean(path));
++        emit("SESSION", "START", "schema=8 path=" + clean(path));
+     }
+ 
+     public static void state(String mechanism, String state, String detail) {
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/ChunkOptimizationRealJarSmoke.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/ChunkOptimizationRealJarSmoke.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/ChunkOptimizationRealJarSmoke.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/ChunkOptimizationRealJarSmoke.java	2026-08-29 13:03:11.510027113 +0500
+@@ -0,0 +1,93 @@
++import com.zomdroid.agent.Main;
++
++import java.io.InputStream;
++import java.lang.instrument.ClassFileTransformer;
++import java.lang.instrument.Instrumentation;
++import java.lang.reflect.Proxy;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.jar.JarEntry;
++import java.util.jar.JarFile;
++
++public final class ChunkOptimizationRealJarSmoke {
++    private static final String[] TARGETS = {
++            "zombie/iso/worldgen/zones/ZoneGenerator",
++            "zombie/LoadGridsquarePerformanceWorkaround",
++            "zombie/Lua/MapObjects",
++            "zombie/iso/worldgen/WorldGenChunk",
++            "zombie/iso/IsoChunk",
++            "zombie/iso/IsoGridSquare"
++    };
++
++    private ChunkOptimizationRealJarSmoke() {}
++
++    public static void main(String[] args) throws Exception {
++        if (args.length != 3) throw new IllegalArgumentException("jar proof sha256");
++        configure(args[1], args[2]);
++
++        List<ClassFileTransformer> transformers = new ArrayList<>();
++        Instrumentation instrumentation = (Instrumentation) Proxy.newProxyInstance(
++                ChunkOptimizationRealJarSmoke.class.getClassLoader(),
++                new Class<?>[]{Instrumentation.class},
++                (proxy, method, methodArgs) -> {
++                    if ("addTransformer".equals(method.getName())) {
++                        transformers.add((ClassFileTransformer) methodArgs[0]);
++                        return null;
++                    }
++                    Class<?> type = method.getReturnType();
++                    if (type == boolean.class) return false;
++                    if (type == long.class) return 0L;
++                    if (type == int.class) return 0;
++                    if (type == Class[].class) return new Class<?>[0];
++                    return null;
++                });
++        Main.premain(null, instrumentation);
++        require(transformers.size() == 1, "expected one unified transformer");
++        ClassFileTransformer transformer = transformers.get(0);
++
++        try (JarFile jar = new JarFile(args[0], false)) {
++            for (String target : TARGETS) {
++                JarEntry entry = jar.getJarEntry(target + ".class");
++                require(entry != null, "missing " + target);
++                byte[] original;
++                try (InputStream input = jar.getInputStream(entry)) {
++                    original = input.readAllBytes();
++                }
++                byte[] transformed = transformer.transform(
++                        ChunkOptimizationRealJarSmoke.class.getClassLoader(), target,
++                        null, null, original);
++                require(transformed != null && transformed.length > 0,
++                        "target not transformed " + target);
++                require(transformed[0] == (byte) 0xCA && transformed[1] == (byte) 0xFE,
++                        "bad transformed class " + target);
++            }
++        }
++        System.out.println("CHUNK_OPTIMIZATION_REAL_JAR_SMOKE PASS targets=" + TARGETS.length);
++    }
++
++    private static void configure(String proof, String sha256) {
++        System.setProperty("zomdroid.renderer", "ZINK");
++        System.setProperty("zomdroid.optlab.pz.build.family", "42");
++        System.setProperty("zomdroid.optlab.pz.version.hint", "42.20+");
++        System.setProperty("zomdroid.optlab.jar.sha256", sha256);
++        System.setProperty("zomdroid.optlab.jar.known", "1");
++        System.setProperty("zomdroid.optlab.only.build42", "1");
++        System.setProperty("zomdroid.optlab.proof.path", proof);
++        String[] flags = {
++                "zomdroid.optlab.chunk.forage",
++                "zomdroid.optlab.chunk.neighbour.worker",
++                "zomdroid.optlab.chunk.neighbour.main",
++                "zomdroid.optlab.chunk.grid.load",
++                "zomdroid.optlab.chunk.vehicles",
++                "zomdroid.optlab.chunk.randomized.buildings",
++                "zomdroid.optlab.chunk.lua.mapobjects",
++                "zomdroid.optlab.chunk.worldgen.biome",
++                "zomdroid.optlab.chunk.cp2c.dirty.clear"
++        };
++        for (String flag : flags) System.setProperty(flag, "1");
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new AssertionError(message);
++    }
++}
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/build-optlab-agent.sh ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/build-optlab-agent.sh
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/build-optlab-agent.sh	2026-08-29 05:00:00.000000000 +0500
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/build-optlab-agent.sh	2026-08-29 13:00:19.198250653 +0500
+@@ -8,15 +8,23 @@
+ WORK_DIR="$(mktemp -d)"
+ trap 'rm -rf -- "$WORK_DIR"' EXIT
+ 
+-mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes"
++mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes" "$WORK_DIR/chunk-stub-classes"
+ tar --no-same-owner -xf "$BUNDLE_PATH" -C "$WORK_DIR/bundle"
+ cp "$WORK_DIR/bundle/zomdroid-agent.jar" "$WORK_DIR/zomdroid-agent.jar"
+ 
++mapfile -d '' CHUNK_STUBS < <(find "$PROJECT_DIR/tools/chunk-optimization-stubs" \
++  -type f -name '*.java' -print0 | LC_ALL=C sort -z)
+ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+-  -cp "$WORK_DIR/zomdroid-agent.jar" \
++  -d "$WORK_DIR/chunk-stub-classes" \
++  "${CHUNK_STUBS[@]}"
++
++java -m jdk.compiler/com.sun.tools.javac.Main \
++  --release 17 \
++  -cp "$WORK_DIR/zomdroid-agent.jar:$WORK_DIR/chunk-stub-classes" \
+   -d "$WORK_DIR/classes" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/Main.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PacingRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PathfindingRuntime.java" \
+@@ -49,6 +57,8 @@
+   | grep -q '^Premain-Class: com.zomdroid.agent.Main'
+ unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
+   | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
++unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/ChunkOptimizationRuntime.class'
+ unzip -p "$WORK_DIR/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
+-  | grep -aFq '[ZD-OPT-LAB-AGENT] version=8 schema=7 loaded'
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded'
+ sha256sum "$WORK_DIR/zomdroid-agent.jar" "$BUNDLE_PATH"
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/integration/LuaCaller.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/integration/LuaCaller.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/integration/LuaCaller.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/integration/LuaCaller.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package se.krka.kahlua.integration; import se.krka.kahlua.vm.KahluaThread; public class LuaCaller { public void protectedCallVoid(KahluaThread t,Object f,Object[] p){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/vm/KahluaThread.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/vm/KahluaThread.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/vm/KahluaThread.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/se/krka/kahlua/vm/KahluaThread.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package se.krka.kahlua.vm; public class KahluaThread {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/GameWindow.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/GameWindow.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/GameWindow.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/GameWindow.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie; public class GameWindow {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/LoadGridsquarePerformanceWorkaround.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/LoadGridsquarePerformanceWorkaround.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/LoadGridsquarePerformanceWorkaround.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/LoadGridsquarePerformanceWorkaround.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie; public final class LoadGridsquarePerformanceWorkaround {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/LuaManager.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/LuaManager.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/LuaManager.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/LuaManager.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.Lua; import se.krka.kahlua.integration.LuaCaller; import se.krka.kahlua.vm.KahluaThread; public class LuaManager { public static LuaCaller caller; public static KahluaThread thread; }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/MapObjects.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/MapObjects.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/MapObjects.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/Lua/MapObjects.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.Lua; public final class MapObjects {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/SandboxOptions.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/SandboxOptions.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/SandboxOptions.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/SandboxOptions.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie; public class SandboxOptions { public static final SandboxOptions instance=null; public final BooleanSandboxOption enableVehicles=null, trafficJam=null; public final EnumSandboxOption carSpawnRate=null; public static class BooleanSandboxOption { public boolean getValue(){return false;} } public static class EnumSandboxOption { public int getValue(){return 0;} } }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/VirtualZombieManager.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/VirtualZombieManager.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/VirtualZombieManager.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/VirtualZombieManager.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie; import zombie.iso.*; import zombie.iso.areas.*; public class VirtualZombieManager { public static final VirtualZombieManager instance=null; public boolean shouldSpawnZombiesOnLevel(int l){return false;} public void addIndoorZombiesToChunk(IsoChunk c,IsoRoom r){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/characters/IsoPlayer.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/characters/IsoPlayer.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/characters/IsoPlayer.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/characters/IsoPlayer.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.characters; public class IsoPlayer { public static IsoPlayer getInstance(){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/logger/ExceptionLogger.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/logger/ExceptionLogger.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/logger/ExceptionLogger.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/logger/ExceptionLogger.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.core.logger; public class ExceptionLogger { public static void logException(Throwable t){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/math/PZMath.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/math/PZMath.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/math/PZMath.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/math/PZMath.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.core.math; public class PZMath { public static int fastfloor(float f){return 0;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/physics/WorldSimulation.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/physics/WorldSimulation.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/physics/WorldSimulation.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/physics/WorldSimulation.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.core.physics; public class WorldSimulation { public static WorldSimulation instance; public void create(){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/random/Rand.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/random/Rand.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/random/Rand.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/random/Rand.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.core.random; public class Rand { public static int Next(int n){return 0;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/stash/StashSystem.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/stash/StashSystem.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/core/stash/StashSystem.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/core/stash/StashSystem.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.core.stash; import zombie.iso.BuildingDef; public class StashSystem { public static void doBuildingStash(BuildingDef b){} public static boolean isStashBuilding(BuildingDef b){return false;} public static void visitedBuilding(BuildingDef b){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/debug/DebugLog.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/debug/DebugLog.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/debug/DebugLog.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/debug/DebugLog.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.debug; public class DebugLog { public static void log(String s){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemConfigurator.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemConfigurator.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemConfigurator.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemConfigurator.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.inventory; public class ItemConfigurator { public static boolean registerZone(String s){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemContainer.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemContainer.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemContainer.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemContainer.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.inventory; public class ItemContainer { public boolean isExplored(){return false;} public void setExplored(boolean v){} public boolean isEmpty(){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemPickerJava.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemPickerJava.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemPickerJava.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/inventory/ItemPickerJava.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.inventory; import zombie.characters.IsoPlayer; import zombie.iso.IsoObject; public class ItemPickerJava { public static void fillContainer(ItemContainer c,IsoPlayer p){} public static void updateOverlaySprite(IsoObject o){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/BuildingDef.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/BuildingDef.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/BuildingDef.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/BuildingDef.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; public class BuildingDef { public boolean isFullyStreamedIn(){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/ContainerOverlays.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/ContainerOverlays.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/ContainerOverlays.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/ContainerOverlays.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; public class ContainerOverlays { public static ContainerOverlays instance; public boolean hasOverlays(IsoObject o){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoChunk.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoChunk.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoChunk.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoChunk.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import zombie.iso.zones.Zone; public final class IsoChunk { public int wx,wy; public boolean isSpawnedRoom(long id){return false;} public void addSpawnedRoom(long id){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoGridSquare.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoGridSquare.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoGridSquare.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoGridSquare.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import zombie.util.list.PZArrayList; public class IsoGridSquare { public PZArrayList<IsoObject> getObjects(){return null;} public boolean isOverlayDone(){return false;} public void setOverlayDone(boolean b){} public int getX(){return 0;} public int getY(){return 0;} public int getZ(){return 0;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaCell.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaCell.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaCell.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaCell.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import java.util.ArrayList; import zombie.iso.zones.VehicleZone; public final class IsoMetaCell { public final ArrayList<VehicleZone> vehicleZones=null; public IsoMetaCell(int x,int y){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaChunk.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaChunk.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaChunk.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaChunk.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import zombie.iso.zones.Zone; public class IsoMetaChunk { public boolean doesHaveForaging(){return false;} public boolean doesHaveZone(String s){return false;} public int getZonesSize(){return 0;} public Zone getZone(int i){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaGrid.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaGrid.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaGrid.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoMetaGrid.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import java.util.ArrayList; import zombie.iso.enums.MetaCellPresence; import zombie.iso.zones.Zone; public class IsoMetaGrid { public MetaCellPresence hasCellData(int x,int y){return null;} public void setCellData(int x,int y,IsoMetaCell c){} public IsoMetaChunk getChunkData(int x,int y){return null;} public Zone registerZone(String a,String b,int x,int y,int z,int w,int h){return null;} public IsoMetaCell getCellData(int x,int y){return null;} public void getRoomsIntersecting(int x,int y,int w,int h,ArrayList<RoomDef> out){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoObject.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoObject.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoObject.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoObject.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import zombie.iso.sprite.IsoSprite; import zombie.inventory.ItemContainer; public class IsoObject { public IsoSprite sprite; public String spriteName; public IsoSprite getSprite(){return sprite;} public ItemContainer getContainer(){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoWorld.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoWorld.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoWorld.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/IsoWorld.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; public class IsoWorld { public static IsoWorld instance; public IsoMetaGrid metaGrid; public IsoMetaGrid getMetaGrid(){return metaGrid;} public IsoMetaChunk getMetaChunk(int x,int y){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/RoomDef.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/RoomDef.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/RoomDef.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/RoomDef.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; import zombie.iso.areas.IsoRoom; public final class RoomDef { public boolean doneSpawn; public int level; public long id; public IsoRoom getIsoRoom(){return null;} public boolean intersects(int x,int y,int w,int h){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/TileOverlays.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/TileOverlays.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/TileOverlays.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/TileOverlays.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso; public class TileOverlays { public static TileOverlays instance; public void updateTileOverlaySprite(IsoObject o){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoBuilding.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoBuilding.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoBuilding.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoBuilding.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.areas; import java.util.Vector; import zombie.iso.BuildingDef; public final class IsoBuilding { public BuildingDef def; public final Vector<IsoRoom> rooms=null; }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoRoom.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoRoom.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoRoom.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/areas/IsoRoom.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.areas; import zombie.iso.RoomDef; public final class IsoRoom { public RoomDef def; public IsoBuilding getBuilding(){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/enums/MetaCellPresence.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/enums/MetaCellPresence.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/enums/MetaCellPresence.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/enums/MetaCellPresence.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.enums; public enum MetaCellPresence { NOT_LOADED, LOADED, EMPTY }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/objects/IsoWorldInventoryObject.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/objects/IsoWorldInventoryObject.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/objects/IsoWorldInventoryObject.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/objects/IsoWorldInventoryObject.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.objects; public class IsoWorldInventoryObject extends zombie.iso.IsoObject {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/sprite/IsoSprite.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/sprite/IsoSprite.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/sprite/IsoSprite.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/sprite/IsoSprite.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.sprite; public class IsoSprite { public String name; public String getName(){return name;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/maps/BiomeMap.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/maps/BiomeMap.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/maps/BiomeMap.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/maps/BiomeMap.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.worldgen.maps; public class BiomeMap { public enum Type { ZONE, BIOME, ORE } public int[] getZones(int x,int y,Type t){return null;} public String getZoneName(int id){return null;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/zones/ZoneGenerator.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/zones/ZoneGenerator.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/zones/ZoneGenerator.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/worldgen/zones/ZoneGenerator.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.worldgen.zones; public class ZoneGenerator {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/VehicleZone.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/VehicleZone.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/VehicleZone.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/VehicleZone.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.zones; public final class VehicleZone extends Zone {}
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/Zone.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/Zone.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/Zone.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/iso/zones/Zone.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.iso.zones; public class Zone { public String name,type; public int x,y,z,w,h; public boolean isPolyline(){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameClient.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameClient.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameClient.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameClient.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.network; public class GameClient { public static boolean client; }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameServer.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameServer.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameServer.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/network/GameServer.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.network; import zombie.iso.IsoObject; import zombie.inventory.ItemContainer; public class GameServer { public static boolean server; public static void sendItemsInContainer(IsoObject o, ItemContainer c){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/randomizedWorld/randomizedBuilding/RandomizedBuildingBase.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/randomizedWorld/randomizedBuilding/RandomizedBuildingBase.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/randomizedWorld/randomizedBuilding/RandomizedBuildingBase.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/randomizedWorld/randomizedBuilding/RandomizedBuildingBase.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.randomizedWorld.randomizedBuilding; import zombie.iso.areas.IsoBuilding; public class RandomizedBuildingBase { public static void ChunkLoaded(IsoBuilding b){} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/util/StringUtils.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/util/StringUtils.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/util/StringUtils.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/util/StringUtils.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.util; public class StringUtils { public static boolean containsIgnoreCase(String s,String q){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/util/list/PZArrayList.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/util/list/PZArrayList.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/util/list/PZArrayList.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/util/list/PZArrayList.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.util.list; public class PZArrayList<E> { public Object[] getElements(){return null;} public int size(){return 0;} public boolean isEmpty(){return false;} public boolean contains(Object o){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/vehicles/VehicleType.java ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/vehicles/VehicleType.java
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/chunk-optimization-stubs/zombie/vehicles/VehicleType.java	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/chunk-optimization-stubs/zombie/vehicles/VehicleType.java	2026-08-29 03:28:44.000000000 +0500
+@@ -0,0 +1 @@
++package zombie.vehicles; import java.util.HashMap; public class VehicleType { public static final HashMap<String,VehicleType> vehicles=null; public static void init(){} public static boolean hasTypeForZone(String s){return false;} }
+\ No newline at end of file
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/test-chunk-optimization-real-jars.sh ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/test-chunk-optimization-real-jars.sh
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/test-chunk-optimization-real-jars.sh	1970-01-01 06:00:00.000000000 +0600
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/test-chunk-optimization-real-jars.sh	2026-08-29 13:03:11.918026597 +0500
+@@ -0,0 +1,43 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++if [[ "$#" -ne 2 ]]; then
++  echo "usage: $0 /path/to/projectzomboid-42.20.jar /path/to/projectzomboid-42.20.3.jar" >&2
++  exit 2
++fi
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++WORK_DIR="$(mktemp -d)"
++trap 'rm -rf -- "$WORK_DIR"' EXIT
++
++mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/tests"
++tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
++  -C "$WORK_DIR/bundle"
++java -m jdk.compiler/com.sun.tools.javac.Main --release 17 \
++  -cp "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  -d "$WORK_DIR/tests" "$PROJECT_DIR/tools/ChunkOptimizationRealJarSmoke.java"
++
++for game_jar in "$@"; do
++  proof="$WORK_DIR/$(basename "$game_jar").proof.log"
++  game_sha="$(sha256sum "$game_jar" | cut -d' ' -f1)"
++  java -Dnet.bytebuddy.experimental=true \
++    -cp "$WORK_DIR/tests:$WORK_DIR/bundle/zomdroid-agent.jar:$game_jar" \
++    ChunkOptimizationRealJarSmoke "$game_jar" "$proof" "$game_sha"
++
++  grep -q 'mechanism=chunk_foraging state=active' "$proof"
++  grep -q 'mechanism=chunk_neighbour_worker state=active' "$proof"
++  grep -q 'mechanism=chunk_neighbour_main state=active' "$proof"
++  grep -q 'mechanism=chunk_grid_load state=active' "$proof"
++  grep -q 'mechanism=chunk_vehicle_index state=active' "$proof"
++  grep -q 'mechanism=chunk_randomized_buildings state=active' "$proof"
++  grep -q 'mechanism=chunk_lua_mapobjects state=active' "$proof"
++  grep -q 'mechanism=chunk_worldgen_biome state=active' "$proof"
++  grep -q 'mechanism=chunk_cp2c_dirty_clear state=active' "$proof"
++  if grep -Eq 'state=(unsupported|blocked_install)' "$proof"; then
++    echo "unexpected fallback in $game_jar" >&2
++    grep -E 'state=(unsupported|blocked_install)' "$proof" >&2
++    exit 1
++  fi
++done
++
++echo "CHUNK_OPTIMIZATION_BOTH_REAL_JARS PASS"
+diff -ruN '--exclude=jars.tar' r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/test-optlab-agent-source.sh ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/test-optlab-agent-source.sh
+--- r11_baseline_extract/ZomDroid-R8-NATIVE-FINAL-SOURCE/tools/test-optlab-agent-source.sh	2026-08-29 05:00:00.000000000 +0500
++++ ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE/tools/test-optlab-agent-source.sh	2026-08-29 13:00:19.606250074 +0500
+@@ -7,7 +7,8 @@
+ WORK_DIR="$(mktemp -d)"
+ trap 'rm -rf -- "$WORK_DIR"' EXIT
+ 
+-mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes" "$WORK_DIR/tests"
++mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes" "$WORK_DIR/tests" \
++  "$WORK_DIR/chunk-stub-classes"
+ tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
+   -C "$WORK_DIR/bundle"
+ 
+@@ -17,13 +18,21 @@
+ unzip -Z1 "$WORK_DIR/bundle/zomdroid-agent.jar" \
+   | grep -qx 'com/zomdroid/agent/optimization/FeatureCompatibility.class'
+ unzip -p "$WORK_DIR/bundle/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
+-  | grep -aFq '[ZD-OPT-LAB-AGENT] version=8 schema=7 loaded'
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=9 schema=8 loaded'
+ 
++mapfile -d '' CHUNK_STUBS < <(find "$PROJECT_DIR/tools/chunk-optimization-stubs" \
++  -type f -name '*.java' -print0 | LC_ALL=C sort -z)
+ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+-  -cp "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  -d "$WORK_DIR/chunk-stub-classes" \
++  "${CHUNK_STUBS[@]}"
++
++java -m jdk.compiler/com.sun.tools.javac.Main \
++  --release 17 \
++  -cp "$WORK_DIR/bundle/zomdroid-agent.jar:$WORK_DIR/chunk-stub-classes" \
+   -d "$WORK_DIR/classes" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/Main.java" \
++  "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/ChunkOptimizationRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/FeatureCompatibility.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PacingRuntime.java" \
+   "$AGENT_SOURCE_DIR/src/main/java/com/zomdroid/agent/optimization/PathfindingRuntime.java" \

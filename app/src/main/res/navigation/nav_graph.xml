@@ -69,6 +69,12 @@
     </fragment>
 
     <fragment
+        android:id="@+id/opt_lab_fragment"
+        android:name="com.zomdroid.fragments.OptLabFragment"
+        android:label="@string/opt_lab_title"
+        tools:layout="@layout/fragment_opt_lab" />
+
+    <fragment
         android:id="@+id/gamepad_mapper_fragment"
         android:name="com.zomdroid.fragments.GamepadMapperFragment"
         android:label="@string/nav_menu_gamepad_mapper"

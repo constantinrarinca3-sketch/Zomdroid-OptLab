@@ -1,0 +1,95 @@
+ZOMDROID OPT-LAB — FIXES ȘI TESTE OBLIGATORII LA FINAL
+Data: 2026-08-28
+
+Acest fișier este lista de închidere. Niciun element de mai jos nu este declarat
+DONE înainte de implementare și verificare.
+
+R11 CP4.1 V2 CHUNK OPTIMIZATION
+===============================
+
+[x] Agent unic, 8 mecanisme production independente și CP2C experimental.
+[x] UI / preferințe / launcher / registry / proof integrate.
+[x] Transformare reală pe JAR 42.20 și 42.20.3: PASS.
+[x] Teste host/statice și regresii R10: PASS.
+[ ] Android compile.
+[ ] Device: profil stabil Neighbour Worker + Neighbour Main + Vehicle Index.
+[ ] Device: save/reload și revenire în chunk-uri fără corupere vizuală sau logică.
+[ ] Device: A/B individual pentru restul mecanismelor production.
+[ ] Device: CP2C ultimul și separat; rămâne experimental până atunci.
+
+Lista exactă este în CHECKPOINTS/CHUNK-OPTIMIZATION/CP4.1-V2-R11-FINAL-QA-RO.txt.
+
+FIXURI MICI PĂSTRATE PENTRU FINAL
+================================
+
+[x] CP1 Final Fix: al doilea gate din Main.java permite acum explicit
+    pathfindingProofRequested și popManProofRequested.
+
+[x] UI: secțiunea Build 42 este imediat sub Native Modules și înainte de
+    Runtime / JVM în dialogul OPT-LAB.
+
+[x] Testele și sumarul curent descriu PopMan ca toggle real, implicit OFF.
+    Fișierele checkpoint istorice CP1/CP2-01 rămân neschimbate intenționat.
+
+[x] CP2-02 source/static: reconstruiește complet n_saveCell și elimină bridge-ul
+    incomplet din staging. Device test rămâne separat și nebifat mai jos.
+
+TESTE PATHFINDING LA FINAL
+=========================
+
+[x] Premain regression host: Pathfinding ON, Stream/FBO/Pacing/PopMan toate OFF;
+    transformerul este înregistrat exact o dată.
+[ ] Device: zombi urmăresc jucătorul, ocolesc obstacole, folosesc uși/scări,
+    interior/exterior și hoardă.
+[ ] Proof: AVAILABLE + ACTIVE + EXERCISED, fără FALLBACK.
+
+TESTE POPMAN LA FINAL
+=====================
+
+[x] Preflight source/static 42.20: clasă Java + payload ARM64 auditate.
+[x] Preflight source/static 42.20.3: clasă Java + payload ARM64 auditate.
+[ ] PopMan OFF: fallback x86_64 funcțional.
+[ ] PopMan ON: payload ARM64 și bridge încărcate.
+[ ] Spawn / despawn / migrare / virtualizare.
+[ ] Celule noi și revenire în celule vechi.
+[ ] Salvare, ieșire completă și reîncărcare repetată.
+[ ] Fără zombi lipsă, duplicați sau populație resetată.
+[ ] Zonă densă și gameplay lung.
+[ ] Proof: AVAILABLE + ACTIVE + EXERCISED; test separat pentru FALLBACK.
+[ ] Benchmark OFF vs ON, cu același save și același traseu.
+
+TESTE JASSIMP CP3 LA FINAL
+==========================
+
+[x] Patch direct Assimp v5.4.3 aplicabil curat și identic cu sursa udarmolota.
+[x] Payload ARM64 direct în libs.tar.xz; SHA/ELF/SONAME/JNI/ABI PASS.
+[x] Agentul Assimp53Compat este păstrat numai ca referință și absent din runtime.
+[x] Toate cele 38 de fișiere bundle sunt păstrate; numai libjassimp64.so diferă față de R9.
+[x] Rollback R9 real și revenire la direct R10 testate byte-for-byte.
+[ ] Device: KI5 B700 și F700.
+[ ] Device: animația capotei și alte modele FBX/skinned afectate.
+[ ] Device: modele care funcționau înainte, fără regresii.
+[ ] Log: DIRECT_A53_COMPAT și fără [ZD-A53COMPAT].
+[ ] Verdict CP3 gameplay PASS numai după testele de mai sus.
+
+DOCUMENTAȚIE ȘI LIVRARE
+=======================
+
+[x] Actualizează master summary cu rezultatul source/static real CP2-02.
+[x] Marchează separat SOURCE/HOST TEST și DEVICE TEST.
+[x] Toate testele host/statice au fost rulate după reconstruirea agentului v8.
+[x] Livrează arhiva sursă finală și SHA-256.
+
+R14 CP6.6 / OPT-LAB MODULAR
+===========================
+
+[x] Agent unic CP6.6, registry/profiles/launcher și UI modular implementate.
+[x] Teste host/statice și JAR real 42.20 + 42.20.3: PASS.
+[x] Advanced este disclosure-only; Internal fără toggle; Archived nelansabil.
+[x] ALL OFF Build 42 păstrează CP2C experimental.
+[ ] Android compile R14 (utilizatorul compilează).
+[ ] Device A/B Recommended vs Safe Mode, același save și traseu.
+[ ] Device proof ACTIVE + EXERCISED fără FALLBACK pentru mecanismele testate.
+[ ] CP6.6 Experimental separat și ultimul.
+
+Lista exactă: R14-CP6.6-FINAL-HANDOFF-RO.txt

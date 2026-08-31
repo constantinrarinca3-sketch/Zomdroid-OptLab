@@ -1,0 +1,36 @@
+ZOMDROID R12 CP6.2 - FISIERE FUNCTIONALE MODIFICATE
+Baseline: 925bf720334079bb3ad462ff27173e99ec9497a6
+Checkpoint functional final: c9d1ecd
+Statistica: 26 fisiere, 1184 insertii, 16 stergeri (fara CHECKPOINTS)
+
+M app/src/main/assets/bundles/jars.tar
+M app/src/main/java/com/zomdroid/GameLauncher.java
+M app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+M app/src/main/java/com/zomdroid/OptLabPreferences.java
+M app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+A app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java
+M app/src/main/res/values/strings.xml
+M optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+M optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/ProofRuntime.java
+A optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
+A tools/Cp62ExactJarBytecodeUnit.java
+M tools/OptLabPreferencesIndependenceUnit.java
+M tools/OptLabRegistryUnit.java
+M tools/OptLabRuntimeUnit.java
+M tools/build-optlab-agent.sh
+A tools/chunk-optimization-stubs/gnu/trove/map/hash/TObjectIntHashMap.java
+A tools/chunk-optimization-stubs/org/lwjgl/opengl/GL20.java
+A tools/chunk-optimization-stubs/zombie/core/DefaultShader.java
+A tools/chunk-optimization-stubs/zombie/core/opengl/ShaderProgram.java
+M tools/native-module-stubs/com/zomdroid/OptLabPreferences.java
+A tools/test-cp62-apk-wiring.sh
+A tools/test-cp62-exact-jars.sh
+M tools/test-native-modules-ui-source.sh
+M tools/test-optlab-agent-source.sh
+M tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+M tools/ui-stubs/com/zomdroid/R.java
+
+NOTA:
+- jars.tar este bundle binar reconstruit automat de tools/build-optlab-agent.sh.
+- Patch-ul cumulativ sursa exclude jars.tar si directoarele CHECKPOINTS.
+- JAR-urile Project Zomboid de validare nu sunt incluse in sursa livrata.

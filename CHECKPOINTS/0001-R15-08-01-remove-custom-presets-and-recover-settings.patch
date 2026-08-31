@@ -1,0 +1,1758 @@
+From d5536ec6b77bb985f513c3521133dbb73a20fe28 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local.invalid>
+Date: Mon, 31 Aug 2026 10:30:34 +0200
+Subject: [PATCH] R15-08-01 remove custom presets and recover settings
+
+---
+ .../R15-08-01-CUSTOM-PRESETS-REMOVAL-RO.md    |  38 ++
+ CHECKPOINTS/R15-08-01-HOST-TEST-RESULTS.txt   |  15 +
+ .../com/zomdroid/OptLabCustomPresetStore.java | 495 ------------------
+ .../java/com/zomdroid/OptLabPreferences.java  | 101 ++--
+ .../zomdroid/fragments/OptLabFragment.java    | 351 +------------
+ tools/OptLabCustomPresetStoreUnit.java        | 246 ---------
+ tools/OptLabPreferencesIndependenceUnit.java  |  31 +-
+ tools/test-cp62-apk-wiring.sh                 |   2 +-
+ tools/test-native-modules-preferences.sh      |   1 -
+ tools/test-optlab-custom-presets.sh           |  23 -
+ tools/test-optlab-preferences-independence.sh |   1 -
+ tools/test-optlab-registry-integrity.sh       |   1 -
+ tools/test-optlab-tabbed-ui-source.sh         |  31 +-
+ tools/test-r15-final-qa.sh                    |   1 -
+ .../com/zomdroid/OptLabCustomPresetStore.java |   9 -
+ .../com/zomdroid/OptLabPreferences.java       |  27 -
+ 16 files changed, 123 insertions(+), 1250 deletions(-)
+ create mode 100644 CHECKPOINTS/R15-08-01-CUSTOM-PRESETS-REMOVAL-RO.md
+ create mode 100644 CHECKPOINTS/R15-08-01-HOST-TEST-RESULTS.txt
+ delete mode 100644 app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
+ delete mode 100644 tools/OptLabCustomPresetStoreUnit.java
+ delete mode 100755 tools/test-optlab-custom-presets.sh
+ delete mode 100644 tools/ui-stubs/com/zomdroid/OptLabCustomPresetStore.java
+
+diff --git a/CHECKPOINTS/R15-08-01-CUSTOM-PRESETS-REMOVAL-RO.md b/CHECKPOINTS/R15-08-01-CUSTOM-PRESETS-REMOVAL-RO.md
+new file mode 100644
+index 0000000..6e373b8
+--- /dev/null
++++ b/CHECKPOINTS/R15-08-01-CUSTOM-PRESETS-REMOVAL-RO.md
+@@ -0,0 +1,38 @@
++# R15-08-01 — eliminarea custom presets și recuperarea OPT-LAB
++
++Data: 2026-08-31 UTC
++
++Baseline: R15-07, arhivă SHA256
++`966c5bf655386a5186d6993cd79d73f6d89db456474bde9af9f579316359f932`.
++
++Rollback Git local: `bc2a8b8e0a5a05571c49756b25cabe7da4a075e2`.
++
++## Cauză confirmată
++
++Spinnerul custom presets era creat prin constructorul Android `ArrayAdapter(T[])` și apoi
++actualizat prin `clear()/addAll()`. Lista array-backed este fixă și arunca
++`UnsupportedOperationException` după primul preset. Scrierea catalogului reușea înainte de
++refresh, astfel încât OPT-LAB putea rămâne inaccesibil la următoarea deschidere.
++
++## Schimbări
++
++- eliminat complet `OptLabCustomPresetStore` și toate API-urile/UI/testele sale;
++- eliminată ruta Build 42 Presets și toate referințele din `OptLabFragment`;
++- schema `OptLabPreferences` devine 13;
++- migrare one-shot înaintea oricărei citiri OPT-LAB:
++  - șterge `build42_custom_presets_v1` și `build42_custom_preset_active_v1`;
++  - pune toate feature-urile registry-owned Build 42 pe OFF;
++  - setează profilul Build 42 la Custom;
++  - nu modifică General, Native sau Experimental independent;
++- diagnosticul expune `customPresets=REMOVED`.
++
++## Host validation
++
++- `OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=13 ... presets=removed_migrated`
++- `OPTLAB_TABBED_UI_COMPILE PASS javac_release=11 tabs=6`
++- `OPTLAB_TABBED_UI_SOURCE PASS ... custom_presets=removed_migrated`
++- `OPTLAB_REGISTRY_INTEGRITY_UNIT PASS ... toggle_roundtrip=all`
++- `NATIVE_MODULES_PREFERENCES_UNIT PASS`
++
++APK compile: NOT RUN. DEVICE TEST: NO.
++
+diff --git a/CHECKPOINTS/R15-08-01-HOST-TEST-RESULTS.txt b/CHECKPOINTS/R15-08-01-HOST-TEST-RESULTS.txt
+new file mode 100644
+index 0000000..4017ca5
+--- /dev/null
++++ b/CHECKPOINTS/R15-08-01-HOST-TEST-RESULTS.txt
+@@ -0,0 +1,15 @@
++R15-08-01 HOST TEST RESULTS
++DATE: 2026-08-31 UTC
++
++PASS tools/test-optlab-preferences-independence.sh
++  schema=13 presets=removed_migrated general_roundtrip=all
++PASS tools/test-optlab-tabbed-ui-compile.sh
++  javac_release=11 tabs=6
++PASS tools/test-optlab-tabbed-ui-source.sh
++  custom_presets=removed_migrated navigation=route_history
++PASS tools/test-optlab-registry-integrity.sh
++  toggle_roundtrip=all
++PASS tools/test-native-modules-preferences.sh
++
++APK_COMPILE: NOT RUN
++DEVICE_TEST: NO
+diff --git a/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java b/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
+deleted file mode 100644
+index c6519eb..0000000
+--- a/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java
++++ /dev/null
+@@ -1,495 +0,0 @@
+-package com.zomdroid;
+-
+-import android.content.SharedPreferences;
+-
+-import androidx.annotation.NonNull;
+-
+-import java.io.UnsupportedEncodingException;
+-import java.net.URLDecoder;
+-import java.net.URLEncoder;
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.EnumMap;
+-import java.util.EnumSet;
+-import java.util.LinkedHashMap;
+-import java.util.List;
+-import java.util.Locale;
+-import java.util.Map;
+-import java.util.UUID;
+-import java.util.zip.CRC32;
+-
+-/**
+- * Versioned, fail-closed catalog for named Build 42 snapshots.
+- *
+- * Presets deliberately contain only registry-owned, visible BUILD42 features.
+- * General, Native and the independent EXPERIMENTAL category are never captured
+- * or rewritten. Stable feature IDs are serialized instead of enum ordinals so
+- * registry reordering cannot silently change a saved configuration.
+- */
+-public final class OptLabCustomPresetStore {
+-    public static final int SCHEMA = 1;
+-    public static final int MAX_PRESETS = 32;
+-    public static final int MAX_NAME_CODE_POINTS = 48;
+-
+-    static final String K_CATALOG = "build42_custom_presets_v1";
+-    static final String K_ACTIVE_ID = "build42_custom_preset_active_v1";
+-    private static final String HEADER_MAGIC = "ZOMDROID_BUILD42_PRESETS";
+-
+-    private final SharedPreferences prefs;
+-
+-    OptLabCustomPresetStore(@NonNull SharedPreferences prefs) {
+-        this.prefs = prefs;
+-    }
+-
+-    /** Immutable snapshot exposed to the UI. */
+-    public static final class Preset {
+-        private final String id;
+-        private final String name;
+-        private final long createdAtUtcMillis;
+-        private final long updatedAtUtcMillis;
+-        private final Map<String, Boolean> featureStates;
+-
+-        Preset(String id, String name, long createdAtUtcMillis, long updatedAtUtcMillis,
+-               Map<String, Boolean> featureStates) {
+-            this.id = id;
+-            this.name = name;
+-            this.createdAtUtcMillis = createdAtUtcMillis;
+-            this.updatedAtUtcMillis = updatedAtUtcMillis;
+-            this.featureStates = Collections.unmodifiableMap(
+-                    new LinkedHashMap<>(featureStates));
+-        }
+-
+-        public String getId() { return id; }
+-        public String getName() { return name; }
+-        public long getCreatedAtUtcMillis() { return createdAtUtcMillis; }
+-        public long getUpdatedAtUtcMillis() { return updatedAtUtcMillis; }
+-        public Map<String, Boolean> getFeatureStates() { return featureStates; }
+-        public boolean isEnabled(String featureId) {
+-            return Boolean.TRUE.equals(featureStates.get(featureId));
+-        }
+-        @Override public String toString() { return name; }
+-    }
+-
+-    @NonNull
+-    public List<Preset> list() {
+-        LoadResult result = load();
+-        return result.problem == null ? result.presets : Collections.emptyList();
+-    }
+-
+-    public Preset active() {
+-        final String activeId;
+-        try {
+-            activeId = prefs.getString(K_ACTIVE_ID, "");
+-        } catch (RuntimeException error) {
+-            return null;
+-        }
+-        if (activeId == null || activeId.isEmpty()) return null;
+-        for (Preset preset : list()) {
+-            if (preset.id.equals(activeId)) return preset;
+-        }
+-        return null;
+-    }
+-
+-    public boolean isActiveModified() {
+-        Preset active = active();
+-        return active != null
+-                && !normalizedState(active.featureStates).equals(snapshotCurrentState());
+-    }
+-
+-    public boolean hasStorageProblem() { return load().problem != null; }
+-
+-    public String storageProblem() { return load().problem; }
+-
+-    @NonNull
+-    public Preset create(@NonNull String requestedName) {
+-        LoadResult result = writableCatalog();
+-        if (result.presets.size() >= MAX_PRESETS) {
+-            throw new IllegalStateException("Maximum " + MAX_PRESETS + " presets");
+-        }
+-        String name = validatedUniqueName(requestedName, result.presets, null);
+-        long now = System.currentTimeMillis();
+-        Preset created = new Preset(UUID.randomUUID().toString(), name, now, now,
+-                snapshotCurrentState());
+-        ArrayList<Preset> next = new ArrayList<>(result.presets);
+-        next.add(created);
+-        commit(prefs.edit()
+-                .putString(K_CATALOG, encode(next))
+-                .putString(K_ACTIVE_ID, created.id)
+-                .putString(OptLabPreferences.K_BUILD42_PROFILE,
+-                        OptLabPreferences.LabProfile.CUSTOM.name()));
+-        return created;
+-    }
+-
+-    @NonNull
+-    public Preset apply(@NonNull String id) {
+-        LoadResult result = writableCatalog();
+-        Preset preset = requirePreset(result.presets, id);
+-        EnumMap<OptLabFeatureRegistry.Feature, Boolean> desired =
+-                normalizedFeatureState(preset.featureStates);
+-        SharedPreferences.Editor editor = prefs.edit()
+-                .putString(OptLabPreferences.K_BUILD42_PROFILE,
+-                        OptLabPreferences.LabProfile.CUSTOM.name())
+-                .putString(K_ACTIVE_ID, preset.id);
+-        for (Map.Entry<OptLabFeatureRegistry.Feature, Boolean> entry
+-                : desired.entrySet()) {
+-            editor.putBoolean(entry.getKey().preferenceKey, entry.getValue());
+-        }
+-        commit(editor);
+-        return preset;
+-    }
+-
+-    @NonNull
+-    public Preset update(@NonNull String id) {
+-        LoadResult result = writableCatalog();
+-        int index = requirePresetIndex(result.presets, id);
+-        Preset previous = result.presets.get(index);
+-        long now = Math.max(System.currentTimeMillis(), previous.updatedAtUtcMillis);
+-        Preset updated = new Preset(previous.id, previous.name,
+-                previous.createdAtUtcMillis, now,
+-                snapshotCurrentState());
+-        ArrayList<Preset> next = new ArrayList<>(result.presets);
+-        next.set(index, updated);
+-        commit(prefs.edit()
+-                .putString(K_CATALOG, encode(next))
+-                .putString(K_ACTIVE_ID, updated.id)
+-                .putString(OptLabPreferences.K_BUILD42_PROFILE,
+-                        OptLabPreferences.LabProfile.CUSTOM.name()));
+-        return updated;
+-    }
+-
+-    @NonNull
+-    public Preset rename(@NonNull String id, @NonNull String requestedName) {
+-        LoadResult result = writableCatalog();
+-        int index = requirePresetIndex(result.presets, id);
+-        Preset previous = result.presets.get(index);
+-        String name = validatedUniqueName(requestedName, result.presets, id);
+-        long now = Math.max(System.currentTimeMillis(), previous.updatedAtUtcMillis);
+-        Preset renamed = new Preset(previous.id, name, previous.createdAtUtcMillis,
+-                now, previous.featureStates);
+-        ArrayList<Preset> next = new ArrayList<>(result.presets);
+-        next.set(index, renamed);
+-        commit(prefs.edit().putString(K_CATALOG, encode(next)));
+-        return renamed;
+-    }
+-
+-    @NonNull
+-    public Preset duplicate(@NonNull String id, @NonNull String requestedName) {
+-        LoadResult result = writableCatalog();
+-        if (result.presets.size() >= MAX_PRESETS) {
+-            throw new IllegalStateException("Maximum " + MAX_PRESETS + " presets");
+-        }
+-        Preset source = requirePreset(result.presets, id);
+-        String name = validatedUniqueName(requestedName, result.presets, null);
+-        long now = System.currentTimeMillis();
+-        Preset duplicate = new Preset(UUID.randomUUID().toString(), name, now, now,
+-                source.featureStates);
+-        ArrayList<Preset> next = new ArrayList<>(result.presets);
+-        next.add(duplicate);
+-        commit(prefs.edit().putString(K_CATALOG, encode(next)));
+-        return duplicate;
+-    }
+-
+-    public void delete(@NonNull String id) {
+-        LoadResult result = writableCatalog();
+-        int index = requirePresetIndex(result.presets, id);
+-        ArrayList<Preset> next = new ArrayList<>(result.presets);
+-        next.remove(index);
+-        SharedPreferences.Editor editor = prefs.edit().putString(K_CATALOG, encode(next));
+-        String activeId;
+-        try {
+-            activeId = prefs.getString(K_ACTIVE_ID, "");
+-        } catch (RuntimeException ignored) {
+-            activeId = "";
+-            editor.remove(K_ACTIVE_ID);
+-        }
+-        if (id.equals(activeId)) editor.putString(K_ACTIVE_ID, "");
+-        commit(editor);
+-    }
+-
+-    /** Explicit recovery that removes only the custom catalog, never launch feature values. */
+-    public void resetCatalog() {
+-        commit(prefs.edit().remove(K_CATALOG).remove(K_ACTIVE_ID));
+-    }
+-
+-    void clearActive(SharedPreferences.Editor editor) {
+-        editor.putString(K_ACTIVE_ID, "");
+-    }
+-
+-    private LoadResult writableCatalog() {
+-        LoadResult result = load();
+-        if (result.problem != null) {
+-            throw new IllegalStateException("Preset catalog is read-only: " + result.problem);
+-        }
+-        return result;
+-    }
+-
+-    private LoadResult load() {
+-        final String raw;
+-        try {
+-            raw = prefs.getString(K_CATALOG, "");
+-        } catch (RuntimeException error) {
+-            return new LoadResult(Collections.emptyList(),
+-                    "catalog storage type mismatch: " + error.getClass().getSimpleName());
+-        }
+-        if (raw == null || raw.isEmpty()) {
+-            return new LoadResult(Collections.emptyList(), null);
+-        }
+-        String[] lines = raw.split("\\n", -1);
+-        String[] header = lines[0].split("\\t", -1);
+-        if (header.length != 4 || !HEADER_MAGIC.equals(header[0])
+-                || !Integer.toString(SCHEMA).equals(header[1])) {
+-            return new LoadResult(Collections.emptyList(), "unknown or corrupt schema");
+-        }
+-        int expectedRecords;
+-        try {
+-            expectedRecords = Integer.parseInt(header[2]);
+-        } catch (NumberFormatException error) {
+-            return new LoadResult(Collections.emptyList(), "invalid record count");
+-        }
+-        String body = lines.length == 1 ? "" : raw.substring(raw.indexOf('\n') + 1);
+-        if (expectedRecords < 0 || expectedRecords != lines.length - 1
+-                || !checksum(body).equals(header[3])) {
+-            return new LoadResult(Collections.emptyList(), "catalog checksum mismatch");
+-        }
+-        ArrayList<Preset> presets = new ArrayList<>();
+-        for (int i = 1; i < lines.length; i++) {
+-            if (lines[i].isEmpty()) {
+-                return new LoadResult(Collections.emptyList(), "empty preset record");
+-            }
+-            try {
+-                Preset preset = decodePreset(lines[i]);
+-                if (findPreset(presets, preset.id) != null
+-                        || hasName(presets, preset.name, null)) {
+-                    return new LoadResult(Collections.emptyList(),
+-                            "duplicate preset identity at record " + i);
+-                }
+-                presets.add(preset);
+-                if (presets.size() > MAX_PRESETS) {
+-                    return new LoadResult(Collections.emptyList(), "preset limit exceeded");
+-                }
+-            } catch (RuntimeException error) {
+-                return new LoadResult(Collections.emptyList(),
+-                        "corrupt record " + i + ": " + error.getMessage());
+-            }
+-        }
+-        return new LoadResult(Collections.unmodifiableList(presets), null);
+-    }
+-
+-    static String encode(List<Preset> presets) {
+-        StringBuilder body = new StringBuilder();
+-        for (Preset preset : presets) {
+-            if (body.length() > 0) body.append('\n');
+-            body.append(preset.id).append('\t')
+-                    .append(preset.createdAtUtcMillis).append('\t')
+-                    .append(preset.updatedAtUtcMillis).append('\t')
+-                    .append(urlEncode(preset.name)).append('\t');
+-            boolean first = true;
+-            for (Map.Entry<String, Boolean> state : preset.featureStates.entrySet()) {
+-                if (!isSafeToken(state.getKey())) {
+-                    throw new IllegalArgumentException("invalid feature ID");
+-                }
+-                if (!first) body.append(',');
+-                first = false;
+-                body.append(state.getKey()).append('=')
+-                        .append(Boolean.TRUE.equals(state.getValue()) ? '1' : '0');
+-            }
+-        }
+-        String header = HEADER_MAGIC + '\t' + SCHEMA + '\t' + presets.size()
+-                + '\t' + checksum(body.toString());
+-        return body.length() == 0 ? header : header + '\n' + body;
+-    }
+-
+-    private static Preset decodePreset(String line) {
+-        String[] fields = line.split("\\t", -1);
+-        if (fields.length != 5 || !isSafeToken(fields[0])) {
+-            throw new IllegalArgumentException("invalid fields");
+-        }
+-        long created = Long.parseLong(fields[1]);
+-        long updated = Long.parseLong(fields[2]);
+-        if (created < 0 || updated < created) {
+-            throw new IllegalArgumentException("invalid timestamps");
+-        }
+-        String name = normalizedName(urlDecode(fields[3]));
+-        LinkedHashMap<String, Boolean> states = new LinkedHashMap<>();
+-        if (!fields[4].isEmpty()) {
+-            for (String token : fields[4].split(",", -1)) {
+-                String[] pair = token.split("=", -1);
+-                if (pair.length != 2 || !isSafeToken(pair[0])
+-                        || !("0".equals(pair[1]) || "1".equals(pair[1]))
+-                        || states.put(pair[0], "1".equals(pair[1])) != null) {
+-                    throw new IllegalArgumentException("invalid feature state");
+-                }
+-            }
+-        }
+-        return new Preset(fields[0], name, created, updated, states);
+-    }
+-
+-    private Map<String, Boolean> snapshotCurrentState() {
+-        EnumMap<OptLabFeatureRegistry.Feature, Boolean> state =
+-                new EnumMap<>(OptLabFeatureRegistry.Feature.class);
+-        for (OptLabFeatureRegistry.Feature feature : configurableFeatures()) {
+-            state.put(feature, prefs.getBoolean(feature.preferenceKey,
+-                    feature.defaultEnabled));
+-        }
+-        closeDependencies(state);
+-        LinkedHashMap<String, Boolean> snapshot = new LinkedHashMap<>();
+-        for (OptLabFeatureRegistry.Feature feature : configurableFeatures()) {
+-            snapshot.put(feature.id, Boolean.TRUE.equals(state.get(feature)));
+-        }
+-        return Collections.unmodifiableMap(snapshot);
+-    }
+-
+-    private static Map<String, Boolean> normalizedState(Map<String, Boolean> saved) {
+-        EnumMap<OptLabFeatureRegistry.Feature, Boolean> normalized =
+-                normalizedFeatureState(saved);
+-        LinkedHashMap<String, Boolean> output = new LinkedHashMap<>();
+-        for (OptLabFeatureRegistry.Feature feature : configurableFeatures()) {
+-            output.put(feature.id, Boolean.TRUE.equals(normalized.get(feature)));
+-        }
+-        return output;
+-    }
+-
+-    private static EnumMap<OptLabFeatureRegistry.Feature, Boolean> normalizedFeatureState(
+-            Map<String, Boolean> saved) {
+-        EnumMap<OptLabFeatureRegistry.Feature, Boolean> state =
+-                new EnumMap<>(OptLabFeatureRegistry.Feature.class);
+-        for (OptLabFeatureRegistry.Feature feature : configurableFeatures()) {
+-            // A feature introduced after the preset was saved is safely OFF.
+-            state.put(feature, Boolean.TRUE.equals(saved.get(feature.id)));
+-        }
+-        closeDependencies(state);
+-        return state;
+-    }
+-
+-    private static void closeDependencies(
+-            EnumMap<OptLabFeatureRegistry.Feature, Boolean> state) {
+-        EnumSet<OptLabFeatureRegistry.Feature> enabled =
+-                EnumSet.noneOf(OptLabFeatureRegistry.Feature.class);
+-        for (Map.Entry<OptLabFeatureRegistry.Feature, Boolean> entry : state.entrySet()) {
+-            if (Boolean.TRUE.equals(entry.getValue())) {
+-                enableDependencies(entry.getKey(), state, enabled);
+-            }
+-        }
+-    }
+-
+-    private static void enableDependencies(OptLabFeatureRegistry.Feature feature,
+-                                           EnumMap<OptLabFeatureRegistry.Feature, Boolean> state,
+-                                           EnumSet<OptLabFeatureRegistry.Feature> seen) {
+-        if (!seen.add(feature)) return;
+-        state.put(feature, true);
+-        for (OptLabFeatureRegistry.Feature dependency : feature.dependencies) {
+-            if (dependency.category == OptLabFeatureRegistry.Category.BUILD42
+-                    && dependency.preferenceKey != null && dependency.isVisible()) {
+-                enableDependencies(dependency, state, seen);
+-            }
+-        }
+-    }
+-
+-    private static List<OptLabFeatureRegistry.Feature> configurableFeatures() {
+-        ArrayList<OptLabFeatureRegistry.Feature> features = new ArrayList<>();
+-        for (OptLabFeatureRegistry.Feature feature
+-                : OptLabFeatureRegistry.Feature.values()) {
+-            if (feature.category == OptLabFeatureRegistry.Category.BUILD42
+-                    && feature.preferenceKey != null && feature.isVisible()) {
+-                features.add(feature);
+-            }
+-        }
+-        return features;
+-    }
+-
+-    private static String validatedUniqueName(String requestedName, List<Preset> presets,
+-                                              String ignoredId) {
+-        String name = normalizedName(requestedName);
+-        if (hasName(presets, name, ignoredId)) {
+-            throw new IllegalArgumentException("Preset name already exists");
+-        }
+-        return name;
+-    }
+-
+-    private static String normalizedName(String requestedName) {
+-        if (requestedName == null) throw new IllegalArgumentException("Preset name is required");
+-        String name = requestedName.trim().replaceAll("\\s+", " ");
+-        int length = name.codePointCount(0, name.length());
+-        if (length == 0 || length > MAX_NAME_CODE_POINTS) {
+-            throw new IllegalArgumentException("Preset name must contain 1-"
+-                    + MAX_NAME_CODE_POINTS + " characters");
+-        }
+-        return name;
+-    }
+-
+-    private static boolean hasName(List<Preset> presets, String name, String ignoredId) {
+-        String key = name.toLowerCase(Locale.ROOT);
+-        for (Preset preset : presets) {
+-            if ((ignoredId == null || !ignoredId.equals(preset.id))
+-                    && preset.name.toLowerCase(Locale.ROOT).equals(key)) return true;
+-        }
+-        return false;
+-    }
+-
+-    private static Preset requirePreset(List<Preset> presets, String id) {
+-        Preset preset = findPreset(presets, id);
+-        if (preset == null) throw new IllegalArgumentException("Unknown preset ID");
+-        return preset;
+-    }
+-
+-    private static int requirePresetIndex(List<Preset> presets, String id) {
+-        for (int i = 0; i < presets.size(); i++) {
+-            if (presets.get(i).id.equals(id)) return i;
+-        }
+-        throw new IllegalArgumentException("Unknown preset ID");
+-    }
+-
+-    private static Preset findPreset(List<Preset> presets, String id) {
+-        if (id == null) return null;
+-        for (Preset preset : presets) {
+-            if (preset.id.equals(id)) return preset;
+-        }
+-        return null;
+-    }
+-
+-    private static boolean isSafeToken(String value) {
+-        return value != null && !value.isEmpty() && value.length() <= 96
+-                && value.matches("[A-Za-z0-9_.-]+");
+-    }
+-
+-    private static String urlEncode(String value) {
+-        try {
+-            return URLEncoder.encode(value, "UTF-8");
+-        } catch (UnsupportedEncodingException impossible) {
+-            throw new AssertionError(impossible);
+-        }
+-    }
+-
+-    private static String urlDecode(String value) {
+-        try {
+-            return URLDecoder.decode(value, "UTF-8");
+-        } catch (UnsupportedEncodingException impossible) {
+-            throw new AssertionError(impossible);
+-        }
+-    }
+-
+-    private static String checksum(String value) {
+-        CRC32 crc = new CRC32();
+-        try {
+-            crc.update(value.getBytes("UTF-8"));
+-        } catch (UnsupportedEncodingException impossible) {
+-            throw new AssertionError(impossible);
+-        }
+-        return Long.toHexString(crc.getValue());
+-    }
+-
+-    private static void commit(SharedPreferences.Editor editor) {
+-        if (!editor.commit()) {
+-            throw new IllegalStateException("Could not persist Build 42 custom presets");
+-        }
+-    }
+-
+-    private static final class LoadResult {
+-        final List<Preset> presets;
+-        final String problem;
+-        LoadResult(List<Preset> presets, String problem) {
+-            this.presets = presets;
+-            this.problem = problem;
+-        }
+-    }
+-}
+diff --git a/app/src/main/java/com/zomdroid/OptLabPreferences.java b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+index b2e94e9..7b0cb77 100644
+--- a/app/src/main/java/com/zomdroid/OptLabPreferences.java
++++ b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
+ import androidx.annotation.NonNull;
+ 
+ import java.util.EnumSet;
+-import java.util.List;
+ 
+ /**
+  * Independent, restart-scoped settings for the single-APK optimization lab.
+@@ -16,7 +15,7 @@ import java.util.List;
+  * launcher settings.
+  */
+ public final class OptLabPreferences {
+-    public static final int SCHEMA = 12;
++    public static final int SCHEMA = 13;
+     public static final String EXPECTED_PZ_JAR_SHA256 =
+             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
+     public static final String EXPECTED_PZ_42203_JAR_SHA256 =
+@@ -66,6 +65,11 @@ public final class OptLabPreferences {
+     private static final String K_RENDER_CHUNK_DEPTH_LOOKUP = "render_chunk_depth_lookup";
+     private static final String K_RENDER_RING_EMPTY_CLEAR = "render_ring_empty_clear";
+     private static final String K_ONLY_BUILD42 = "only_build_42";
++    private static final String K_R15_08_TRUST_MIGRATED = "r15_08_trust_migrated_v1";
++    private static final String K_REMOVED_CUSTOM_PRESET_CATALOG =
++            "build42_custom_presets_v1";
++    private static final String K_REMOVED_CUSTOM_PRESET_ACTIVE =
++            "build42_custom_preset_active_v1";
+ 
+     public enum Profile {
+         BASELINE("ALL OFF / legacy"),
+@@ -127,11 +131,10 @@ public final class OptLabPreferences {
+     }
+ 
+     private final SharedPreferences prefs;
+-    private final OptLabCustomPresetStore customPresets;
+ 
+     private OptLabPreferences(SharedPreferences prefs) {
+         this.prefs = prefs;
+-        this.customPresets = new OptLabCustomPresetStore(prefs);
++        migrateR1508TrustRecovery();
+     }
+ 
+     @NonNull
+@@ -312,7 +315,6 @@ public final class OptLabPreferences {
+         SharedPreferences.Editor editor = prefs.edit()
+                 .putString(K_BUILD42_PROFILE, profile.name());
+         if (profile != LabProfile.CUSTOM) {
+-            customPresets.clearActive(editor);
+             for (OptLabFeatureRegistry.Feature feature
+                     : OptLabFeatureRegistry.Feature.values()) {
+                 if (feature.category != OptLabFeatureRegistry.Category.BUILD42
+@@ -346,64 +348,6 @@ public final class OptLabPreferences {
+         }
+     }
+ 
+-    /** Named snapshots cover all visible registry-owned BUILD42 features only. */
+-    @NonNull
+-    public List<OptLabCustomPresetStore.Preset> getCustomBuild42Presets() {
+-        return customPresets.list();
+-    }
+-
+-    public OptLabCustomPresetStore.Preset getActiveCustomBuild42Preset() {
+-        return customPresets.active();
+-    }
+-
+-    public boolean isActiveCustomBuild42PresetModified() {
+-        return customPresets.isActiveModified();
+-    }
+-
+-    public boolean hasCustomBuild42PresetStorageProblem() {
+-        return customPresets.hasStorageProblem();
+-    }
+-
+-    public String getCustomBuild42PresetStorageProblem() {
+-        return customPresets.storageProblem();
+-    }
+-
+-    @NonNull
+-    public OptLabCustomPresetStore.Preset createCustomBuild42Preset(
+-            @NonNull String name) {
+-        return customPresets.create(name);
+-    }
+-
+-    @NonNull
+-    public OptLabCustomPresetStore.Preset applyCustomBuild42Preset(@NonNull String id) {
+-        return customPresets.apply(id);
+-    }
+-
+-    @NonNull
+-    public OptLabCustomPresetStore.Preset updateCustomBuild42Preset(@NonNull String id) {
+-        return customPresets.update(id);
+-    }
+-
+-    @NonNull
+-    public OptLabCustomPresetStore.Preset renameCustomBuild42Preset(
+-            @NonNull String id, @NonNull String name) {
+-        return customPresets.rename(id, name);
+-    }
+-
+-    @NonNull
+-    public OptLabCustomPresetStore.Preset duplicateCustomBuild42Preset(
+-            @NonNull String id, @NonNull String name) {
+-        return customPresets.duplicate(id, name);
+-    }
+-
+-    public void deleteCustomBuild42Preset(@NonNull String id) {
+-        customPresets.delete(id);
+-    }
+-
+-    public void resetCustomBuild42PresetCatalog() {
+-        customPresets.resetCatalog();
+-    }
+-
+     /** UI disclosure only; it never changes the effective launch configuration. */
+     public void setAdvancedControls(boolean enabled) {
+         writeBoolean(K_ADVANCED_CONTROLS, enabled);
+@@ -693,7 +637,6 @@ public final class OptLabPreferences {
+     }
+ 
+     public String machineReadable() {
+-        OptLabCustomPresetStore.Preset activePreset = getActiveCustomBuild42Preset();
+         return "schema=" + SCHEMA
+                 + " safeMode=" + bool(isSafeModeEnabled())
+                 + " generalProfile=" + getGeneralProfile().name()
+@@ -731,14 +674,34 @@ public final class OptLabPreferences {
+                 + " renderChunkDepthLookup=" + bool(isRenderChunkDepthLookup())
+                 + " renderRingEmptyClear=" + bool(isRenderRingEmptyClear())
+                 + " onlyBuild42=" + bool(isOnlyBuild42())
+-                + " customPresetSchema=" + OptLabCustomPresetStore.SCHEMA
+-                + " customPresetCount=" + getCustomBuild42Presets().size()
+-                + " customPreset=" + (activePreset == null ? "none" : activePreset.getId())
+-                + " customPresetModified="
+-                + bool(activePreset != null && isActiveCustomBuild42PresetModified())
++                + " customPresets=REMOVED"
+                 + featureMachineReadable();
+     }
+ 
++    /**
++     * One-shot recovery from R15-06/R15-07 custom presets.  The broken preset UI could commit a
++     * full Build 42 snapshot and then fail while refreshing its array-backed adapter.  Recovery
++     * therefore removes the obsolete catalog and establishes a deterministic Build 42 ALL OFF
++     * baseline before any OPT-LAB screen or launcher snapshot can read those values.  General,
++     * Native and the independent EXPERIMENTAL category are deliberately untouched.
++     */
++    private void migrateR1508TrustRecovery() {
++        if (prefs.getBoolean(K_R15_08_TRUST_MIGRATED, false)) return;
++        SharedPreferences.Editor editor = prefs.edit()
++                .remove(K_REMOVED_CUSTOM_PRESET_CATALOG)
++                .remove(K_REMOVED_CUSTOM_PRESET_ACTIVE)
++                .putString(K_BUILD42_PROFILE, LabProfile.CUSTOM.name());
++        for (OptLabFeatureRegistry.Feature feature : OptLabFeatureRegistry.Feature.values()) {
++            if (feature.category == OptLabFeatureRegistry.Category.BUILD42
++                    && feature.preferenceKey != null) {
++                editor.putBoolean(feature.preferenceKey, false);
++            }
++        }
++        editor.putBoolean(K_R15_08_TRUST_MIGRATED, true);
++        commit(editor);
++        requireStoredBoolean(K_R15_08_TRUST_MIGRATED, true);
++    }
++
+     private String featureMachineReadable() {
+         StringBuilder output = new StringBuilder();
+         for (OptLabFeatureRegistry.Feature feature : OptLabFeatureRegistry.Feature.values()) {
+diff --git a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+index 9688ece..e79eb4c 100644
+--- a/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
++++ b/app/src/main/java/com/zomdroid/fragments/OptLabFragment.java
+@@ -19,7 +19,6 @@ import androidx.fragment.app.Fragment;
+ import com.google.android.material.button.MaterialButton;
+ import com.google.android.material.tabs.TabLayout;
+ import com.zomdroid.NativeModulesPreferences;
+-import com.zomdroid.OptLabCustomPresetStore;
+ import com.zomdroid.OptLabFeatureRegistry;
+ import com.zomdroid.OptLabPreferences;
+ import com.zomdroid.R;
+@@ -98,20 +97,6 @@ public final class OptLabFragment extends Fragment {
+     private TextView build42ProfileStatus;
+     private OptLabUi.ToggleCard onlyBuild42;
+     private OptLabUi.ToggleCard advancedControls;
+-    private OptLabUi.NavCard customPresetCard;
+-    private View customPresetPage;
+-    private OptLabUi.NavCard customPresetStatusCard;
+-    private OptLabUi.SpinnerCard<OptLabCustomPresetStore.Preset> customPresetSpinner;
+-    private OptLabUi.TextFieldCard customPresetName;
+-    private MaterialButton customPresetCreate;
+-    private MaterialButton customPresetApply;
+-    private MaterialButton customPresetUpdate;
+-    private MaterialButton customPresetDelete;
+-    private MaterialButton customPresetReset;
+-    private String presetUiSelectedId;
+-    private String pendingPresetDeleteId;
+-    private boolean pendingPresetReset;
+-    private String presetUiMessage = "";
+     private final EnumMap<OptLabFeatureRegistry.Module, View> modulePages =
+             new EnumMap<>(OptLabFeatureRegistry.Module.class);
+     private final EnumMap<OptLabFeatureRegistry.Module, OptLabUi.NavCard> moduleCards =
+@@ -229,20 +214,6 @@ public final class OptLabFragment extends Fragment {
+         build42ProfileStatus = null;
+         onlyBuild42 = null;
+         advancedControls = null;
+-        customPresetCard = null;
+-        customPresetPage = null;
+-        customPresetStatusCard = null;
+-        customPresetSpinner = null;
+-        customPresetName = null;
+-        customPresetCreate = null;
+-        customPresetApply = null;
+-        customPresetUpdate = null;
+-        customPresetDelete = null;
+-        customPresetReset = null;
+-        presetUiSelectedId = null;
+-        pendingPresetDeleteId = null;
+-        pendingPresetReset = false;
+-        presetUiMessage = "";
+         generalProfileGesture = false;
+         build42ProfileGesture = false;
+         box64Gesture = false;
+@@ -365,10 +336,6 @@ public final class OptLabFragment extends Fragment {
+                 getString(R.string.opt_lab_build42_independent));
+         advancedControls = addToggle(home, "Advanced controls",
+                 "Afișează controalele individuale; nu modifică singur nicio optimizare");
+-        customPresetCard = OptLabUi.navCard(requireContext(),
+-                R.drawable.optlab_ic_profile, "Preseturi custom Build 42", "",
+-                view -> navigate(Route.build42Presets(), true));
+-        OptLabUi.addCard(home.content, customPresetCard.root);
+         home.content.addView(OptLabUi.section(requireContext(), "Module Build 42"));
+         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
+             OptLabUi.NavCard card = OptLabUi.navCard(requireContext(),
+@@ -394,9 +361,6 @@ public final class OptLabFragment extends Fragment {
+             modulePages.put(module, detail);
+             build42Host.addView(detail, matchParent());
+         }
+-        customPresetPage = buildCustomPresetManagerPage();
+-        customPresetPage.setVisibility(View.GONE);
+-        build42Host.addView(customPresetPage, matchParent());
+         return build42Host;
+     }
+ 
+@@ -452,53 +416,6 @@ public final class OptLabFragment extends Fragment {
+         return page.root;
+     }
+ 
+-    private View buildCustomPresetManagerPage() {
+-        OptLabUi.Page page = OptLabUi.page(requireContext());
+-        MaterialButton back = OptLabUi.actionButton(requireContext(), "← Build 42");
+-        back.setOnClickListener(view -> navigateBackOr(Route.build42Home()));
+-        page.content.addView(back);
+-        page.content.addView(OptLabUi.section(requireContext(),
+-                "Preseturi custom · Build 42"));
+-        customPresetStatusCard = OptLabUi.navCard(requireContext(),
+-                R.drawable.optlab_ic_profile, "Stare preset", "", null);
+-        OptLabUi.addCard(page.content, customPresetStatusCard.root);
+-
+-        customPresetSpinner = OptLabUi.spinnerCard(requireContext(),
+-                R.drawable.optlab_ic_profile, "Preset salvat",
+-                new OptLabCustomPresetStore.Preset[0]);
+-        OptLabUi.addCard(page.content, customPresetSpinner.root);
+-        customPresetName = OptLabUi.textFieldCard(requireContext(),
+-                "Nume pentru un preset nou",
+-                "Ex.: Telefon, Oraș, Exterior");
+-        OptLabUi.addCard(page.content, customPresetName.root);
+-
+-        customPresetCreate = OptLabUi.actionButton(requireContext(),
+-                "Creează din configurația curentă");
+-        customPresetApply = OptLabUi.actionButton(requireContext(), "Aplică presetul selectat");
+-        customPresetUpdate = OptLabUi.actionButton(requireContext(),
+-                "Salvează starea curentă în preset");
+-        customPresetDelete = OptLabUi.actionButton(requireContext(),
+-                "Șterge presetul selectat");
+-        customPresetReset = OptLabUi.actionButton(requireContext(),
+-                "Repară lista de preseturi");
+-        customPresetCreate.setOnClickListener(view -> createCustomPreset());
+-        customPresetApply.setOnClickListener(view -> applyCustomPreset());
+-        customPresetUpdate.setOnClickListener(view -> updateCustomPreset());
+-        customPresetDelete.setOnClickListener(view -> deleteCustomPreset());
+-        customPresetReset.setOnClickListener(view -> resetCustomPresetCatalog());
+-        page.content.addView(customPresetCreate);
+-        page.content.addView(OptLabUi.actionRow(requireContext(),
+-                customPresetApply, customPresetUpdate));
+-        page.content.addView(customPresetDelete);
+-        page.content.addView(customPresetReset);
+-        page.content.addView(OptLabUi.note(requireContext(),
+-                "Presetul salvează toate controalele Build 42 vizibile, inclusiv Internal și "
+-                        + "Experimental Build 42. General, Native și Experimental independent "
+-                        + "rămân neatinse. Aplică încarcă valorile, iar Salvează actualizează "
+-                        + "presetul selectat. Ștergerea cere două apăsări."));
+-        return page.root;
+-    }
+-
+     private void addFeatureGroup(OptLabUi.Page page, OptLabFeatureRegistry.Module module,
+                                  OptLabFeatureRegistry.Maturity maturity, String label) {
+         boolean sectionAdded = false;
+@@ -668,24 +585,6 @@ public final class OptLabFragment extends Fragment {
+                 });
+         armProfileGesture(generalProfileCard, true);
+         armProfileGesture(build42ProfileCard, false);
+-        customPresetSpinner.spinner.setOnItemSelectedListener(
+-                new AdapterView.OnItemSelectedListener() {
+-                    @Override public void onItemSelected(AdapterView<?> parent, View view,
+-                                                          int position, long id) {
+-                        if (!uiReady || updating) return;
+-                        Object item = parent.getItemAtPosition(position);
+-                        if (!(item instanceof OptLabCustomPresetStore.Preset)) return;
+-                        OptLabCustomPresetStore.Preset preset =
+-                                (OptLabCustomPresetStore.Preset) item;
+-                        presetUiSelectedId = preset.getId();
+-                        pendingPresetDeleteId = null;
+-                        pendingPresetReset = false;
+-                        presetUiMessage = "";
+-                        updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+-                                prefs.getCustomBuild42Presets(), preset);
+-                    }
+-                    @Override public void onNothingSelected(AdapterView<?> parent) {}
+-                });
+         box64.spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+             @Override public void onItemSelected(AdapterView<?> parent, View view,
+                                                   int position, long id) {
+@@ -797,10 +696,7 @@ public final class OptLabFragment extends Fragment {
+         boolean advanced = prefs.isAdvancedControls();
+         select(build42ProfileCard, prefs.getBuild42LabProfile());
+         build42ProfileCard.setEnabled(!safe);
+-        OptLabCustomPresetStore.Preset activePreset =
+-                prefs.getActiveCustomBuild42Preset();
+-        build42ProfileStatus.setText(build42ProfileLabel(activePreset));
+-        customPresetCard.subtitle.setText(customPresetHomeSummary(activePreset));
++        build42ProfileStatus.setText(build42ProfileLabel());
+         onlyBuild42.toggle.setChecked(prefs.isOnlyBuild42());
+         advancedControls.toggle.setChecked(advanced);
+         setEnabled(!safe, onlyBuild42, advancedControls);
+@@ -831,237 +727,13 @@ public final class OptLabFragment extends Fragment {
+             experimentalNativeCard.subtitle.setText(safe ? "Safe Mode"
+                     : nativeActive + "/3 active · implicit OFF");
+         }
+-        syncCustomPresetManager(safe);
+     }
+ 
+-    private String build42ProfileLabel(OptLabCustomPresetStore.Preset activePreset) {
+-        String label;
+-        if (activePreset == null) {
+-            label = "Profil activ: " + prefs.getBuild42LabProfile();
+-        } else if (prefs.isActiveCustomBuild42PresetModified()) {
+-            label = "Modified · based on " + activePreset.getName();
+-        } else {
+-            label = "Custom · " + activePreset.getName();
+-        }
++    private String build42ProfileLabel() {
++        String label = "Profil activ: " + prefs.getBuild42LabProfile();
+         return prefs.isSafeModeEnabled() ? "Safe Mode · păstrează " + label : label;
+     }
+ 
+-    private String customPresetHomeSummary(OptLabCustomPresetStore.Preset activePreset) {
+-        if (prefs.hasCustomBuild42PresetStorageProblem()) {
+-            return "Catalog indisponibil · datele existente sunt păstrate";
+-        }
+-        int count = prefs.getCustomBuild42Presets().size();
+-        if (activePreset != null) {
+-            return (prefs.isActiveCustomBuild42PresetModified()
+-                    ? "Modified · based on " : "Custom · ") + activePreset.getName()
+-                    + " · " + count + (count == 1 ? " preset" : " preseturi");
+-        }
+-        return count == 0 ? "Niciun preset salvat"
+-                : count + " preseturi salvate · niciunul aplicat";
+-    }
+-
+-    private void syncCustomPresetManager(boolean safe) {
+-        List<OptLabCustomPresetStore.Preset> presets =
+-                prefs.getCustomBuild42Presets();
+-        OptLabCustomPresetStore.Preset selected = findPreset(presets, presetUiSelectedId);
+-        if (selected == null) {
+-            OptLabCustomPresetStore.Preset active = prefs.getActiveCustomBuild42Preset();
+-            selected = active == null ? null : findPreset(presets, active.getId());
+-        }
+-        if (selected == null && !presets.isEmpty()) selected = presets.get(0);
+-
+-        customPresetSpinner.adapter.clear();
+-        customPresetSpinner.adapter.addAll(presets);
+-        customPresetSpinner.adapter.notifyDataSetChanged();
+-        if (selected != null) {
+-            int position = presetPosition(presets, selected.getId());
+-            if (position >= 0
+-                    && customPresetSpinner.spinner.getSelectedItemPosition() != position) {
+-                customPresetSpinner.spinner.setSelection(position, false);
+-            }
+-            presetUiSelectedId = selected.getId();
+-        } else {
+-            presetUiSelectedId = null;
+-        }
+-        updateSelectedPresetControls(safe, presets, selected);
+-    }
+-
+-    private void updateSelectedPresetControls(boolean safe,
+-                                              List<OptLabCustomPresetStore.Preset> presets,
+-                                              OptLabCustomPresetStore.Preset selected) {
+-        boolean storageProblem = prefs.hasCustomBuild42PresetStorageProblem();
+-        boolean mutable = !safe && !storageProblem;
+-        boolean hasSelection = selected != null;
+-        customPresetSpinner.setEnabled(mutable && hasSelection);
+-        customPresetName.setEnabled(mutable);
+-        customPresetCreate.setEnabled(mutable);
+-        customPresetApply.setEnabled(mutable && hasSelection);
+-        customPresetUpdate.setEnabled(mutable && hasSelection);
+-        customPresetDelete.setEnabled(mutable && hasSelection);
+-        customPresetReset.setVisibility(storageProblem ? View.VISIBLE : View.GONE);
+-        customPresetReset.setEnabled(!safe && storageProblem);
+-        customPresetDelete.setText(hasSelection
+-                && selected.getId().equals(pendingPresetDeleteId)
+-                ? "Confirmă ștergerea" : "Șterge presetul selectat");
+-        customPresetReset.setText(pendingPresetReset
+-                ? "Confirmă repararea listei" : "Repară lista de preseturi");
+-
+-        String state;
+-        if (storageProblem) {
+-            state = "Catalog indisponibil · date păstrate · "
+-                    + prefs.getCustomBuild42PresetStorageProblem();
+-        } else if (selected == null) {
+-            state = "Niciun preset salvat · configurația curentă nu este afectată";
+-        } else {
+-            OptLabCustomPresetStore.Preset active = prefs.getActiveCustomBuild42Preset();
+-            if (active != null && active.getId().equals(selected.getId())) {
+-                state = prefs.isActiveCustomBuild42PresetModified()
+-                        ? "Modified · based on " + selected.getName()
+-                        : "Custom · " + selected.getName() + " · exact";
+-            } else {
+-                state = "Selectat: " + selected.getName() + " · nu este aplicat";
+-            }
+-            state += " · " + presets.size()
+-                    + (presets.size() == 1 ? " preset salvat" : " preseturi salvate");
+-        }
+-        if (safe) state = "Safe Mode · controale blocate · " + state;
+-        if (!presetUiMessage.isEmpty()) state += " · " + presetUiMessage;
+-        customPresetStatusCard.subtitle.setText(state);
+-    }
+-
+-    private void createCustomPreset() {
+-        try {
+-            OptLabCustomPresetStore.Preset preset = prefs.createCustomBuild42Preset(
+-                    requestedPresetName());
+-            customPresetName.input.setText("");
+-            completePresetAction(preset, "Preset creat");
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void applyCustomPreset() {
+-        OptLabCustomPresetStore.Preset selected = selectedPreset();
+-        if (selected == null) {
+-            failPresetAction("Selectează un preset");
+-            return;
+-        }
+-        try {
+-            completePresetAction(prefs.applyCustomBuild42Preset(selected.getId()),
+-                    "Preset aplicat · restart necesar");
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void updateCustomPreset() {
+-        OptLabCustomPresetStore.Preset selected = selectedPreset();
+-        if (selected == null) {
+-            failPresetAction("Selectează un preset");
+-            return;
+-        }
+-        try {
+-            completePresetAction(prefs.updateCustomBuild42Preset(selected.getId()),
+-                    "Preset actualizat");
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void deleteCustomPreset() {
+-        OptLabCustomPresetStore.Preset selected = selectedPreset();
+-        if (selected == null) {
+-            failPresetAction("Selectează un preset");
+-            return;
+-        }
+-        if (!selected.getId().equals(pendingPresetDeleteId)) {
+-            pendingPresetDeleteId = selected.getId();
+-            presetUiMessage = "Apasă din nou pentru ștergerea definitivă";
+-            updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+-                    prefs.getCustomBuild42Presets(), selected);
+-            return;
+-        }
+-        try {
+-            prefs.deleteCustomBuild42Preset(selected.getId());
+-            presetUiSelectedId = null;
+-            pendingPresetDeleteId = null;
+-            presetUiMessage = "Preset șters";
+-            syncAll();
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void resetCustomPresetCatalog() {
+-        if (!prefs.hasCustomBuild42PresetStorageProblem()) return;
+-        if (!pendingPresetReset) {
+-            pendingPresetReset = true;
+-            presetUiMessage = "Repararea șterge numai lista coruptă, nu setările active";
+-            updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+-                    prefs.getCustomBuild42Presets(), selectedPreset());
+-            return;
+-        }
+-        try {
+-            prefs.resetCustomBuild42PresetCatalog();
+-            presetUiSelectedId = null;
+-            pendingPresetDeleteId = null;
+-            pendingPresetReset = false;
+-            presetUiMessage = "Lista de preseturi a fost reparată; setările active au rămas intacte";
+-            syncAll();
+-        } catch (RuntimeException error) {
+-            failPresetAction(error);
+-        }
+-    }
+-
+-    private void completePresetAction(OptLabCustomPresetStore.Preset preset,
+-                                      String message) {
+-        presetUiSelectedId = preset.getId();
+-        pendingPresetDeleteId = null;
+-        pendingPresetReset = false;
+-        presetUiMessage = message;
+-        syncAll();
+-    }
+-
+-    private void failPresetAction(RuntimeException error) {
+-        String message = error.getMessage();
+-        failPresetAction(message == null || message.isEmpty()
+-                ? error.getClass().getSimpleName() : message);
+-    }
+-
+-    private void failPresetAction(String message) {
+-        pendingPresetDeleteId = null;
+-        pendingPresetReset = false;
+-        presetUiMessage = "Eroare: " + message;
+-        updateSelectedPresetControls(prefs.isSafeModeEnabled(),
+-                prefs.getCustomBuild42Presets(), selectedPreset());
+-    }
+-
+-    private String requestedPresetName() {
+-        CharSequence value = customPresetName.input.getText();
+-        return value == null ? "" : value.toString();
+-    }
+-
+-    private OptLabCustomPresetStore.Preset selectedPreset() {
+-        return findPreset(prefs.getCustomBuild42Presets(), presetUiSelectedId);
+-    }
+-
+-    private static OptLabCustomPresetStore.Preset findPreset(
+-            List<OptLabCustomPresetStore.Preset> presets, String id) {
+-        if (id == null) return null;
+-        for (OptLabCustomPresetStore.Preset preset : presets) {
+-            if (id.equals(preset.getId())) return preset;
+-        }
+-        return null;
+-    }
+-
+-    private static int presetPosition(List<OptLabCustomPresetStore.Preset> presets,
+-                                      String id) {
+-        for (int index = 0; index < presets.size(); index++) {
+-            if (id.equals(presets.get(index).getId())) return index;
+-        }
+-        return -1;
+-    }
+-
+     private String experimentalModuleSummary(OptLabFeatureRegistry.Module module,
+                                              boolean safeMode) {
+         int total = 0;
+@@ -1173,7 +845,6 @@ public final class OptLabFragment extends Fragment {
+     private void showBuild42Module(OptLabFeatureRegistry.Module selected) {
+         if (build42Home == null) return;
+         build42Home.setVisibility(View.GONE);
+-        if (customPresetPage != null) customPresetPage.setVisibility(View.GONE);
+         for (OptLabFeatureRegistry.Module module : BUILD42_MODULES) {
+             View page = modulePages.get(module);
+             if (page != null) {
+@@ -1188,15 +859,6 @@ public final class OptLabFragment extends Fragment {
+         build42Home.setVisibility(View.VISIBLE);
+         build42Home.scrollTo(0, 0);
+         for (View page : modulePages.values()) page.setVisibility(View.GONE);
+-        if (customPresetPage != null) customPresetPage.setVisibility(View.GONE);
+-    }
+-
+-    private void showCustomPresetManager() {
+-        if (build42Home == null || customPresetPage == null) return;
+-        build42Home.setVisibility(View.GONE);
+-        for (View page : modulePages.values()) page.setVisibility(View.GONE);
+-        customPresetPage.setVisibility(View.VISIBLE);
+-        customPresetPage.scrollTo(0, 0);
+     }
+ 
+     private void showExperimentalModule(OptLabFeatureRegistry.Module selected) {
+@@ -1330,9 +992,6 @@ public final class OptLabFragment extends Fragment {
+             case BUILD42_MODULE:
+                 showBuild42Module(route.module);
+                 break;
+-            case BUILD42_PRESETS:
+-                showCustomPresetManager();
+-                break;
+             case EXPERIMENTAL_HOME:
+                 showExperimentalHome();
+                 break;
+@@ -1352,7 +1011,6 @@ public final class OptLabFragment extends Fragment {
+         ROOT,
+         BUILD42_HOME,
+         BUILD42_MODULE,
+-        BUILD42_PRESETS,
+         EXPERIMENTAL_HOME,
+         EXPERIMENTAL_MODULE
+     }
+@@ -1375,9 +1033,6 @@ public final class OptLabFragment extends Fragment {
+         static Route build42Module(OptLabFeatureRegistry.Module module) {
+             return new Route(TAB_BUILD42, RouteKind.BUILD42_MODULE, module);
+         }
+-        static Route build42Presets() {
+-            return new Route(TAB_BUILD42, RouteKind.BUILD42_PRESETS, null);
+-        }
+         static Route experimentalHome() {
+             return new Route(TAB_EXPERIMENTAL, RouteKind.EXPERIMENTAL_HOME, null);
+         }
+diff --git a/tools/OptLabCustomPresetStoreUnit.java b/tools/OptLabCustomPresetStoreUnit.java
+deleted file mode 100644
+index 718b506..0000000
+--- a/tools/OptLabCustomPresetStoreUnit.java
++++ /dev/null
+@@ -1,246 +0,0 @@
+-package com.zomdroid;
+-
+-import android.content.Context;
+-import android.content.SharedPreferences;
+-
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.LinkedHashMap;
+-import java.util.List;
+-import java.util.Map;
+-
+-/** Host contract for the versioned, named Build 42 preset catalog. */
+-public final class OptLabCustomPresetStoreUnit {
+-    public static void main(String[] args) {
+-        lifecycleAndIsolation();
+-        dependencyRepairAndForwardSafety();
+-        corruptCatalogFailsClosed();
+-        System.out.println("OPTLAB_CUSTOM_PRESET_STORE_UNIT PASS schema=1 lifecycle=6"
+-                + " stable_ids=1 dependencies=repaired scope=build42_only corrupt=fail_closed");
+-    }
+-
+-    private static void lifecycleAndIsolation() {
+-        FakeContext context = new FakeContext();
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        prefs.setChunkCp2cDirtyClear(true);
+-        prefs.setBuild42LabProfile(OptLabPreferences.LabProfile.RECOMMENDED);
+-        prefs.setFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP, false);
+-        prefs.setFeatureEnabled(OptLabFeatureRegistry.Feature.FBO_INNER_LOOP, true);
+-
+-        OptLabCustomPresetStore.Preset first =
+-                prefs.createCustomBuild42Preset("  Telefon   Ω  ");
+-        require("Telefon Ω".equals(first.getName()), "name normalization");
+-        require(first.getFeatureStates().size() == visibleBuild42Count(),
+-                "snapshot is not complete");
+-        require(first.getFeatureStates().containsKey(
+-                        OptLabFeatureRegistry.Feature.RTHREAD_MVP.id),
+-                "snapshot does not use stable feature IDs");
+-        require(prefs.getBuild42LabProfile() == OptLabPreferences.LabProfile.CUSTOM,
+-                "created preset did not become Custom");
+-        require(first.getId().equals(prefs.getActiveCustomBuild42Preset().getId()),
+-                "created preset not active");
+-        require(!prefs.isActiveCustomBuild42PresetModified(),
+-                "fresh snapshot marked modified");
+-        require(prefs.isChunkCp2cDirtyClear(),
+-                "Build 42 snapshot rewrote independent Experimental CP2C");
+-
+-        expectIllegalArgument(() -> prefs.createCustomBuild42Preset("telefon ω"),
+-                "case-insensitive duplicate name accepted");
+-
+-        prefs.setFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP, true);
+-        require(prefs.isActiveCustomBuild42PresetModified(),
+-                "manual edit did not mark active preset modified");
+-        prefs.applyCustomBuild42Preset(first.getId());
+-        require(!prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP),
+-                "apply did not restore saved internal toggle");
+-        require(prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.FBO_INNER_LOOP),
+-                "apply did not restore saved experimental B42 toggle");
+-        require(!prefs.isActiveCustomBuild42PresetModified(),
+-                "applied snapshot marked modified");
+-
+-        OptLabCustomPresetStore.Preset renamed =
+-                prefs.renameCustomBuild42Preset(first.getId(), "Telefon stabil");
+-        require(first.getId().equals(renamed.getId()), "rename changed identity");
+-        require("Telefon stabil".equals(
+-                        prefs.getActiveCustomBuild42Preset().getName()),
+-                "active rename not visible");
+-
+-        OptLabCustomPresetStore.Preset duplicate =
+-                prefs.duplicateCustomBuild42Preset(first.getId(), "Exterior");
+-        require(!duplicate.getId().equals(first.getId()), "duplicate reused identity");
+-        require(prefs.getCustomBuild42Presets().size() == 2,
+-                "duplicate not persisted");
+-        require(first.getId().equals(prefs.getActiveCustomBuild42Preset().getId()),
+-                "duplicate unexpectedly changed active preset");
+-
+-        prefs.applyCustomBuild42Preset(duplicate.getId());
+-        prefs.setFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_TEXTURE_BIND, false);
+-        require(prefs.isActiveCustomBuild42PresetModified(),
+-                "edit before update not detected");
+-        OptLabCustomPresetStore.Preset updated =
+-                prefs.updateCustomBuild42Preset(duplicate.getId());
+-        require(updated.getId().equals(duplicate.getId()), "update changed identity");
+-        require(!prefs.isActiveCustomBuild42PresetModified(),
+-                "updated preset not exact");
+-
+-        OptLabPreferences restored = OptLabPreferences.from(context);
+-        require(restored.getCustomBuild42Presets().size() == 2,
+-                "catalog did not survive a new preferences instance");
+-        require("Exterior".equals(restored.getActiveCustomBuild42Preset().getName()),
+-                "active identity did not persist");
+-        require(restored.machineReadable().contains("customPresetSchema=1")
+-                        && restored.machineReadable().contains("customPresetCount=2"),
+-                "preset diagnostics missing");
+-
+-        restored.setBuild42LabProfile(OptLabPreferences.LabProfile.SAFE);
+-        require(restored.getActiveCustomBuild42Preset() == null,
+-                "built-in profile retained a false custom identity");
+-        require(restored.getCustomBuild42Presets().size() == 2,
+-                "built-in profile deleted saved presets");
+-        restored.applyCustomBuild42Preset(duplicate.getId());
+-        restored.setBuild42ProductionAllOff();
+-        require(restored.getActiveCustomBuild42Preset() != null
+-                        && restored.isActiveCustomBuild42PresetModified(),
+-                "ALL OFF should preserve the saved base and mark it modified");
+-
+-        restored.deleteCustomBuild42Preset(first.getId());
+-        require(restored.getCustomBuild42Presets().size() == 1,
+-                "delete non-active preset failed");
+-        restored.deleteCustomBuild42Preset(duplicate.getId());
+-        require(restored.getCustomBuild42Presets().isEmpty()
+-                        && restored.getActiveCustomBuild42Preset() == null,
+-                "delete active preset failed");
+-        require(restored.isChunkCp2cDirtyClear(),
+-                "preset lifecycle rewrote independent Experimental CP2C");
+-    }
+-
+-    private static void dependencyRepairAndForwardSafety() {
+-        FakeContext context = new FakeContext();
+-        LinkedHashMap<String, Boolean> saved = new LinkedHashMap<>();
+-        saved.put(OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_UPLOAD.id, false);
+-        saved.put(OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_LOOKUP.id, true);
+-        // Deliberately omit all other IDs to emulate a preset from an older registry.
+-        OptLabCustomPresetStore.Preset injected = new OptLabCustomPresetStore.Preset(
+-                "dependency-repair", "Dependency repair", 1L, 1L, saved);
+-        context.preferences.edit().putString(OptLabCustomPresetStore.K_CATALOG,
+-                OptLabCustomPresetStore.encode(Collections.singletonList(injected))).commit();
+-
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        prefs.setBuild42LabProfile(OptLabPreferences.LabProfile.AGGRESSIVE);
+-        prefs.applyCustomBuild42Preset(injected.getId());
+-        require(prefs.isFeatureEnabled(
+-                        OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_UPLOAD),
+-                "apply did not repair required dependency");
+-        require(prefs.isFeatureEnabled(
+-                        OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_LOOKUP),
+-                "requested dependent feature not applied");
+-        require(!prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.FBO_INNER_LOOP),
+-                "missing future feature did not fail safely to OFF");
+-        require(!prefs.isActiveCustomBuild42PresetModified(),
+-                "normalized dependency repair should be the active exact state");
+-    }
+-
+-    private static void corruptCatalogFailsClosed() {
+-        FakeContext context = new FakeContext();
+-        String unknown = "ZOMDROID_BUILD42_PRESETS\t99\nfuture-data-must-survive";
+-        context.preferences.edit().putString(OptLabCustomPresetStore.K_CATALOG, unknown)
+-                .commit();
+-        OptLabPreferences prefs = OptLabPreferences.from(context);
+-        prefs.setFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP, true);
+-        require(prefs.hasCustomBuild42PresetStorageProblem(),
+-                "unknown schema not reported");
+-        require(prefs.getCustomBuild42Presets().isEmpty(),
+-                "unknown schema exposed partial records");
+-        expectIllegalState(() -> prefs.createCustomBuild42Preset("Do not overwrite"),
+-                "mutation overwrote unknown schema");
+-        require(unknown.equals(context.preferences.getString(
+-                        OptLabCustomPresetStore.K_CATALOG, "")),
+-                "unknown catalog data was destroyed");
+-        require(prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP),
+-                "catalog failure changed live Build 42 state");
+-        prefs.resetCustomBuild42PresetCatalog();
+-        require(!prefs.hasCustomBuild42PresetStorageProblem()
+-                        && prefs.getCustomBuild42Presets().isEmpty(),
+-                "catalog-only recovery did not restore an empty writable store");
+-        require(prefs.isFeatureEnabled(OptLabFeatureRegistry.Feature.RTHREAD_MVP),
+-                "catalog reset changed live Build 42 state");
+-    }
+-
+-    private static int visibleBuild42Count() {
+-        int count = 0;
+-        for (OptLabFeatureRegistry.Feature feature
+-                : OptLabFeatureRegistry.Feature.values()) {
+-            if (feature.category == OptLabFeatureRegistry.Category.BUILD42
+-                    && feature.preferenceKey != null && feature.isVisible()) count++;
+-        }
+-        return count;
+-    }
+-
+-    private static void expectIllegalArgument(Runnable operation, String message) {
+-        try {
+-            operation.run();
+-        } catch (IllegalArgumentException expected) {
+-            return;
+-        }
+-        throw new AssertionError(message);
+-    }
+-
+-    private static void expectIllegalState(Runnable operation, String message) {
+-        try {
+-            operation.run();
+-        } catch (IllegalStateException expected) {
+-            return;
+-        }
+-        throw new AssertionError(message);
+-    }
+-
+-    private static void require(boolean condition, String message) {
+-        if (!condition) throw new AssertionError(message);
+-    }
+-
+-    private static final class FakeContext extends Context {
+-        private final FakePreferences preferences = new FakePreferences();
+-        @Override public Context getApplicationContext() { return this; }
+-        @Override public SharedPreferences getSharedPreferences(String name, int mode) {
+-            return preferences;
+-        }
+-    }
+-
+-    private static final class FakePreferences implements SharedPreferences {
+-        private final Map<String, Object> values = new HashMap<>();
+-        @Override public boolean getBoolean(String key, boolean fallback) {
+-            Object value = values.get(key);
+-            return value instanceof Boolean ? (Boolean) value : fallback;
+-        }
+-        @Override public String getString(String key, String fallback) {
+-            Object value = values.get(key);
+-            return value instanceof String ? (String) value : fallback;
+-        }
+-        @Override public Editor edit() {
+-            return new Editor() {
+-                private final Map<String, Object> pending = new HashMap<>();
+-                private final java.util.Set<String> removed = new java.util.HashSet<>();
+-                @Override public Editor putBoolean(String key, boolean value) {
+-                    pending.put(key, value);
+-                    return this;
+-                }
+-                @Override public Editor putString(String key, String value) {
+-                    pending.put(key, value);
+-                    removed.remove(key);
+-                    return this;
+-                }
+-                @Override public Editor remove(String key) {
+-                    pending.remove(key);
+-                    removed.add(key);
+-                    return this;
+-                }
+-                @Override public boolean commit() {
+-                    for (String key : removed) values.remove(key);
+-                    values.putAll(pending);
+-                    return true;
+-                }
+-            };
+-        }
+-    }
+-}
+diff --git a/tools/OptLabPreferencesIndependenceUnit.java b/tools/OptLabPreferencesIndependenceUnit.java
+index 57735b8..d45f06f 100644
+--- a/tools/OptLabPreferencesIndependenceUnit.java
++++ b/tools/OptLabPreferencesIndependenceUnit.java
+@@ -11,7 +11,21 @@ import java.util.Map;
+ public final class OptLabPreferencesIndependenceUnit {
+     public static void main(String[] args) {
+         FakeContext context = new FakeContext();
++        context.preferences.edit()
++                .putString("build42_custom_presets_v1", "broken-array-backed-catalog")
++                .putString("build42_custom_preset_active_v1", "legacy-active")
++                .putBoolean("render_chunk_depth_upload", true)
++                .putBoolean("master", true)
++                .putBoolean("quiet_runtime", true)
++                .commit();
+         OptLabPreferences prefs = OptLabPreferences.from(context);
++        require(!prefs.isRenderChunkDepthUpload(),
++                "R15-08 migration did not establish Build 42 ALL OFF");
++        require(prefs.isMasterEnabled() && prefs.isQuietRuntime(),
++                "R15-08 migration modified General");
++        require("removed".equals(context.preferences.getString(
++                        "build42_custom_presets_v1", "removed")),
++                "R15-08 migration retained custom preset catalog");
+ 
+         prefs.setProfile(OptLabPreferences.Profile.RUNTIME_SAFE);
+         prefs.setStreamWake(true);
+@@ -194,14 +208,15 @@ public final class OptLabPreferencesIndependenceUnit {
+                         && allSettings.isOnlyBuild42() && !allSettings.isAdvancedControls(),
+                 "one or more Runtime/Display controls re-armed after explicit OFF");
+ 
+-        require(OptLabPreferences.SCHEMA == 12, "schema 12");
++        require(OptLabPreferences.SCHEMA == 13, "schema 13");
+         require(OptLabPreferences.isKnownPzJarSha256(
+                 OptLabPreferences.EXPECTED_PZ_42203_JAR_SHA256), "42.20.3 known");
+         require(prefs.machineReadable().contains("generalProfile=")
+                         && prefs.machineReadable().contains("build42Profile="),
+                 "separate profiles missing from diagnostics");
+-        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=12 safe_mode=1"
+-                + " profiles=independent off_restart=all_features general_roundtrip=all");
++        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=13 safe_mode=1"
++                + " presets=removed_migrated profiles=independent off_restart=all_features"
++                + " general_roundtrip=all");
+     }
+ 
+     private static final class FakeContext extends Context {
+@@ -213,6 +228,7 @@ public final class OptLabPreferencesIndependenceUnit {
+     }
+ 
+     private static final class FakePreferences implements SharedPreferences {
++        private static final Object REMOVED = new Object();
+         private final Map<String, Object> values = new HashMap<>();
+         @Override public boolean getBoolean(String key, boolean fallback) {
+             Object value = values.get(key);
+@@ -233,8 +249,15 @@ public final class OptLabPreferencesIndependenceUnit {
+                     pending.put(key, value);
+                     return this;
+                 }
++                @Override public Editor remove(String key) {
++                    pending.put(key, REMOVED);
++                    return this;
++                }
+                 @Override public boolean commit() {
+-                    values.putAll(pending);
++                    for (Map.Entry<String, Object> entry : pending.entrySet()) {
++                        if (entry.getValue() == REMOVED) values.remove(entry.getKey());
++                        else values.put(entry.getKey(), entry.getValue());
++                    }
+                     return true;
+                 }
+             };
+diff --git a/tools/test-cp62-apk-wiring.sh b/tools/test-cp62-apk-wiring.sh
+index f7ed625..96d701e 100755
+--- a/tools/test-cp62-apk-wiring.sh
++++ b/tools/test-cp62-apk-wiring.sh
+@@ -34,7 +34,7 @@ assert 'compatibility.requireAgentFeatureProperties(jvmArgs)' in launcher, \
+ for feature in ('RTHREAD_CHUNK_DEPTH_UPLOAD','RTHREAD_CHUNK_DEPTH_LOOKUP',
+                 'RTHREAD_RING_RENDER_CLEAR'):
+     assert feature in registry and feature in agent, f'registry/agent missing {feature}'
+-assert 'public static final int SCHEMA = 12' in prefs, 'preference schema mismatch'
++assert 'public static final int SCHEMA = 13' in prefs, 'preference schema mismatch'
+ assert 'isSafeModeEnabled()' in prefs and 'K_SAFE_MODE' in prefs, \
+     'Safe Mode effective gate missing'
+ assert 'isAnyRenderOptimizationEnabled()' in prefs, 'agent launch gate ignores Render'
+diff --git a/tools/test-native-modules-preferences.sh b/tools/test-native-modules-preferences.sh
+index 0d8a7df..f9c92b7 100755
+--- a/tools/test-native-modules-preferences.sh
++++ b/tools/test-native-modules-preferences.sh
+@@ -12,7 +12,6 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
+   "$PROJECT_DIR/tools/NativeModulesPreferencesUnit.java"
+diff --git a/tools/test-optlab-custom-presets.sh b/tools/test-optlab-custom-presets.sh
+deleted file mode 100755
+index ebcda8b..0000000
+--- a/tools/test-optlab-custom-presets.sh
++++ /dev/null
+@@ -1,23 +0,0 @@
+-#!/usr/bin/env bash
+-set -euo pipefail
+-
+-PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+-WORK_DIR="$(mktemp -d)"
+-trap 'rm -rf -- "$WORK_DIR"' EXIT
+-
+-mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/preferences-stubs" \
+-  "$PROJECT_DIR/tools/registry-stubs" -type f -name '*.java' \
+-  ! -path '*/preferences-stubs/com/zomdroid/OptLabFeatureRegistry.java' \
+-  -print0 | LC_ALL=C sort -z)
+-
+-java -m jdk.compiler/com.sun.tools.javac.Main --release 11 \
+-  -d "$WORK_DIR/classes" \
+-  "${STUBS[@]}" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java" \
+-  "$PROJECT_DIR/tools/OptLabCustomPresetStoreUnit.java"
+-
+-java -cp "$WORK_DIR/classes" com.zomdroid.OptLabCustomPresetStoreUnit
+diff --git a/tools/test-optlab-preferences-independence.sh b/tools/test-optlab-preferences-independence.sh
+index b7e142c..8f2e724 100755
+--- a/tools/test-optlab-preferences-independence.sh
++++ b/tools/test-optlab-preferences-independence.sh
+@@ -12,7 +12,6 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   --release 17 \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/tools/OptLabPreferencesIndependenceUnit.java"
+ 
+diff --git a/tools/test-optlab-registry-integrity.sh b/tools/test-optlab-registry-integrity.sh
+index f024f4a..47ac990 100755
+--- a/tools/test-optlab-registry-integrity.sh
++++ b/tools/test-optlab-registry-integrity.sh
+@@ -13,7 +13,6 @@ mapfile -d '' STUBS < <(find "$PROJECT_DIR/tools/preferences-stubs" \
+ java -m jdk.compiler/com.sun.tools.javac.Main --release 17 \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/NativeModulesPreferences.java" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/OptLabLaunchContract.java" \
+diff --git a/tools/test-optlab-tabbed-ui-source.sh b/tools/test-optlab-tabbed-ui-source.sh
+index 2b961d3..f6ba1ea 100755
+--- a/tools/test-optlab-tabbed-ui-source.sh
++++ b/tools/test-optlab-tabbed-ui-source.sh
+@@ -5,7 +5,6 @@ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ 
+ "$PROJECT_DIR/tools/test-optlab-tabbed-ui-compile.sh"
+ "$PROJECT_DIR/tools/test-optlab-preferences-independence.sh"
+-"$PROJECT_DIR/tools/test-optlab-custom-presets.sh"
+ "$PROJECT_DIR/tools/test-native-modules-preferences.sh"
+ 
+ python3 - "$PROJECT_DIR" <<'PY'
+@@ -52,20 +51,11 @@ for setter in (
+     'setLighting64Enabled', 'setPzClipperEnabled', 'setPathfindingEnabled',
+     'setPopManEnabled', 'setGeneralProfile', 'setBuild42LabProfile'):
+     assert setter in fragment, f'unmapped setter: {setter}'
+-for action in ('createCustomBuild42Preset', 'applyCustomBuild42Preset',
+-               'updateCustomBuild42Preset', 'deleteCustomBuild42Preset',
+-               'resetCustomBuild42PresetCatalog'):
+-    assert action in fragment and action in prefs, f'unmapped custom preset action: {action}'
+-for advanced_store_action in ('renameCustomBuild42Preset',
+-                              'duplicateCustomBuild42Preset'):
+-    assert advanced_store_action in prefs, \
+-        f'custom preset store API was not retained: {advanced_store_action}'
+-
+ assert 'setSafeModeEnabled' in fragment and 'isSafeModeEnabled' in fragment
+-assert 'SCHEMA = 12' in prefs and 'K_SAFE_MODE' in prefs
+-custom_presets = (root/'app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java').read_text()
+-assert 'SCHEMA = 1' in custom_presets and 'ZOMDROID_BUILD42_PRESETS' in custom_presets
+-assert 'feature.id' in custom_presets and '.ordinal()' not in custom_presets
++assert 'SCHEMA = 13' in prefs and 'K_SAFE_MODE' in prefs
++assert not (root/'app/src/main/java/com/zomdroid/OptLabCustomPresetStore.java').exists()
++assert 'customPresets=REMOVED' in prefs
++assert 'build42_custom_presets_v1' in prefs and 'migrateR1508TrustRecovery' in prefs
+ assert 'K_GENERAL_PROFILE' in prefs and 'K_BUILD42_PROFILE' in prefs
+ assert 'SAFE MODE · setări păstrate' in prefs
+ assert 'SCHEMA = 4' in native and 'optLab.isSafeModeEnabled()' in native
+@@ -91,15 +81,8 @@ assert 'Internal · control individual · fallback automat' in fragment
+ assert 'INTERNAL · control individual' in fragment
+ for token in ('buildCustomPresetManagerPage', 'showCustomPresetManager',
+               'customPresetSpinner', 'customPresetName', 'pendingPresetDeleteId',
+-              'Modified · based on ', 'Custom · '):
+-    assert token in fragment, f'missing custom preset manager token {token}'
+-assert 'Ștergerea cere două apăsări.' in fragment
+-assert 'Nume pentru un preset nou' in fragment
+-assert 'customPresetName.input.setText(preset.getName())' not in fragment, \
+-    'preset selection still overwrites the new-preset name field'
+-assert 'customPresetRename' not in fragment and 'customPresetDuplicate' not in fragment, \
+-    'advanced preset operations still clutter the compact manager'
+-assert 'customPresetReset.setVisibility(storageProblem ? View.VISIBLE : View.GONE)' in fragment
++              'OptLabCustomPresetStore', 'Preseturi custom Build 42'):
++    assert token not in fragment, f'removed custom preset UI leaked into source: {token}'
+ assert 'RTHREAD_RING_BULK_PACK' not in fragment, 'archived Ring bulk leaked into UI'
+ assert 'Pathfinding' in fragment and 'PopMan' in fragment
+ assert 'setChunkCp2cDirtyClear' not in fragment, \
+@@ -162,7 +145,7 @@ assert len(hashlib.sha256(payload).hexdigest()) == 64
+ 
+ print('OPTLAB_TABBED_UI_SOURCE PASS full_screen=1 tabs=6 modules=7 detail_pages=1 '
+       'profiles=general_build42_independent experimental=module_categories '
+-      'advanced=registry_driven custom_presets=manager_actions_4_recovery nested_dialogs=0 '
++      'advanced=registry_driven custom_presets=removed_migrated nested_dialogs=0 '
+       'safe_mode=effective_preserve navigation=route_history '
+       'theme=light_dark agent_bundle_source_matched=1')
+ PY
+diff --git a/tools/test-r15-final-qa.sh b/tools/test-r15-final-qa.sh
+index 34c8fd4..63d4e78 100755
+--- a/tools/test-r15-final-qa.sh
++++ b/tools/test-r15-final-qa.sh
+@@ -58,7 +58,6 @@ echo "R15_PROPERTY_COVERAGE PASS registry_agent=1_to_1"
+ run bash "$PROJECT_DIR/tools/build-optlab-agent.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-agent-source.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-registry-integrity.sh"
+-run bash "$PROJECT_DIR/tools/test-optlab-custom-presets.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-launch-contract.sh"
+ run bash "$PROJECT_DIR/tools/test-optlab-tabbed-ui-source.sh"
+ run bash "$PROJECT_DIR/tools/test-cp62-apk-wiring.sh"
+diff --git a/tools/ui-stubs/com/zomdroid/OptLabCustomPresetStore.java b/tools/ui-stubs/com/zomdroid/OptLabCustomPresetStore.java
+deleted file mode 100644
+index 654e559..0000000
+--- a/tools/ui-stubs/com/zomdroid/OptLabCustomPresetStore.java
++++ /dev/null
+@@ -1,9 +0,0 @@
+-package com.zomdroid;
+-
+-public final class OptLabCustomPresetStore {
+-    public static final class Preset {
+-        public String getId() { return ""; }
+-        public String getName() { return ""; }
+-        @Override public String toString() { return getName(); }
+-    }
+-}
+diff --git a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+index 3984946..ac36e31 100644
+--- a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
++++ b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+@@ -2,9 +2,6 @@ package com.zomdroid;
+ 
+ import android.content.Context;
+ 
+-import java.util.Collections;
+-import java.util.List;
+-
+ public final class OptLabPreferences {
+     public enum Profile {
+         BASELINE, RUNTIME_SAFE, ALL_TEST_ON, CUSTOM,
+@@ -105,28 +102,4 @@ public final class OptLabPreferences {
+     public void setFeatureEnabled(OptLabFeatureRegistry.Feature feature, boolean value) {}
+     public int build42FeatureEnabledCount() { return 0; }
+     public int experimentalBuild42EnabledCount() { return 0; }
+-    public List<OptLabCustomPresetStore.Preset> getCustomBuild42Presets() {
+-        return Collections.emptyList();
+-    }
+-    public OptLabCustomPresetStore.Preset getActiveCustomBuild42Preset() { return null; }
+-    public boolean isActiveCustomBuild42PresetModified() { return false; }
+-    public boolean hasCustomBuild42PresetStorageProblem() { return false; }
+-    public String getCustomBuild42PresetStorageProblem() { return null; }
+-    public OptLabCustomPresetStore.Preset createCustomBuild42Preset(String name) {
+-        return null;
+-    }
+-    public OptLabCustomPresetStore.Preset applyCustomBuild42Preset(String id) {
+-        return null;
+-    }
+-    public OptLabCustomPresetStore.Preset updateCustomBuild42Preset(String id) {
+-        return null;
+-    }
+-    public OptLabCustomPresetStore.Preset renameCustomBuild42Preset(String id, String name) {
+-        return null;
+-    }
+-    public OptLabCustomPresetStore.Preset duplicateCustomBuild42Preset(String id, String name) {
+-        return null;
+-    }
+-    public void deleteCustomBuild42Preset(String id) {}
+-    public void resetCustomBuild42PresetCatalog() {}
+ }
+-- 
+2.51.1
+

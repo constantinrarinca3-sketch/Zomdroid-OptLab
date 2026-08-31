@@ -1,0 +1,1 @@
+package zombie.iso; public class TileOverlays { public static TileOverlays instance; public void updateTileOverlaySprite(IsoObject o){} }

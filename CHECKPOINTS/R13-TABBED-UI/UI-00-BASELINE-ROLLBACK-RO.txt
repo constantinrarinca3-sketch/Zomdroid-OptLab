@@ -1,0 +1,37 @@
+ZOMDROID R13 - CHECKPOINT PERSISTENT UI-00
+Data UTC: 2026-08-29
+Scop autorizat: numai redesignul OPT-LAB; portarea CP6.6 este oprita explicit.
+
+SURSA AUTORITATIVA
+- Arhiva R12 primita:
+  ZomDroid-R12-CP6.2-DIRECT-INTEGRATION-SOURCE-2026-08-29.tar(1).zst
+- SHA256:
+  55cea4d031838cb5454c843260fd10da5b6dbf2b6ced917de9dc9467422c0609
+- Manifestul intern R12: 2846 / 2846 fisiere PASS dupa extragere.
+
+ROLLBACK
+- Ramura: r13-optlab-tabbed-ui
+- Commit baseline neatins:
+  6a73d966791b19f1520aeabc236e4f6edcadffa8
+
+DESIGN-TINTA
+- Ecran OPT-LAB full-screen, nu lant de AlertDialog-uri.
+- Taburi: Overview, Runtime, Display, Build 42, Native, Experimental.
+- Overview cu profil, carduri de sumar si Safe Mode.
+- Light/dark mostenit din tema aplicatiei; fara culori hardcodate divergente.
+- Toate preferintele si toggle-urile existente raman persistente si reversibile.
+- Masterul general nu modifica valorile Build 42/Native/Experimental.
+- Setarile riscante sunt prezentate separat, cu stare implicita OFF.
+
+LIMITA ACESTUI CHECKPOINT
+- Pachetul MGLPZ CP6.6 este primit, dar NU este citit, portat sau modificat aici.
+- SHA256 pachet CP6.6 primit:
+  6b9b9b334f02a14b7a1dac707f15d95efec2e33784923aada934cec5ae89d9d9
+- Agentul, bytecode-ul si bundle-ul CP6.2 raman nemodificate in etapa UI.
+
+PASI
+1. Inventar exact UI/preferinte si alegerea componentelor disponibile.
+2. Implementare container full-screen si taburi.
+3. Migrare controale/carduri + Safe Mode.
+4. Host tests pentru mapare, independenta si absenta regresiilor.
+5. Arhiva, patch, SHA256 si oprire inainte de CP6.6.

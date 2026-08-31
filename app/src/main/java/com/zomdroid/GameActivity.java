@@ -5,6 +5,9 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Process;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.util.Log;
@@ -206,15 +209,16 @@ public class GameActivity extends AppCompatActivity implements GamepadManager.Ga
                 GameLauncher.setSurface(gameSurface, width, height, refreshRate);
 
                 if (!isGameStarted) {
+                    isGameStarted = true;
                     Thread thread = new Thread(() -> {
                         try {
                             GameLauncher.launch(gameInstance, GameActivity.this);
+                            finishGameProcess();
                         } catch (ErrnoException e) {
                             throw new RuntimeException(e);
                         }
-                    });
+                    }, "zomdroid-game-main");
                     thread.start();
-                    isGameStarted = true;
                 }
             }
 
@@ -314,6 +318,16 @@ public class GameActivity extends AppCompatActivity implements GamepadManager.Ga
       if (keyboardManager != null) {
           keyboardManager.unregister();
       }
+    }
+
+    /** HotSpot cannot be recreated after native launch returns; end only the isolated game process. */
+    private void finishGameProcess() {
+        runOnUiThread(() -> {
+            isGameStarted = false;
+            finish();
+            new Handler(Looper.getMainLooper()).postDelayed(
+                    () -> Process.killProcess(Process.myPid()), 250L);
+        });
     }
 
     // GamepadManager.GamepadListener implementation

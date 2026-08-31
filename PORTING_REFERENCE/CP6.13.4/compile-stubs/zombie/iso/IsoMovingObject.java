@@ -1,0 +1,1 @@
+package zombie.iso; import zombie.UpdateSchedulerSimulationLevel; public class IsoMovingObject { public int getID(){return 0;} public void setCurrentSimulationLevel(UpdateSchedulerSimulationLevel s){} public void preupdate(){} public void frameStep(){} public void update(){} public void postupdate(){} }

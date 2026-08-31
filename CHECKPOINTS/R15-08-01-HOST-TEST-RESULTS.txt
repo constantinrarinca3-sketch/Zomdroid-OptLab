@@ -1,0 +1,15 @@
+R15-08-01 HOST TEST RESULTS
+DATE: 2026-08-31 UTC
+
+PASS tools/test-optlab-preferences-independence.sh
+  schema=13 presets=removed_migrated general_roundtrip=all
+PASS tools/test-optlab-tabbed-ui-compile.sh
+  javac_release=11 tabs=6
+PASS tools/test-optlab-tabbed-ui-source.sh
+  custom_presets=removed_migrated navigation=route_history
+PASS tools/test-optlab-registry-integrity.sh
+  toggle_roundtrip=all
+PASS tools/test-native-modules-preferences.sh
+
+APK_COMPILE: NOT RUN
+DEVICE_TEST: NO

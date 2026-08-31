@@ -1,0 +1,1 @@
+package zombie.iso.areas; import zombie.iso.RoomDef; public final class IsoRoom { public RoomDef def; public IsoBuilding getBuilding(){return null;} }

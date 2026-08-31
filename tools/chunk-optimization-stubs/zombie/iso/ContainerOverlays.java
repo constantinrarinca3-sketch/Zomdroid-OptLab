@@ -1,0 +1,1 @@
+package zombie.iso; public class ContainerOverlays { public static ContainerOverlays instance; public boolean hasOverlays(IsoObject o){return false;} }

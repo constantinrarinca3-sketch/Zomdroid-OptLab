@@ -1,0 +1,1 @@
+package zombie.util.list; public class PZArrayList<E> { public Object[] getElements(){return null;} public int size(){return 0;} public boolean isEmpty(){return false;} public boolean contains(Object o){return false;} }

@@ -1,0 +1,1 @@
+package zombie.iso.objects; public class IsoWorldInventoryObject extends zombie.iso.IsoObject {}

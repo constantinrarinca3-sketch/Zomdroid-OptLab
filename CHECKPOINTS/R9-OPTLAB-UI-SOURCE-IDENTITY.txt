@@ -1,0 +1,32 @@
+ZOMDROID OPT-LAB R9 — UI TABS SOURCE IDENTITY
+Data: 2026-08-29
+
+Version code: 14751
+Side version: 1.4.7v4-optlab-r9-ui-tabs-side
+Replace version: 1.4.7v4-optlab-r9-ui-tabs-replace
+Preferences schema: 5
+Agent: version 8 / proof schema 7 (unchanged)
+
+Input R8 archive SHA-256:
+fa4664fad7d003b6036d1b55b78c2371d312777440d6c108bea75f2916e94857
+
+Agent JAR SHA-256:
+3d5be491b0187b8f756a74929d6ad7e0371dcd51b33d29d9435143e053130cf1
+
+jars.tar SHA-256:
+a064a21ccea34a0f4679bdf6d5a20bd5abe844b17aa6eecfaf8b21a0c69882c4
+
+Pathfinding payload SHA-256:
+a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+
+PopMan payload SHA-256:
+eec5ac6f8fb60964cbd9b49c1525ac521f52191484439651b48278f5b8b684af
+
+MobileGL default SHA-256:
+f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a
+
+Host/static QA: PASS
+Gradle Android compile: PENDING — Gradle 8.13 distribution unavailable
+Device light/dark visual QA: PENDING
+Pathfinding/PopMan gameplay regression: PENDING / EXPERIMENTAL
+JAssimp: NOT IN SCOPE / NEXT CHECKPOINT

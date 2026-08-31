@@ -1,0 +1,1 @@
+package zombie.core.stash; import zombie.iso.BuildingDef; public class StashSystem { public static void doBuildingStash(BuildingDef b){} public static boolean isStashBuilding(BuildingDef b){return false;} public static void visitedBuilding(BuildingDef b){} }

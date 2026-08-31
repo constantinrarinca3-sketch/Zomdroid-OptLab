@@ -1,0 +1,198 @@
+ZOMDROID OPTLAB — CHECKPOINT 4 BUILD 42 COMPATIBILITY
+SOURCE HANDOFF SUMMARY
+Data UTC: 2026-08-28
+
+STATUS OFICIAL
+==============
+
+CHECKPOINT 4 DONE (SOURCE): YES
+IMPLEMENTATION: COMPLETE
+STATIC REVIEW: PASS
+DELIVERY REPAIR: PASS
+BUNDLED AGENT: version 5 / schema 4
+GRADLE/CI AUTO-REBUILD: ENABLED
+BUILD: NOT RUN — USER WILL COMPILE
+DEVICE TEST: NO / PENDING
+BENCHMARK OFF vs ON: PENDING
+OFFICIAL PASS: NO — AWAITING BUILD AND DEVICE VALIDATION
+
+Acest status este intenționat strict. Sursa este terminată și verificată static; checkpoint-ul nu
+este declarat PASS pe dispozitiv înainte ca utilizatorul să compileze și să confirme jocul real.
+
+CE S-A REPARAT
+===============
+
+1. Gate-ul global pe SHA-ul întregului projectzomboid.jar a fost eliminat din agent.
+
+2. SHA-ul exact nu a fost eliminat. El rămâne dovadă puternică pentru starea VERIFIED.
+
+3. Fiecare mecanism are propria decizie:
+
+- VERIFIED: hash-urile claselor cerute sunt cele auditate;
+- PROBE: build/SHA nou, încă neconfirmat;
+- COMPATIBLE: proba structurală a feature-ului a trecut;
+- UNSUPPORTED: numai acel feature revine la codul original.
+
+4. Un build B42 cu SHA general diferit nu mai oprește automat tot OPT-LAB.
+
+5. Pacing, Stream Core și FBO sunt mutate într-o fereastră separată „OPT-LAB · Build 42”,
+deschisă prin buton (nu este un tab Android). Preseturile STREAM ALL, FBO ALL și FULL CANDIDATE
+sunt disponibile în acea fereastră și nu mai apar în selectorul general. Setările generale
+Runtime/Box64/Surface/Input rămân în fereastra principală.
+
+6. A fost adăugată politica persistentă „Only Build 42”, implicit ON:
+
+- ON: mecanismele bytecode B42 sunt oprite pe alte familii;
+- OFF: utilizatorul poate cere o probă cross-family, dar nimic nu pornește VERIFIED; fiecare
+  mecanism trebuie să treacă propria probă structurală.
+
+7. Fallback-ul este independent și fail-open:
+
+- formă de clasă necunoscută;
+- clasă lipsă;
+- număr neașteptat de instrucțiuni;
+- eroare ByteBuddy;
+- reflection/runtime failure.
+
+În toate cazurile de mai sus se păstrează sau se reapelează comportamentul original al jocului.
+
+8. Identitatea sursei compilate a fost ridicată la versionCode 14745 și
+1.4.7v4-optlab-r4-b42-compat, pentru a nu fi confundată cu R3 Stream/FBO original.
+
+PROBE STRUCTURALE IMPLEMENTATE
+==============================
+
+PACING
+- MainThread.mainLoop()V unic;
+- queueInvokeOnMainThread prezent;
+- GameWindow.frameStep unic;
+- exact un Thread.yield în locul auditat.
+
+STREAM_WAKE
+- WorldStreamer.threadLoop unic;
+- metodele de signal prezente;
+- exact patru Thread.sleep(J)V înlocuite.
+
+STREAM_QUEUE_FAST
+- WorldStreamer.threadLoop unic;
+- exact două Collections.sort(List, Comparator) înlocuite.
+
+STREAM_VELOCITY_ETA
+- ChunkComparator.init unic;
+- reflection runtime fail-open.
+
+FBO_DIRTY_DEDUP
+- exact un setDirty(J)V;
+- matcherul Advice cere long și return void.
+
+FBO_FRAME_BUDGET / COORDONATOR
+- beginRenderChunkLevel unic;
+- exact un apel FBORenderLevels.isDirty(IF)Z în locul auditat;
+- coordonatorul cere FBO frame budget și probe valide în WorldStreamer + FBO manager.
+
+DIAGNOSTIC
+==========
+
+Schema proof: 4.
+
+Stări relevante în opt-proof.log:
+
+- DETECTED;
+- VERIFIED;
+- PROBE;
+- ACTIVE;
+- EXERCISED;
+- UNSUPPORTED, cu fallback=original_game_code și motiv.
+
+ACTIVE demonstrează că toate probele structurale cerute au trecut.
+EXERCISED demonstrează că ruta a fost apelată efectiv în runtime.
+Niciuna dintre ele nu este prezentată fals ca benchmark sau PASS pe dispozitiv.
+
+AUDIT STREAM CORE
+=================
+
+Raport complet: STREAM-CORE-AUDIT-RO.txt
+
+Verdict rezumat:
+
+- S1 STREAM_WAKE: bun și recomandabil pentru A/B;
+- S2 STREAM_QUEUE_FAST: corect pentru contractul auditat; confirmare A/B pe build nou;
+- S3 STREAM_VELOCITY_ETA: experimental; test separat, OFF în baseline;
+- Stream Core nu bugetează direct commit-urile Java de chunk/grid pe main thread și, singur,
+  nu poate garanta eliminarea stutter-ului în mersul pe jos.
+
+VERIFICĂRI EXECUTATE
+====================
+
+- compilarea izolată a tuturor surselor agentului cu Java 17: PASS;
+- FeatureCompatibilityUnit: PASS;
+- OptLabRuntimeUnit: PASS;
+- fallback Collections.sort: PASS;
+- fallback FBO: PASS;
+- wake/unpark: PASS;
+- FBO fairness și dirty preservation: PASS;
+- bash -n pentru scripturile agentului: PASS;
+- strings.xml well-formed: PASS;
+- patch cumulativ aplicabil peste sursa originală cu patch --dry-run: PASS.
+- jars.tar reconstruit: PASS;
+- agentul împachetat raportează version=5 schema=4: PASS;
+- FeatureCompatibility.class prezent în agentul împachetat: PASS;
+- build-optlab-agent.sh verifică explicit versiunea/schema și clasa de compatibilitate: PASS;
+- test-optlab-agent-source.sh respinge un bundle vechi înaintea testelor: PASS;
+- Gradle preBuild reconstruiește automat agentul: CONFIGURAT;
+- toate workflow-urile pregătesc și testează explicit bundle-ul: CONFIGURAT;
+- profilurile STREAM ALL / FBO ALL / FULL CANDIDATE absente din selectorul general: PASS static;
+- strings.xml well-formed după completarea UI: PASS.
+
+Compilarea Android completă a fost încercată, dar Gradle 8.13 nu este disponibil local, iar mediul
+nu permite accesul la services.gradle.org. Eșecul este anterior configurării proiectului
+(descărcarea distribuției), nu o eroare de compilare a sursei. Build-ul Android și testul pe
+dispozitiv rămân pași externi.
+
+BUILD UTILIZATOR
+================
+
+Din rădăcina sursei:
+
+1. ./gradlew :app:assembleSideBySideDebug
+
+Task-ul app:preBuild rulează automat tools/build-optlab-agent.sh înainte ca assets să fie
+împachetate. Pentru o verificare manuală independentă de Android/Gradle:
+
+1. ./tools/build-optlab-agent.sh
+2. ./tools/test-optlab-agent-source.sh
+
+Pentru varianta care înlocuiește identitatea R1, folosește task-ul flavorului replaceR1 numai dacă
+aceasta este intenția ta explicită. Varianta sideBySide rămâne calea sigură de test.
+
+TEST PE DISPOZITIV
+==================
+
+1. Build B42 cunoscut, toate mecanismele OFF — baseline.
+2. Același build, S1 singur ON.
+3. Același build, S2 singur ON.
+4. Același build, S1+S2 ON.
+5. S3 separat.
+6. F1 separat, apoi F2 separat, apoi coordonatorul cu F2.
+7. Un patch B42 cu SHA nou: verifică PROBE -> ACTIVE/COMPATIBLE -> EXERCISED.
+8. Verifică lipsa crash-urilor, chunk-urilor negre și artefactelor FBO.
+9. Compară frame-time/stutter în aceleași condiții; nu doar FPS mediu.
+
+ROLLBACK
+========
+
+Arhiva originală a fost păstrată neatinsă.
+
+SHA256 arhivă originală:
+1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
+
+Checkpointurile interne CP1-00…CP1-03 și patch-urile cumulative se află în CHECKPOINTS/.
+
+FIȘIERUL MASTER AL UTILIZATORULUI
+=================================
+
+ZomDroid-OptLab-MASTER-SUMMARY-CHECKPOINTS-RO-V2-2026-08-28.txt este inclus în sursă. Corpul
+planului a fost păstrat, iar la final a fost adăugat statusul efectiv al Checkpoint 4 sărit înainte,
+conform deciziei utilizatorului.
+
+SFÂRȘIT CHECKPOINT 4 SOURCE HANDOFF

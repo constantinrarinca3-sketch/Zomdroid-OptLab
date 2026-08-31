@@ -1,0 +1,1 @@
+package zombie.iso.fboRenderChunk; import zombie.iso.IsoGridSquare; public class FBORenderCutaways { public static FBORenderCutaways getInstance(){return new FBORenderCutaways();} public boolean shouldRenderBuildingSquare(int p,IsoGridSquare s){return true;} public static final class ChunkLevelData { public final byte[][] squareFlags=new byte[4][64]; } }

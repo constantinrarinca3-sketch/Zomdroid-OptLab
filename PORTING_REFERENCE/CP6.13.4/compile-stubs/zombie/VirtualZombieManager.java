@@ -1,0 +1,1 @@
+package zombie; import zombie.iso.*; import zombie.iso.areas.*; import zombie.characters.IsoZombie; public class VirtualZombieManager { public static final VirtualZombieManager instance=null; public boolean shouldSpawnZombiesOnLevel(int l){return false;} public void addIndoorZombiesToChunk(IsoChunk c,IsoRoom r){} public boolean isReused(IsoZombie z){return false;} }

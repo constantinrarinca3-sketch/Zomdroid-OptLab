@@ -10,13 +10,10 @@ import java.util.concurrent.locks.LockSupport;
 
 /** Fail-open runtime for the independently switchable WorldStreamer mechanisms. */
 public final class StreamCoreRuntime {
-    private static final long URGENT_WINDOW_NANOS = 450_000_000L;
-
     private static volatile boolean wakeEnabled;
     private static volatile boolean queueFastEnabled;
     private static volatile boolean lookaheadEnabled;
     private static volatile Thread streamerThread;
-    private static volatile long urgentUntilNanos;
 
     private static volatile boolean reflectionReady;
     private static Field comparatorPositions;
@@ -40,12 +37,28 @@ public final class StreamCoreRuntime {
 
     public static void disableWakeShape(int replacements) {
         wakeEnabled = false;
-        ProofRuntime.state("STREAM_WAKE", "BLOCKED_SHAPE", "sleep_replacements=" + replacements);
+        FeatureCompatibility.fallback("STREAM_WAKE",
+                "sleep_replacements=" + replacements);
     }
 
     public static void disableQueueShape(int replacements) {
         queueFastEnabled = false;
-        ProofRuntime.state("STREAM_QUEUE_FAST", "BLOCKED_SHAPE", "sort_replacements=" + replacements);
+        FeatureCompatibility.fallback("STREAM_QUEUE_FAST",
+                "sort_replacements=" + replacements);
+    }
+
+    public static void disableWake() {
+        wakeEnabled = false;
+        Thread target = streamerThread;
+        if (target != null) LockSupport.unpark(target);
+    }
+
+    public static void disableQueueFast() {
+        queueFastEnabled = false;
+    }
+
+    public static void disableLookahead() {
+        lookaheadEnabled = false;
     }
 
     public static void idleWait(long millis) throws InterruptedException {
@@ -62,7 +75,6 @@ public final class StreamCoreRuntime {
     }
 
     public static void signal(Object worldStreamer) {
-        urgentUntilNanos = System.nanoTime() + URGENT_WINDOW_NANOS;
         if (!wakeEnabled) return;
         Thread target = streamerThread;
         if (target == null && worldStreamer != null) {
@@ -132,17 +144,13 @@ public final class StreamCoreRuntime {
                 changed |= lookahead > 10.01f;
             }
             if (changed) {
-                urgentUntilNanos = System.nanoTime() + URGENT_WINDOW_NANOS;
                 ProofRuntime.appliedOnce("STREAM_VELOCITY_ETA", "bounded_lookahead_max=" + maxLookahead);
             }
         } catch (Throwable error) {
             lookaheadEnabled = false;
-            ProofRuntime.state("STREAM_VELOCITY_ETA", "BLOCKED_RUNTIME", error.getClass().getSimpleName());
+            FeatureCompatibility.fallback("STREAM_VELOCITY_ETA",
+                    "runtime=" + error.getClass().getSimpleName());
         }
-    }
-
-    public static boolean isUrgent() {
-        return System.nanoTime() < urgentUntilNanos;
     }
 
     private static synchronized void ensureReflection(Object comparator) throws Exception {

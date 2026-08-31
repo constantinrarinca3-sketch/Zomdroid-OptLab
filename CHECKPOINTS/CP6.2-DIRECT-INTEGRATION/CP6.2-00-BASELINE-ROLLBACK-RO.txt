@@ -1,0 +1,60 @@
+ZOMDROID R12 — CP6.2 DIRECT APK INTEGRATION
+CHECKPOINT CP6.2-00 — BASELINE / ROLLBACK
+Data: 2026-08-29
+
+STATUS: COMPLETE
+MODIFICARI FUNCTIONALE: NU
+DEVICE TEST: NU
+
+RAMURA DE LUCRU
+----------------
+Branch local: r12-cp6.2-direct-integration
+Commit baseline: 925bf720334079bb3ad462ff27173e99ec9497a6
+Branch rollback: r11-baseline
+
+INPUTURI AUTORITATIVE
+---------------------
+R11 source archive:
+  ZomDroid-R11-CHUNK-OPTIMIZATION-SOURCE-2026-08-29.tar_1.zst
+  SHA256: 5ff60cc62c279c16e51cffadf2e6df1ad0626bf03ca4f3d7a7f52e162e046893
+
+CP6.2 handoff pack:
+  MGLPZ-Performance-CP6.2-MULTIHOTPATH-DEVICE-HANDOFF-PACK (1).zip
+  SHA256: 69d81ac09ba031928c5c090ce469c648c6e3245588856dfe785df0dc562c2bd1
+
+Project Zomboid Build 42.20:
+  projectzomboid(2).jar
+  SHA256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+Project Zomboid Build 42.20.3:
+  projectzomboid(3).jar
+  SHA256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+POLITICA DE INTEGRARE
+---------------------
+- CP4.1 integrat deja in agentul unic R11 ramane baseline.
+- Nu se adauga un al doilea javaagent si nu se livreaza agentul CP6.2 extern.
+- ChunkDepth upload dedup + lookup elision sunt candidate production, implicit ON.
+- RingBuffer modelDrawCounts empty-clear este candidat production, implicit ON.
+- RingBuffer bulk packing ramane experimental si implicit OFF.
+- CP6.0 rthreadProfileFast nu se reintroduce.
+- Compatibilitatea se decide per mecanism: VERIFIED / COMPATIBLE / PROBE / UNSUPPORTED.
+- Orice mecanism incompatibil cade individual pe codul original PZ.
+- DEVICE PASS nu poate fi declarat fara un test real pe dispozitiv.
+
+NOTA DE PROVENIENTA CP6.2
+-------------------------
+SHA256SUMS.txt din pachet enumera doua artefacte care nu sunt incluse in ZIP:
+  reference/projectzomboid-42.20.3.jar
+  baseline/MGLPZ-Performance-CP6.1-V2-HITRATE.jar
+
+APK-INTEGRATION-HANDOFF.md are SHA256 real
+1979b4a77b9ebbadf87a153628058c69762bbc37acb504332be4330891d68fe0,
+diferit de valoarea veche din SHA256SUMS.txt. Continutul actual ramane autoritativ
+prin instructiunea explicita a utilizatorului. Aceasta neconcordanta se pastreaza
+documentata si nu este mascata.
+
+ROLLBACK
+--------
+Rollback complet: commitul 925bf720334079bb3ad462ff27173e99ec9497a6 sau
+arhiva R11 identificata mai sus. Nicio modificare CP6.2 nu exista in acest punct.

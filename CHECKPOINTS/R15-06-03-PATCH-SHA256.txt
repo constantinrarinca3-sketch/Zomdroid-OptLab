@@ -1,0 +1,18 @@
+R15-06 checkpoint patch identity
+Date: 2026-08-30 UTC
+
+R15-06-01 commit patch
+05704b44e9b2f55439ff024832c2518b5a6682931969c02a2b760eec79f563a9  CHECKPOINTS/0001-R15-06-01-expose-Internal-feature-toggles.patch
+
+R15-06-02 commit patch
+7ecf14332ae3f47d5cebb4d962597129aed9ea0f572098862809d5cb004fc6ed  CHECKPOINTS/0001-R15-06-02-add-versioned-custom-preset-engine.patch
+
+R15-06-03 commit patch
+5950edc30306cf614b83f9080ec20bea572738b744dbfc083f0eb2bbc0a76d96  CHECKPOINTS/0001-R15-06-03-add-compact-custom-preset-manager-UI.patch
+
+Cumulative R15-05 -> R15-06-03 patch
+914a31665fc3822bc41924f6965a67558c99522235017183b2ee60a7df0ffc27  CHECKPOINTS/R15-06-03-CUMULATIVE-R15-05-TO-R15-06-03.patch
+
+Current implementation commit (patch artifacts themselves may remain untracked
+inside the packaged source so that the archive excludes only .git):
+25f15316b8c46a8e35c26905b45fd1b0d2bc7e65

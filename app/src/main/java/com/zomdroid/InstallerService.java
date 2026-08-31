@@ -887,7 +887,10 @@ public class InstallerService extends Service implements TaskProgressListener {
         File launcherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LOG_FILE_NAME);
         File lastLauncherLog = new File(AppStorage.requireSingleton().getHomePath() + "/" + CrashHandler.LAST_LOG_FILE_NAME);
         File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
-        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists() || mobileGlLog.exists();
+        File optLabProof = new File(AppStorage.requireSingleton().getHomePath()
+                + "/opt-proof.log");
+        return consoleFile.exists() || launcherLog.exists() || lastLauncherLog.exists()
+                || mobileGlLog.exists() || optLabProof.exists();
     }
 
     // Builds the same diagnostic zip (report.txt + crash/native/shader/console/launcher logs) used
@@ -911,6 +914,10 @@ public class InstallerService extends Service implements TaskProgressListener {
         // MobileGL-PZCompat writes its backend/context/shader decisions here.  Keeping it in
         // the standard report makes the first failed device run diagnosable without ADB.
         File mobileGlLog = new File(AppStorage.requireSingleton().getHomePath() + "/mobilegl-pzcompat.log");
+        // The authoritative requested/effective per-feature snapshot plus agent ACTIVE/FALLBACK
+        // events.  Exporting it makes device verification possible without ADB.
+        File optLabProof = new File(AppStorage.requireSingleton().getHomePath()
+                + "/opt-proof.log");
         // PZ's own per-session debug log. It is the ONLY place Java-side link/load failures are
         // recorded — an UnsatisfiedLinkError for a native game method never reaches console.txt,
         // which is why a broken game lib could go unnoticed across every report we ever received.
@@ -956,6 +963,7 @@ public class InstallerService extends Service implements TaskProgressListener {
             addFileToZip(zos, failedShaders, "failed_shaders.txt");
             addFileToZip(zos, glTrace, "gl_trace.txt");
             addFileToZip(zos, mobileGlLog, "mobilegl-pzcompat.log");
+            addFileToZip(zos, optLabProof, "opt-proof.log");
             addFileToZip(zos, consoleFile, "console.txt");
             addFileToZip(zos, launcherLog, "log.txt");
             addFileToZip(zos, lastLauncherLog, "lastlog.txt");
@@ -1260,9 +1268,7 @@ public class InstallerService extends Service implements TaskProgressListener {
     // ================================================
     // INSTALL_MOD_WITH_FIX
     //
-    // Smart mod root detection (same as INSTALL_MOD_SMART), preserving source path casing.
-    // Absolute script-path repair is performed narrowly at game runtime; no mods/data shadow tree
-    // is generated here.
+    // Smart mod root detection (same as INSTALL_MOD_SMART) + forced inception copy for scripts/.
     // For Build 42: also merges 42.x version folders.
     // For Build 41: no merging, root files preserved.
     // ================================================
@@ -1354,16 +1360,24 @@ public class InstallerService extends Service implements TaskProgressListener {
                     }
                     Log.d("ModFix", "Processing mod: " + modName + " (isBuild42=" + isBuild42 + ")");
 
-                    // Step 4: Merge 42.x version folders if B42
+                    // Step 4: the case workaround is applied unconditionally now. Gating it on a
+                    // scripts/ folder left every mod that only overrides fbx/xml/lua broken, and
+                    // aliases are free, so there is nothing left to gate on.
+
+                    // Step 5: Merge 42.x version folders if B42
                     //if (isBuild42) {
                     //    mergeVersionsForB42(modRoot);
                     //}
 
-                    // Step 5: Install normal-case copy
+                    // Step 6: Install normal-case copy
                     File normalDest = new File(modsPath, modName);
                     if (normalDest.exists()) FileUtils.deleteDirectory(normalDest);
                     copyDirectory(modRoot, normalDest);
                     Log.d("ModFix", "  Installed normal: " + normalDest.getAbsolutePath());
+
+                    // Step 7: lowercase aliases inside the mod + the doubled-path link. Repeated at
+                    // every launch, because the doubled path spells out where the mod lives today.
+                    com.zomdroid.patch.LowercasePathAliases.applyToMod(normalDest, new File(modsPath));
                 }
 
                 finish(getString(R.string.mod_fix_installed), null);
@@ -1446,7 +1460,6 @@ public class InstallerService extends Service implements TaskProgressListener {
         }
     }
 
-
     // Extract mod name from ZIP filename via ContentResolver
     private String extractZipName(Uri uri) {
         String name = null;
@@ -1506,7 +1519,6 @@ public class InstallerService extends Service implements TaskProgressListener {
             }
         }
     }
-
     // Copy directory recursively, skip if destination file already exists
     private void copyDirectoryNoOverwrite(File src, File dst) throws IOException {
         dst.mkdirs();
@@ -1865,7 +1877,7 @@ public class InstallerService extends Service implements TaskProgressListener {
     // INSTALL_MOD_SMART
     // Intelligently extracts a mod from ZIP regardless of wrapper folders.
     // Finds the mod root by looking for: mod.info file, media/ folder, or common/ folder.
-    // Installs one casing-preserving copy; the runtime resolver handles affected absolute paths.
+    // Then applies needsLowercaseFix check and installs accordingly.
     private void doInstallModSmart(Intent intent) {
         String taskTitle = getString(R.string.install_mod_smart_title);
         startForeground(NOTIFICATION_ID, buildNotification(taskTitle));
@@ -1918,14 +1930,15 @@ public class InstallerService extends Service implements TaskProgressListener {
                         modName = modName.substring(0, modName.length() - 4);
                 }
 
+                // Step 4: the case workaround is applied unconditionally now - see LowercasePathAliases.
                 Log.d("SmartMod", "isBuild42=" + isBuild42);
 
-                // Step 4: Merge 42.x version folders if B42
+                // Step 5: Merge 42.x version folders if B42
                 //if (isBuild42) {
                 //    mergeVersionsForB42(modRoot);
                 //}
 
-                // Step 5: Install normal-case copy
+                // Step 6: Install normal-case copy
                 GameInstance gameInstance = GameInstanceManager.requireSingleton().getInstanceByName(instanceName);
                 if (gameInstance == null) {
                     finishWithError(taskTitle, "Game instance not found: " + instanceName);
@@ -1956,6 +1969,11 @@ public class InstallerService extends Service implements TaskProgressListener {
                         }
                     }
                 }
+
+                // Step 7: lowercase aliases inside the mod + the doubled-path link. The common/
+                // expansion above already ran on the real mod, and the link points at it, so the
+                // second expansion the lowercase copy used to need is gone with the copy.
+                com.zomdroid.patch.LowercasePathAliases.applyToMod(normalDest, modsDir);
 
                 finish(getString(R.string.install_mod_smart_done), null);
 

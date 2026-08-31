@@ -1,0 +1,1 @@
+package zombie.vehicles; import java.util.HashMap; public class VehicleType { public static final HashMap<String,VehicleType> vehicles=null; public static void init(){} public static boolean hasTypeForZone(String s){return false;} }

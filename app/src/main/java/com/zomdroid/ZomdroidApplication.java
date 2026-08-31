@@ -24,12 +24,17 @@ public class ZomdroidApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        installFullBouncyCastle();
+        String processName = Application.getProcessName();
+        boolean restartProcess = processName != null && processName.endsWith(":restart");
+        boolean gameProcess = processName != null && processName.endsWith(":game");
+        if (!restartProcess) {
+            installFullBouncyCastle();
+            init(gameProcess);
+        }
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(@NonNull Activity activity, Bundle savedInstanceState) {
                 currentActivity = activity;
-                if (!inited) init();
             }
 
             @Override
@@ -100,14 +105,19 @@ public class ZomdroidApplication extends Application {
         }
     }
 
-    private void init() {
+    private void init(boolean gameProcess) {
+        if (inited) return;
         inited = true;
+        AppStorage.init(this);
         GameInstanceManager.init(this);
         LauncherPreferences.init(this);
         AppCompatDelegate.setDefaultNightMode(
                 LauncherPreferences.requireSingleton().getThemeMode().nightMode);
-        CrashHandler.init();
-        updateLauncherVersion();
+        // The game process shares persisted settings but must not rotate the main process log.
+        if (!gameProcess) {
+            CrashHandler.init();
+            updateLauncherVersion();
+        }
     }
 
     public static Activity getCurrentActivity() {

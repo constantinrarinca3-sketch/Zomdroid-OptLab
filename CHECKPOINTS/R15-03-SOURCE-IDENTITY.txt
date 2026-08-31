@@ -1,0 +1,32 @@
+ZomDroid R15-03 CP6.13.4 FBO inner-loop reuse — source identity
+Date: 2026-08-30 UTC
+
+STATUS: DONE (SOURCE/HOST)
+APK COMPILE: NOT RUN
+DEVICE TEST: NO
+
+Authoritative input archive:
+ZomDroid-R15-02-CP6.13.4-BUILDDRAWBUFFER-DIRECT-FULL-SOURCE-2026-08-30.tar.zst
+SHA-256: 2b404fc6f7a8cc649e458dc30b06b6a966f9b262115657343146a8ace273e194
+
+Exact Project Zomboid inputs:
+42.20   projectzomboid(7).jar
+SHA-256: e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8
+
+42.20.3 projectzomboid(8).jar
+SHA-256: bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227
+
+Integrated artifacts:
+zomdroid-agent.jar
+SHA-256: ec00d9fd5b281579cd5c61f325948fb2952f9a2f251601655601efc567ee5a62
+
+app/src/main/assets/bundles/jars.tar
+SHA-256: 3808bfa5f0ca68b27eebc991226813dfca3e1bad6df86399d26d49288c1dbbb6
+
+Agent marker: version=14 schema=13
+Proof schema: 13
+Preferences schema: 11 (unchanged)
+
+Final full-source archive SHA-256 is calculated after packaging and is reported
+beside the delivered archive; it cannot be embedded inside that same archive
+without invalidating itself.

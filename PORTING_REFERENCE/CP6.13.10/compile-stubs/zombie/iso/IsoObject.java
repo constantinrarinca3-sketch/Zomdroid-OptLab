@@ -1,0 +1,1 @@
+package zombie.iso; import zombie.iso.sprite.IsoSprite; import zombie.inventory.ItemContainer; public class IsoObject { public IsoSprite sprite; public String spriteName; public IsoSprite getSprite(){return sprite;} public ItemContainer getContainer(){return null;} }

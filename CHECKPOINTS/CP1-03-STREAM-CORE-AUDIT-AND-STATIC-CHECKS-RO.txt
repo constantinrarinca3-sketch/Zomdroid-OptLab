@@ -1,0 +1,34 @@
+ZomDroid OptLab — CHECKPOINT PERSISTENT INTERN CP1-03
+Checkpoint oficial urmărit: CHECKPOINT 4 — OPTLAB BUILD 42 COMPATIBILITY
+Data UTC: 2026-08-28
+
+SCOP SALVAT
+- audit static complet pentru Stream Core în STREAM-CORE-AUDIT-RO.txt;
+- fallback host-testat pentru STREAM_QUEUE_FAST și FBO;
+- clarificare: S1 este recomandabil pentru A/B, S2 este condiționat de contractul auditat,
+  S3 rămâne experimental și nu este o reparație directă pentru stutter-ul pe jos;
+- logul launcherului diferențiază policy block de cross-family probe;
+- starea PZ_IDENTITY respectă Only Build 42: COMPATIBLE / PROBE / UNSUPPORTED.
+
+VERIFICĂRI
+- bash -n pentru scripturile agentului: PASS;
+- XML strings.xml parse: PASS;
+- compilare izolată agent Java 17: PASS;
+- FeatureCompatibilityUnit: PASS;
+- OptLabRuntimeUnit, inclusiv fallback-uri: PASS;
+- patch cumulativ față de sursa originală: dry-run PASS (se verifică după generare);
+- Gradle Android: NOT RUN — wrapperul necesită descărcare indisponibilă în acest mediu;
+- device: PENDING.
+
+STARE CHECKPOINT 4
+IMPLEMENTATION: SOURCE COMPLETE
+STATIC REVIEW: PASS
+BUILD: NOT RUN — USER WILL COMPILE
+DEVICE TEST: PENDING
+OFFICIAL PASS: NO — AWAITING BUILD AND DEVICE VALIDATION
+INTERNAL CHECKPOINT STATUS: RECOVERABLE SOURCE-COMPLETE
+
+RECUPERARE
+Arhivă originală SHA256:
+1682bf25cfdd1d14f973099eec158d1ec0aaafdf37fe07d11eb73038574ce190
+Aplică CP1-03-STREAM-CORE-AUDIT-AND-STATIC-CHECKS.patch cu patch -p1.

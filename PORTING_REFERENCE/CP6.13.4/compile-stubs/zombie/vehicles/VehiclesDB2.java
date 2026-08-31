@@ -1,0 +1,1 @@
+package zombie.vehicles; public final class VehiclesDB2 { public static final VehiclesDB2 instance = new VehiclesDB2(); public void loadVehiclesInMeta(){} public void updateMain() throws java.io.IOException {} }

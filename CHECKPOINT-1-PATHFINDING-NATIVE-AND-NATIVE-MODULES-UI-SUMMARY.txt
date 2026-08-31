@@ -1,0 +1,209 @@
+ZOMDROID OPTLAB - CHECKPOINT 1
+PATHFINDING NATIVE + NATIVE MODULES UI
+Data: 2026-08-28
+
+VERDICT CORECT
+===============
+
+IMPLEMENTARE ÎN SURSĂ: COMPLETĂ
+TESTE SOURCE/HOST: PASS
+PACHET PENTRU COMPILARE ANDROID: PREGĂTIT
+BUILD APK ÎN ACEST MEDIU: NU
+TEST PE DISPOZITIV: PENDING
+BENCHMARK OFF vs ON: PENDING
+CP1 OFFICIAL PASS: NU ÎNCĂ
+
+Nu se inventează ACTIVE/EXERCISED pe telefon și nu se declară benchmark fără date.
+Livrarea conține implementarea, fallback-ul, probele și protocolul necesar pentru a
+închide PASS-ul oficial după compilare și testare ARM64.
+
+IDENTITATE APLICAȚIE
+====================
+
+versionCode: 14747
+sideBySide: 1.4.7v4-optlab-r6-cp1-qa-mgl12-side
+replaceR1: 1.4.7v4-optlab-r6-cp1-qa-mgl12-replace
+label: ZomDroid OPT LAB R6 QA
+
+REPARAȚII CP4 INCLUSE
+=====================
+
+- jars.tar nu mai conține agentul vechi version 4 / schema 3;
+- buildul sursă reconstruiește și verifică automat agentul prin Gradle preBuild;
+- toate workflow-urile execută explicit buildul și testele agentului;
+- agentul final este version 6 / proof schema 5 și include FeatureCompatibility;
+- STREAM ALL, FBO ALL și FULL CANDIDATE sunt numai în fereastra Build 42,
+  nu în selectorul general.
+
+NATIVE MODULES UI
+=================
+
+Fereastra este separată și se deschide prin butonul Native Modules.
+
+Modul                 Implicit     Control real        Persistență
+--------------------------------------------------------------------
+Lighting64 Native      ON           DA                  DA
+PZClipper Native       ON           DA                  DA
+Pathfinding Native     OFF          DA                  DA
+PopMan Native          OFF          NU / Unavailable    blocat până la CP2
+
+Toate schimbările sunt restart-scoped, iar UI afișează explicit
+"Restart game required".
+
+MOBILEGL DEFAULT V1.2
+=====================
+
+Defaultul MobileGL a fost înlocuit cu payloadul PZCompat V1.2 Present Fastpath
+ThinLTO furnizat de utilizator:
+
+SHA-256: f8c2851d9c3cbadc40c73f09c5ec9430a53a0e815cee3e2ec1392dcb4f9fa10a
+Mărime: 14358432 bytes
+Build ID: da5508480c21ecc5a13d60539cd53d90860c46dd
+SONAME: libMobileGLPZ.so
+LOAD alignment: 0x4000
+
+Defaultul anterior este recunoscut și actualizat automat. Un renderer custom valid
+rămâne neatins. Present fastpath este ON cu selectorul recomandat 002,003, iar
+proof/cache folosesc sandboxul pachetului curent.
+
+PATHFINDING NATIV ARM64
+=======================
+
+Payloadul este biblioteca oficială Build 42 furnizată de utilizator, păstrată
+byte-for-byte:
+
+app/src/main/jniLibs/arm64-v8a/libPZPathFindB4220.so
+SHA-256: a6719506323898dd79277f08869e9c803886717d92308e531dc34720a581b2dc
+Mărime: 11995392 bytes
+Format: ELF64 little-endian AArch64
+SONAME: libPZPathFind64.so
+Exporturi JNI auditate: 13
+
+Fișierele libPZPathFind64 furnizate pentru 42.20 și 42.20.3 sunt identice
+byte-for-byte. Nu s-a recompilat, patch-uit sau alterat biblioteca oficială.
+
+GATE ABI
+========
+
+Activarea este permisă numai pentru Build 42 și numai dacă projectzomboid.jar
+conține exact cele trei clase auditate:
+
+PathfindNative.class
+SHA-256 7fbc06c9757083c318dcc136cfcb31c2ad4941d15926c9de6f7792dcef3d6022
+
+PathfindNativeRenderer.class
+SHA-256 070c67fcaa68c63f20a6d7d52967e334f38c5b1bfb9b3f7f09e3fc0383cc8c08
+
+PathfindNativeThread.class
+SHA-256 bbf51396746b4047a9f5c3a53d484d61b5a05a6a5eb3c6286dcf90864bc21d20
+
+Cele trei identități sunt aceleași în JAR-urile reale 42.20 și 42.20.3.
+Un Build 42 necunoscut nu este activat doar pe baza numărului de familie.
+
+RUTA REALĂ ȘI FALLBACK
+======================
+
+Toggle OFF:
+- Pathfind.UseNativeCode=false;
+- jocul păstrează implementarea Java PolygonalMap2.
+
+Toggle ON după preflight complet:
+- payload copiat atomic ca android/arm64-v8a/libPZPathFind64.so;
+- o bibliotecă activă străină este păstrată înainte de înlocuire;
+- Pathfind.UseNativeCode=true.
+
+Eșec înainte de pornire:
+- opțiunea revine la false;
+- jocul pornește pe Java;
+- motivul este scris în log și opt-proof.log.
+
+Eșec în runtime:
+- agentul scrie PATHFINDING_NATIVE_FALLBACK;
+- încearcă să treacă DebugOptions.pathfindUseNativeCode pe false;
+- creează markerul one-shot pentru o pornire sigură pe Java;
+- findPath nu propagă eroarea nativă către joc.
+
+DOVADA ACTIVE / EXERCISED
+=========================
+
+Launcherul scrie:
+
+PATHFINDING_NATIVE_AVAILABLE
+PATHFINDING_NATIVE_ACTIVE
+PATHFINDING_NATIVE_FALLBACK, când este cazul
+
+Agentul instrumentează PathfindNative.findPath și PathfindNativeThread.runInner.
+O terminare normală a apelului nativ scrie:
+
+PATHFINDING_NATIVE_EXERCISED
+
+ACTIVE singur nu este considerat dovadă suficientă.
+
+TESTE EFECTUATE
+===============
+
+PASS  tools/build-optlab-agent.sh
+PASS  tools/test-optlab-agent-source.sh
+PASS  tools/test-pathfinding-native-payload.sh
+PASS  tools/test-native-modules-source.sh
+PASS  FeatureCompatibilityUnit
+PASS  OptLabRuntimeUnit, inclusiv EXERCISED și FALLBACK
+PASS  parse XML Android: 96 fișiere
+PASS  parse YAML: 3 workflow-uri
+PASS  bash -n pentru toate scripturile tools
+PASS  smoke agent + projectzomboid 42.20 real
+PASS  smoke agent + projectzomboid 42.20.3 real
+PASS  transformare Byte Buddy offline a celor două clase reale în ambele JAR-uri
+PASS  NativeModulesPreferences real: defaults + persistență
+PASS  NativeModulesDialog: compilare host + separare UI
+PASS  OptLabFeatureRegistry: native active/disabled/PopMan
+PASS  MobileGL V1.2: SHA/ELF/ABI/security/export gate
+PASS  MobileGL manager: install/present/custom-preserve/invalid-recovery
+PASS  backupuri native distincte la cicluri OFF/ON repetate
+PASS  validator CP1 device proof: OFF/ON/FALLBACK + caz negativ
+
+Test reproductibil cu JAR-uri furnizate separat:
+tools/test-pathfinding-real-jars.sh /path/42.20/projectzomboid.jar /path/42.20.3/projectzomboid.jar
+
+Agent JAR SHA-256:
+d84e5284fe1087c69470538af980e4ae41ea656ca8aa04931c21c7681cf063d2
+
+jars.tar SHA-256:
+abeec5bbc1f1e4fac0e2c62075ceb4967c6411c27408307845cfee3607b01203
+
+LIMITA TESTELOR HOST
+===================
+
+JAR-urile jocului folosesc bytecode Java 25. Pe hostul Java 17, smoke-testul poate
+demonstra că agentul analizează și transformă clasele înainte de respingerea lor de
+JVM, dar nu poate executa jocul. Compilarea Android nu a putut fi făcută deoarece
+distribuția Gradle 8.13 nu este disponibilă local, iar descărcarea externă este
+blocată în acest mediu.
+
+PROTOCOL PENTRU CP1 OFFICIAL PASS
+=================================
+
+1. Compilează sideBySideDebug și/sau replaceR1Debug.
+2. Instalează pe dispozitiv ARM64 cu pagină de 4096 bytes pentru modulele AB3.
+3. Baseline: Pathfinding OFF, celelalte setări identice; pornește jocul și păstrează
+   console.txt + opt-proof.log.
+4. Candidate: Pathfinding ON; restart complet; reproduce același save/scenariu.
+5. Confirmă AVAILABLE=1, ACTIVE=1 și apoi EXERCISED după o cerere reală de traseu.
+6. Verifică mișcare zombie, urmărire, obstacole, uși, scări, interior/exterior,
+   clădiri, densitate mare și gameplay normal.
+7. Compară frame-time, stutter, CPU și stabilitate OFF vs ON fără a schimba altceva.
+8. Testează separat persistența Lighting OFF/ON, PZClipper OFF/ON și Pathfinding
+   OFF/ON după restart.
+9. Confirmă fallback-ul: după eroare/marker, următoarea pornire folosește Java și
+   logul explică motivul.
+
+ROLLBACK PERSISTENT
+===================
+
+- CP4 COMPILE-READY: bază stabilă înainte de CP1;
+- CP1-00: audit ABI;
+- CP1-01: UI și preferințe, fără activarea Pathfinding;
+- CP1-02/03: integrarea completă Pathfinding + agent + fallback;
+- livrarea finală CP1: sursa R5, patch cumulativ, identitate și acest summary.
+
+Checkpoint 2 PopMan și Checkpoint 3 JAssimp Direct Fix nu sunt implementate aici.

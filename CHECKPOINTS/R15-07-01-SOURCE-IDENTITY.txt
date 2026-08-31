@@ -1,0 +1,32 @@
+ZomDroid R15-07-01 SETTINGS ARMING + UI REPAIR — source identity
+Date: 2026-08-30 UTC
+
+Authoritative input archive:
+ZomDroid-R15-06-FINAL-COMPILE-SOURCE-2026-08-30.tar.zst
+
+Local baseline commit:
+948c9f30a61c1af1b824396194424915b6dbe815
+
+Implementation commit / rollback point:
+5f472cceeeaa1a976443f62b1f8b8ba7c8df0feb
+
+Commit patch:
+CHECKPOINTS/0001-R15-07-01-repair-settings-arming-navigation-and-pres.patch
+
+Integrated agent:
+version=15
+schema=14
+
+Preferences:
+OPT-LAB schema=12
+Custom preset schema=1
+Native modules schema=4
+
+Build 42 exact inputs verified:
+e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8  42.20
+bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227  42.20.3
+
+Verdict:
+SOURCE/HOST PASS
+APK COMPILE NOT RUN
+DEVICE TEST NO

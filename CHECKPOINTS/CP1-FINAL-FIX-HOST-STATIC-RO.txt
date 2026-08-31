@@ -1,0 +1,121 @@
+ZOMDROID OPT-LAB R8 — CP1 FINAL FIX + CP2-02 INTEGRATION QA
+Data: 2026-08-28
+Status: DONE (SOURCE + HOST/STATIC)
+Android build: NO — utilizatorul compilează sursa
+Device test: NO
+
+============================================================
+FIXURI ÎNCHISE
+============================================================
+
+1. Gate Pathfinding-only
+
+În agent/Main.java, al doilea early-return include acum:
+
+  pathfindingProofRequested || popManProofRequested
+
+Prin urmare configurația următoare nu mai pierde transformerul:
+
+- Pathfinding Native ON și activ;
+- Pacing OFF;
+- Stream Wake/Queue/Velocity OFF;
+- FBO Dirty/Budget/Coordinator OFF;
+- PopMan OFF.
+
+Regresia nouă OptLabPremainPathfindingOnlyUnit apelează Main.premain cu un
+Instrumentation real-proxy și cere exact o înregistrare addTransformer.
+
+Rezultat:
+  PREMAIN_PATHFINDING_ONLY PASS transformers=1
+
+2. Poziție UI Build 42
+
+Ordinea din OptLabDialog este acum:
+
+  Native Modules
+  Build 42
+  Runtime / JVM
+  Box64
+  Surface / display / input
+
+Testul sursă verifică explicit această ordine și cele patru toggle-uri native.
+
+3. Livrare agent actualizată
+
+- agent: version 8 / proof schema 7;
+- ProofRuntime emite schema=7;
+- build-optlab-agent.sh compilează și PopManRuntime;
+- jars.tar a fost reconstruit;
+- bundle-ul conține Main, PathfindingRuntime și PopManRuntime actuale;
+- CI rulează și test-popman-native-source.sh.
+
+Identități bundle după rebuild:
+
+- zomdroid-agent.jar SHA-256:
+  3d5be491b0187b8f756a74929d6ad7e0371dcd51b33d29d9435143e053130cf1
+- app/src/main/assets/bundles/jars.tar SHA-256:
+  a064a21ccea34a0f4679bdf6d5a20bd5abe844b17aa6eecfaf8b21a0c69882c4
+
+4. Stream Core
+
+Auditul complet anterior nu a fost repetat. Integrarea a fost verificată prin
+suita existentă după fixurile agentului:
+
+- stable linear queue selection: PASS;
+- queue fallback la Collections.sort: PASS;
+- wake/unpark bounded: PASS;
+- FBO dirty dedup/budget/fallback: PASS;
+- agent source compilation și install path: PASS.
+
+Nu a fost necesară nicio modificare StreamCoreRuntime.
+
+============================================================
+SUITA FINALĂ HOST/STATIC
+============================================================
+
+PASS — build-optlab-agent.sh
+PASS — test-optlab-agent-source.sh
+PASS — premain Pathfinding-only real-proxy
+PASS — Pathfinding ARM64 payload, 13 exporturi JNI
+PASS — transform Byte Buddy pe JAR real Build 42.20
+PASS — transform Byte Buddy pe JAR real Build 42.20.3
+PASS — PopMan ARM64 payload, 27 exporturi JNI
+PASS — PopMan bridge C, compilare host -Wall -Wextra -Werror
+PASS — clasele PopMan din JAR-urile 42.20 și 42.20.3
+PASS — Native Modules manager/registry/backup/fallback
+PASS — Native Modules SharedPreferences
+PASS — Native Modules UI + poziția Build 42
+PASS — MobileGL PZCompat V1.2 payload
+PASS — validator proof OFF / ON / FALLBACK
+PASS — bash -n pentru toate scripturile tools/*.sh
+
+Rezultat agregat:
+  ALL_HOST_STATIC_TESTS PASS
+
+============================================================
+CE RĂMÂNE PE DISPOZITIV
+============================================================
+
+Pathfinding:
+- urmărire zombi, obstacole, uși/scări, interior/exterior și hoardă;
+- proof AVAILABLE + ACTIVE + EXERCISED fără FALLBACK.
+
+PopMan:
+- OFF și ON;
+- spawn/despawn/migrare/virtualizare;
+- celule noi și revenire în celule vechi;
+- save complet, exit și reload repetat;
+- fără zombi lipsă/duplicați/resetări;
+- gameplay dens/lung și benchmark OFF vs ON;
+- proof AVAILABLE + ACTIVE + EXERCISED și test separat FALLBACK.
+
+============================================================
+REZULTAT FINAL
+============================================================
+
+CP1 FINAL FIX = DONE
+CP2-02 SOURCE INTEGRATION QA = PASS
+SOURCE/HOST/STATIC TESTS = PASS
+ANDROID BUILD = NO
+DEVICE TEST = NO
+OFFICIAL DEVICE PASS = PENDING

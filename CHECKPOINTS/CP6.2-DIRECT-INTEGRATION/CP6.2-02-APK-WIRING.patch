@@ -1,0 +1,1063 @@
+diff --git a/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-02-APK-WIRING-HOST-QA-RO.txt b/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-02-APK-WIRING-HOST-QA-RO.txt
+new file mode 100644
+index 0000000..ad1d788
+--- /dev/null
++++ b/CHECKPOINTS/CP6.2-DIRECT-INTEGRATION/CP6.2-02-APK-WIRING-HOST-QA-RO.txt
+@@ -0,0 +1,82 @@
++ZOMDROID R12 - CHECKPOINT PERSISTENT CP6.2-02
++Data UTC: 2026-08-29
++Stadiu: integrare directa in agentul unic + cablare APK/UI + host QA.
++
++ROLLBACK / ISTORIC
++- R11 baseline: 925bf720334079bb3ad462ff27173e99ec9497a6
++- Metadata baseline: 9969eb5
++- Agent/runtime CP6.2-01: b5d2364
++- Ramura curenta: r12-cp6.2-direct-integration
++
++INTEGRARE APK
++- Preferinte schema 7, independente de masterul general Runtime/Display:
++  1) Render ChunkDepth upload elimination (CP6.1)
++  2) Render ChunkDepth lookup elimination (CP6.2; cere upload)
++  3) RingBuffer render empty-clear elimination (CP6.2)
++- GameLauncher transmite exact trei proprietati catre agent.
++- OptLabFeatureRegistry expune trei mecanisme BUILD42 independente.
++- Profilul CP6.2 demonstrat activeaza numai cele trei mecanisme validate.
++- Fereastra separata Build 42 -> Render Hotpaths, cu layout/culori mostenite din
++  tema existenta (light si dark); nu aglomereaza Chunk Optimization.
++- Oprirea uploadului opreste atomic lookup-ul dependent; activarea lookup-ului
++  activeaza atomic uploadul necesar.
++- Master general OFF nu modifica Build 42/Chunk/Render/Native.
++
++POLITICI PASTRATE
++- CP4.1 complet ramane in acelasi agent.
++- Nu exista al doilea javaagent CP6.2 in bundle.
++- RingBuffer bulk packing nu este integrat si ramane implicit OFF; UI explica
++  lipsa unui castig CPU device demonstrat.
++- CP6.0 rthreadProfileFast nu este reintrodus.
++- 42.20 si 42.20.3 sunt VERIFIED prin hash de clasa + transformare offline.
++- Alte versiuni Build 42 intra numai prin PROBE structural si fallback per feature.
++
++FIX DE SIGURANTA GASIT IN QA
++- Hook-ul onCompileSuccess este obligatoriu si pentru CP6.1 upload-only, nu doar
++  pentru lookup-elision. Astfel, recompile forteaza lookup/upload chiar daca PZ
++  ar reutiliza identitatea obiectului Uniform cu o locatie noua.
++
++HOST QA PASS
++- build-optlab-agent.sh
++- test-optlab-agent-source.sh
++- test-optlab-preferences-independence.sh (schema 7)
++- test-native-modules-source.sh
++- test-native-modules-ui-source.sh (4 dialoguri separate; theme inherited)
++- test-cp62-apk-wiring.sh
++- test-cp62-exact-jars.sh pe 42.20 + 42.20.3
++- test-chunk-optimization-real-jars.sh pe 42.20 + 42.20.3
++- test-pathfinding-real-jars.sh pe 42.20 + 42.20.3
++- test-jassimp-direct.sh
++- test-mobilegl-default-payload.sh
++- test-popman-native-source.sh
++- test-pathfinding-native-payload.sh
++- test-native-modules-preferences.sh
++- test-cp1-proof-validator.sh
++
++REZULTATE SEMANTICE CP6.2
++- 4096 setChunkDepth identice: 1 getUniform, 1 glUniform1f.
++- Schimbare valoare: fara lookup nou, exact un upload nou.
++- Recompile reusit: lookup nou + upload fortat.
++- Lookup OFF: lookup vanilla la fiecare apel, upload redundant eliminat.
++- Lookup OFF + recompile: lookup/upload fortat in siguranta.
++- Eroare GL simulata: cache necomis, fallback original, mecanism fail-open.
++- modelDrawCounts gol: clear omis; ne-gol: clear executat exact o data.
++- Transformare reala Java 25: cele doua hook-uri DefaultShader si o singura
++  rescriere RingBuffer.render in fiecare dintre 42.20 si 42.20.3.
++
++BUNDLE ACTUAL
++- Agent marker: version=10 / schema=9
++- zomdroid-agent.jar SHA256:
++  045461369c1442ba7f422a71b927a1956457ee0779bf9cac6e22b70330cff6d8
++- app/src/main/assets/bundles/jars.tar SHA256:
++  bbbc0768409a3960386a4dd7ce8863435ccc839d460da1250c965702bb78400c
++
++LIMITARI DECLARATE CORECT
++- Android Gradle compile: NOT RUN. Wrapperul Gradle 8.13 nu este in cache, iar
++  mediul curent blocheaza descarcarea services.gradle.org (Network unreachable).
++- DEVICE PASS: NU ESTE DECLARAT. Este necesar build APK intr-un mediu Gradle
++  functional si test real pe dispozitiv.
++
++URMATORUL PAS
++- Commit checkpoint #2, patch persistent, apoi final source archive + manifest,
++  SHA256, rollback si handoff CP6.3+.
+diff --git a/app/src/main/java/com/zomdroid/GameLauncher.java b/app/src/main/java/com/zomdroid/GameLauncher.java
+index c3598e6..7b588a7 100755
+--- a/app/src/main/java/com/zomdroid/GameLauncher.java
++++ b/app/src/main/java/com/zomdroid/GameLauncher.java
+@@ -311,6 +311,12 @@ public class GameLauncher {
+                 + boolArg(optLab.isChunkWorldgenBiome()));
+         jvmArgs.add("-Dzomdroid.optlab.chunk.cp2c.dirty.clear="
+                 + boolArg(optLab.isChunkCp2cDirtyClear()));
++        jvmArgs.add("-Dzomdroid.optlab.render.chunk.depth.upload="
++                + boolArg(optLab.isRenderChunkDepthUpload()));
++        jvmArgs.add("-Dzomdroid.optlab.render.chunk.depth.lookup="
++                + boolArg(optLab.isRenderChunkDepthLookup()));
++        jvmArgs.add("-Dzomdroid.optlab.render.ring.empty.clear="
++                + boolArg(optLab.isRenderRingEmptyClear()));
+         jvmArgs.add("-Dzomdroid.optlab.fbo.budget=6");
+         jvmArgs.add("-Dzomdroid.optlab.fbo.urgent.budget=2");
+         jvmArgs.add("-Dzomdroid.optlab.fbo.max.defer.frames=2");
+diff --git a/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java b/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+index 189e21e..40f3eb3 100644
+--- a/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
++++ b/app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java
+@@ -68,6 +68,12 @@ public final class OptLabFeatureRegistry {
+                 false, true),
+         CHUNK_LUA_MAPOBJECTS("CHUNK_LUA_MAPOBJECTS", Category.BUILD42, false, true),
+         CHUNK_WORLDGEN_BIOME("CHUNK_WORLDGEN_BIOME", Category.BUILD42, false, true),
++        RTHREAD_CHUNK_DEPTH_UPLOAD("RTHREAD_CHUNK_DEPTH_UPLOAD", Category.BUILD42,
++                false, true),
++        RTHREAD_CHUNK_DEPTH_LOOKUP("RTHREAD_CHUNK_DEPTH_LOOKUP", Category.BUILD42,
++                false, true),
++        RTHREAD_RING_RENDER_CLEAR("RTHREAD_RING_RENDER_CLEAR", Category.BUILD42,
++                false, true),
+         CHUNK_CP2C_DIRTY_CLEAR("CHUNK_CP2C_DIRTY_CLEAR", Category.EXPERIMENTAL,
+                 false, true),
+
+@@ -316,6 +322,9 @@ public final class OptLabFeatureRegistry {
+             case CHUNK_RANDOMIZED_BUILDINGS: return prefs.isChunkRandomizedBuildings();
+             case CHUNK_LUA_MAPOBJECTS: return prefs.isChunkLuaMapObjects();
+             case CHUNK_WORLDGEN_BIOME: return prefs.isChunkWorldgenBiome();
++            case RTHREAD_CHUNK_DEPTH_UPLOAD: return prefs.isRenderChunkDepthUpload();
++            case RTHREAD_CHUNK_DEPTH_LOOKUP: return prefs.isRenderChunkDepthLookup();
++            case RTHREAD_RING_RENDER_CLEAR: return prefs.isRenderRingEmptyClear();
+             case CHUNK_CP2C_DIRTY_CLEAR: return prefs.isChunkCp2cDirtyClear();
+             case LIGHTING64_NATIVE: return build42 && nativePreferences.isLighting64Enabled();
+             case PZCLIPPER_NATIVE: return build42 && nativePreferences.isPzClipperEnabled();
+diff --git a/app/src/main/java/com/zomdroid/OptLabPreferences.java b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+index 9c52165..2f88bd7 100644
+--- a/app/src/main/java/com/zomdroid/OptLabPreferences.java
++++ b/app/src/main/java/com/zomdroid/OptLabPreferences.java
+@@ -13,7 +13,7 @@ import androidx.annotation.NonNull;
+  * launcher settings.
+  */
+ public final class OptLabPreferences {
+-    public static final int SCHEMA = 6;
++    public static final int SCHEMA = 7;
+     public static final String EXPECTED_PZ_JAR_SHA256 =
+             "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
+     public static final String EXPECTED_PZ_42203_JAR_SHA256 =
+@@ -53,6 +53,9 @@ public final class OptLabPreferences {
+     private static final String K_CHUNK_LUA = "chunk_lua_mapobjects";
+     private static final String K_CHUNK_WORLDGEN = "chunk_worldgen_biome";
+     private static final String K_CHUNK_CP2C = "chunk_cp2c_dirty_clear";
++    private static final String K_RENDER_CHUNK_DEPTH_UPLOAD = "render_chunk_depth_upload";
++    private static final String K_RENDER_CHUNK_DEPTH_LOOKUP = "render_chunk_depth_lookup";
++    private static final String K_RENDER_RING_EMPTY_CLEAR = "render_ring_empty_clear";
+     private static final String K_ONLY_BUILD42 = "only_build_42";
+
+     public enum Profile {
+@@ -180,6 +183,16 @@ public final class OptLabPreferences {
+         return prefs.getBoolean(K_CHUNK_WORLDGEN, false);
+     }
+     public boolean isChunkCp2cDirtyClear() { return prefs.getBoolean(K_CHUNK_CP2C, false); }
++    public boolean isRenderChunkDepthUpload() {
++        return prefs.getBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, false);
++    }
++    public boolean isRenderChunkDepthLookup() {
++        return isRenderChunkDepthUpload()
++                && prefs.getBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false);
++    }
++    public boolean isRenderRingEmptyClear() {
++        return prefs.getBoolean(K_RENDER_RING_EMPTY_CLEAR, false);
++    }
+     public boolean isOnlyBuild42() {
+         return prefs.getBoolean(K_ONLY_BUILD42, true);
+     }
+@@ -187,11 +200,14 @@ public final class OptLabPreferences {
+         return isMainloopPacing() || isStreamWake() || isStreamQueueFast()
+                 || isStreamVelocityEta() || isFboDirtyDedup() || isFboFrameBudget()
+                 || isStreamFboCoordinator() || isAnyChunkOptimizationEnabled()
+-                || isChunkCp2cDirtyClear();
++                || isChunkCp2cDirtyClear() || isAnyRenderOptimizationEnabled();
+     }
+     public boolean isAnyChunkOptimizationEnabled() {
+         return chunkOptimizationEnabledCount() > 0;
+     }
++    public boolean isAnyRenderOptimizationEnabled() {
++        return renderOptimizationEnabledCount() > 0;
++    }
+
+     public void setProfile(Profile profile) {
+         if (profile == Profile.STREAM_ALL || profile == Profile.FBO_ALL
+@@ -297,6 +313,28 @@ public final class OptLabPreferences {
+     public void setChunkLuaMapObjects(boolean value) { editBuild42(K_CHUNK_LUA, value); }
+     public void setChunkWorldgenBiome(boolean value) { editBuild42(K_CHUNK_WORLDGEN, value); }
+     public void setChunkCp2cDirtyClear(boolean value) { editBuild42(K_CHUNK_CP2C, value); }
++    public void setRenderChunkDepthUpload(boolean value) {
++        SharedPreferences.Editor editor = prefs.edit()
++                .putBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, value);
++        if (!value) editor.putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false);
++        commit(editor);
++    }
++    public void setRenderChunkDepthLookup(boolean value) {
++        SharedPreferences.Editor editor = prefs.edit()
++                .putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, value);
++        if (value) editor.putBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, true);
++        commit(editor);
++    }
++    public void setRenderRingEmptyClear(boolean value) {
++        editBuild42(K_RENDER_RING_EMPTY_CLEAR, value);
++    }
++
++    public void setRenderCp62SafeProfile(boolean enabled) {
++        commit(prefs.edit()
++                .putBoolean(K_RENDER_CHUNK_DEPTH_UPLOAD, enabled)
++                .putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, enabled)
++                .putBoolean(K_RENDER_RING_EMPTY_CLEAR, enabled));
++    }
+
+     public void setChunkStableProfile() {
+         commit(prefs.edit()
+@@ -332,7 +370,8 @@ public final class OptLabPreferences {
+                 + " stream=" + bool(isStreamWake() || isStreamQueueFast()
+                         || isStreamVelocityEta())
+                 + " fbo=" + bool(isFboDirtyDedup() || isFboFrameBudget())
+-                + " chunk=" + chunkOptimizationEnabledCount() + "/8";
++                + " chunk=" + chunkOptimizationEnabledCount() + "/8"
++                + " render=" + renderOptimizationEnabledCount() + "/3";
+     }
+
+     public String chunkOptimizationSummary() {
+@@ -354,6 +393,20 @@ public final class OptLabPreferences {
+         return count;
+     }
+
++    public String renderOptimizationSummary() {
++        return renderOptimizationEnabledCount() + "/3 active"
++                + " · CP6.1/CP6.2"
++                + " · 42.20/42.20.3 VERIFIED";
++    }
++
++    public int renderOptimizationEnabledCount() {
++        int count = 0;
++        if (isRenderChunkDepthUpload()) count++;
++        if (isRenderChunkDepthLookup()) count++;
++        if (isRenderRingEmptyClear()) count++;
++        return count;
++    }
++
+     public String summary() {
+         if (!isMasterEnabled()) return "ALL OFF / legacy";
+         return getProfile() + " · quiet=" + bool(isQuietRuntime())
+@@ -392,6 +445,9 @@ public final class OptLabPreferences {
+                 + " chunkLuaMapObjects=" + bool(isChunkLuaMapObjects())
+                 + " chunkWorldgenBiome=" + bool(isChunkWorldgenBiome())
+                 + " chunkCp2cDirtyClear=" + bool(isChunkCp2cDirtyClear())
++                + " renderChunkDepthUpload=" + bool(isRenderChunkDepthUpload())
++                + " renderChunkDepthLookup=" + bool(isRenderChunkDepthLookup())
++                + " renderRingEmptyClear=" + bool(isRenderRingEmptyClear())
+                 + " onlyBuild42=" + bool(isOnlyBuild42());
+     }
+
+diff --git a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+index 83a8115..2c4ef45 100644
+--- a/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
++++ b/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java
+@@ -77,6 +77,14 @@ public final class Build42OptLabDialog {
+         chunkSummary.setPadding(0, dp(context, 4), 0, 0);
+         content.addView(chunkSummary);
+
++        addSection(content, context, context.getString(R.string.opt_lab_render_section));
++        Button renderButton = new Button(context);
++        renderButton.setText(R.string.opt_lab_render_open);
++        content.addView(renderButton);
++        TextView renderSummary = text(context, prefs.renderOptimizationSummary(), false);
++        renderSummary.setPadding(0, dp(context, 4), 0, 0);
++        content.addView(renderSummary);
++
+         TextView warning = text(context,
+                 context.getString(R.string.opt_lab_build42_restart_warning), false);
+         warning.setPadding(0, dp(context, 12), 0, 0);
+@@ -96,6 +104,7 @@ public final class Build42OptLabDialog {
+             coordinator.setChecked(now.isStreamFboCoordinator());
+             coordinator.setEnabled(now.isFboFrameBudget());
+             chunkSummary.setText(now.chunkOptimizationSummary());
++            renderSummary.setText(now.renderOptimizationSummary());
+             updating[0] = false;
+         };
+
+@@ -141,6 +150,7 @@ public final class Build42OptLabDialog {
+             sync.run();
+         });
+         chunkButton.setOnClickListener(view -> ChunkOptimizationDialog.show(context, sync));
++        renderButton.setOnClickListener(view -> RenderOptimizationDialog.show(context, sync));
+
+         sync.run();
+         ScrollView scroll = new ScrollView(context);
+diff --git a/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java b/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java
+new file mode 100644
+index 0000000..5337ba6
+--- /dev/null
++++ b/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java
+@@ -0,0 +1,143 @@
++package com.zomdroid.fragments;
++
++import android.content.Context;
++import android.graphics.Typeface;
++import android.widget.Button;
++import android.widget.LinearLayout;
++import android.widget.ScrollView;
++import android.widget.TextView;
++
++import androidx.appcompat.app.AlertDialog;
++import androidx.appcompat.widget.SwitchCompat;
++
++import com.zomdroid.OptLabPreferences;
++import com.zomdroid.R;
++
++/** Dedicated Build 42 panel for demonstrated CP6.x render-thread hotpaths. */
++public final class RenderOptimizationDialog {
++    private RenderOptimizationDialog() {}
++
++    public static void show(Context context, Runnable onClosed) {
++        OptLabPreferences prefs = OptLabPreferences.from(context);
++        int pad = dp(context, 16);
++        LinearLayout content = new LinearLayout(context);
++        content.setOrientation(LinearLayout.VERTICAL);
++        content.setPadding(pad, dp(context, 4), pad, pad);
++
++        TextView intro = text(context, context.getString(R.string.opt_lab_render_intro), false);
++        intro.setPadding(0, 0, 0, dp(context, 8));
++        content.addView(intro);
++        TextView summary = text(context, prefs.renderOptimizationSummary(), true);
++        content.addView(summary);
++
++        addSection(content, context, context.getString(R.string.opt_lab_render_profiles));
++        Button safe = button(context, R.string.opt_lab_render_cp62_safe);
++        Button off = button(context, R.string.opt_lab_render_all_off);
++        content.addView(safe);
++        content.addView(off);
++
++        addSection(content, context, context.getString(R.string.opt_lab_render_chunk_depth));
++        SwitchCompat upload = toggle(context, R.string.opt_lab_render_chunk_depth_upload,
++                prefs.isRenderChunkDepthUpload());
++        SwitchCompat lookup = toggle(context, R.string.opt_lab_render_chunk_depth_lookup,
++                prefs.isRenderChunkDepthLookup());
++        content.addView(upload);
++        content.addView(lookup);
++
++        addSection(content, context, context.getString(R.string.opt_lab_render_ring));
++        SwitchCompat emptyClear = toggle(context, R.string.opt_lab_render_ring_empty_clear,
++                prefs.isRenderRingEmptyClear());
++        content.addView(emptyClear);
++
++        TextView bulk = text(context,
++                context.getString(R.string.opt_lab_render_ring_bulk_status), false);
++        bulk.setPadding(0, dp(context, 10), 0, 0);
++        content.addView(bulk);
++
++        TextView warning = text(context,
++                context.getString(R.string.opt_lab_render_restart), false);
++        warning.setPadding(0, dp(context, 12), 0, 0);
++        content.addView(warning);
++
++        final boolean[] updating = {false};
++        Runnable sync = () -> {
++            OptLabPreferences now = OptLabPreferences.from(context);
++            updating[0] = true;
++            upload.setChecked(now.isRenderChunkDepthUpload());
++            lookup.setChecked(now.isRenderChunkDepthLookup());
++            lookup.setEnabled(now.isRenderChunkDepthUpload());
++            emptyClear.setChecked(now.isRenderRingEmptyClear());
++            summary.setText(now.renderOptimizationSummary());
++            updating[0] = false;
++        };
++
++        upload.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) {
++                prefs.setRenderChunkDepthUpload(checked);
++                sync.run();
++            }
++        });
++        lookup.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) {
++                prefs.setRenderChunkDepthLookup(checked);
++                sync.run();
++            }
++        });
++        emptyClear.setOnCheckedChangeListener((view, checked) -> {
++            if (!updating[0]) {
++                prefs.setRenderRingEmptyClear(checked);
++                sync.run();
++            }
++        });
++        safe.setOnClickListener(view -> {
++            prefs.setRenderCp62SafeProfile(true);
++            sync.run();
++        });
++        off.setOnClickListener(view -> {
++            prefs.setRenderCp62SafeProfile(false);
++            sync.run();
++        });
++
++        sync.run();
++        ScrollView scroll = new ScrollView(context);
++        scroll.addView(content);
++        new AlertDialog.Builder(context)
++                .setTitle(R.string.opt_lab_render_title)
++                .setView(scroll)
++                .setPositiveButton(R.string.dialog_button_ok, null)
++                .setOnDismissListener(dialog -> onClosed.run())
++                .show();
++    }
++
++    private static SwitchCompat toggle(Context context, int label, boolean checked) {
++        SwitchCompat toggle = new SwitchCompat(context);
++        toggle.setText(label);
++        toggle.setChecked(checked);
++        toggle.setPadding(0, dp(context, 5), 0, dp(context, 5));
++        return toggle;
++    }
++
++    private static Button button(Context context, int label) {
++        Button button = new Button(context);
++        button.setText(label);
++        return button;
++    }
++
++    private static TextView text(Context context, String value, boolean bold) {
++        TextView view = new TextView(context);
++        view.setText(value);
++        view.setTextSize(13);
++        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
++        return view;
++    }
++
++    private static void addSection(LinearLayout parent, Context context, String value) {
++        TextView label = text(context, value, true);
++        label.setPadding(0, dp(context, 14), 0, dp(context, 4));
++        parent.addView(label);
++    }
++
++    private static int dp(Context context, int value) {
++        return Math.round(value * context.getResources().getDisplayMetrics().density);
++    }
++}
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 7f32d5d..8d67a24 100755
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -671,6 +671,20 @@
+     <string name="opt_lab_chunk_lua" translatable="false">Lua MapObjects · snapshot reutilizat</string>
+     <string name="opt_lab_chunk_worldgen" translatable="false">WorldGen biome · memoizare per scope</string>
+     <string name="opt_lab_chunk_restart" translatable="false">Restart game required. ACTIVE confirmă doar că transformarea a trecut; EXERCISED confirmă prima folosire reală. Testul final pe device rămâne obligatoriu.</string>
++    <string name="opt_lab_render_section" translatable="false">RENDER HOTPATHS · CP6.x</string>
++    <string name="opt_lab_render_open" translatable="false">Deschide Render Hotpaths</string>
++    <string name="opt_lab_render_title" translatable="false">Build 42 · Render Hotpaths</string>
++    <string name="opt_lab_render_intro" translatable="false">CP6.1/CP6.2 portează direct în agentul APK numai rutele demonstrate. Fiecare mecanism are verificare proprie și fallback la metoda originală PZ. 42.20 și 42.20.3 sunt VERIFIED; alte versiuni Build 42 cer PROBE structural.</string>
++    <string name="opt_lab_render_profiles" translatable="false">Profiluri Render</string>
++    <string name="opt_lab_render_cp62_safe" translatable="false">CP6.2 demonstrat · toate cele 3 ON</string>
++    <string name="opt_lab_render_all_off" translatable="false">Render Hotpaths · ALL OFF</string>
++    <string name="opt_lab_render_chunk_depth" translatable="false">CHUNK DEPTH UNIFORM</string>
++    <string name="opt_lab_render_chunk_depth_upload" translatable="false">CP6.1 · elimină glUniform1f redundant</string>
++    <string name="opt_lab_render_chunk_depth_lookup" translatable="false">CP6.2 · cache getUniform cu invalidare la recompile</string>
++    <string name="opt_lab_render_ring" translatable="false">RING BUFFER RENDER</string>
++    <string name="opt_lab_render_ring_empty_clear" translatable="false">CP6.2 · omite modelDrawCounts.clear când mapa este goală</string>
++    <string name="opt_lab_render_ring_bulk_status" translatable="false">RingBuffer bulk packing: neintegrat și implicit OFF. Host parity a trecut în handoff, dar device run-ul nu a demonstrat încă un câștig CPU suficient.</string>
++    <string name="opt_lab_render_restart" translatable="false">Restart game required. ACTIVE/EXERCISED confirmă ruta directă; DEVICE PASS nu se declară fără un test nou pe dispozitiv.</string>
+     <string name="opt_lab_chunk_cp2c" translatable="false">CP2C dirty-clear · EXPERIMENTAL</string>
+     <string name="opt_lab_chunk_cp2c_warning" translatable="false">CP2C schimbă starea propertiesDirty într-un scope strict. Rămâne implicit OFF și nu este activat de niciun preset de producție.</string>
+     <string name="opt_lab_box64" translatable="false">O4 · Politică Box64</string>
+diff --git a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+index 60aad82..762fd84 100644
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java
+@@ -241,7 +241,7 @@ public final class Main {
+                 "CHUNK_CP2C_DIRTY_CLEAR", chunkCp2cRequested, 3,
+                 isoChunk, isoGridSquare);
+         final FeatureCompatibility.Decision chunkDepth = FeatureCompatibility.evaluate(
+-                "RTHREAD_CHUNK_DEPTH_UPLOAD", chunkDepthRequested, 1,
++                "RTHREAD_CHUNK_DEPTH_UPLOAD", chunkDepthRequested, 2,
+                 defaultShader, shaderProgram, shaderUniform);
+         final FeatureCompatibility.Decision chunkDepthLookup = chunkDepthRequested
+                 ? FeatureCompatibility.evaluate("RTHREAD_CHUNK_DEPTH_LOOKUP",
+@@ -421,31 +421,29 @@ public final class Main {
+                             int setters = methodCount(type, "setChunkDepth", "(F)V");
+                             int compileHooks = methodCount(type, "onCompileSuccess",
+                                     "(Lzombie/core/opengl/ShaderProgram;)V");
+-                            if (setters != 1) {
++                            if (setters != 1 || compileHooks != 1) {
+                                 RenderOptimizationRuntime.disableChunkDepth(
+-                                        "default_shader_shape_setChunkDepth=" + setters);
++                                        "default_shader_shape_setChunkDepth=" + setters
++                                                + " onCompileSuccess=" + compileHooks);
+                                 return target;
+                             }
+
+-                            target = target.visit(Advice.to(ChunkDepthAdvice.class).on(
+-                                    named("setChunkDepth").and(takesArguments(float.class))
+-                                            .and(returns(void.class))));
++                            target = target
++                                    .visit(Advice.to(ChunkDepthAdvice.class).on(
++                                            named("setChunkDepth")
++                                                    .and(takesArguments(float.class))
++                                                    .and(returns(void.class))))
++                                    .visit(Advice.to(DefaultShaderCompileAdvice.class).on(
++                                            named("onCompileSuccess").and(takesArguments(1))
++                                                    .and(returns(void.class))));
+                             chunkDepth.passPart("default_shader_set_chunk_depth");
++                            chunkDepth.passPart("default_shader_compile_invalidation");
+
+                             if (chunkDepthLookup.isCandidate()) {
+-                                if (compileHooks != 1) {
+-                                    RenderOptimizationRuntime.disableChunkDepthLookup(
+-                                            "default_shader_shape_onCompileSuccess="
+-                                                    + compileHooks);
+-                                } else {
+-                                    target = target.visit(Advice.to(DefaultShaderCompileAdvice.class)
+-                                            .on(named("onCompileSuccess").and(takesArguments(1))
+-                                                    .and(returns(void.class))));
+-                                    chunkDepthLookup.passPart(
+-                                            "default_shader_set_chunk_depth");
+-                                    chunkDepthLookup.passPart(
+-                                            "default_shader_compile_invalidation");
+-                                }
++                                chunkDepthLookup.passPart(
++                                        "default_shader_set_chunk_depth");
++                                chunkDepthLookup.passPart(
++                                        "default_shader_compile_invalidation");
+                             }
+                             return target;
+                         });
+diff --git a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
+index 1437f0a..dce8fc9 100644
+--- a/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
++++ b/optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java
+@@ -125,7 +125,7 @@ public final class RenderOptimizationRuntime {
+
+     /** Called by Advice only after DefaultShader.onCompileSuccess completed without throwing. */
+     public static void afterDefaultShaderCompile() {
+-        if (!chunkDepthLookupEnabled) return;
++        if (!chunkDepthEnabled) return;
+         synchronized (COMPILE_LOCK) {
+             compileEpoch++;
+         }
+diff --git a/tools/Cp62ExactJarBytecodeUnit.java b/tools/Cp62ExactJarBytecodeUnit.java
+new file mode 100644
+index 0000000..e66955e
+--- /dev/null
++++ b/tools/Cp62ExactJarBytecodeUnit.java
+@@ -0,0 +1,173 @@
++import com.zomdroid.agent.Main;
++import com.zomdroid.agent.optimization.FeatureCompatibility;
++
++import net.bytebuddy.ByteBuddy;
++import net.bytebuddy.asm.Advice;
++import net.bytebuddy.asm.AsmVisitorWrapper;
++import net.bytebuddy.description.type.TypeDescription;
++import net.bytebuddy.dynamic.ClassFileLocator;
++import net.bytebuddy.dynamic.scaffold.TypeValidation;
++import net.bytebuddy.jar.asm.ClassReader;
++import net.bytebuddy.jar.asm.ClassVisitor;
++import net.bytebuddy.jar.asm.MethodVisitor;
++import net.bytebuddy.jar.asm.Opcodes;
++import net.bytebuddy.pool.TypePool;
++import net.bytebuddy.utility.OpenedClassReader;
++
++import java.io.File;
++import java.lang.reflect.Constructor;
++import java.security.MessageDigest;
++import java.util.jar.JarEntry;
++import java.util.jar.JarFile;
++
++import static net.bytebuddy.matcher.ElementMatchers.named;
++import static net.bytebuddy.matcher.ElementMatchers.returns;
++import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
++
++/** Offline transform verification against the two exact Java-25 Build 42 jars. */
++public final class Cp62ExactJarBytecodeUnit {
++    private static final String JAR_4220 =
++            "e4661ca9cb168abc995d3cf59994fa17f66ba8a4e2c2899cbfa48f7eacea54b8";
++    private static final String JAR_42203 =
++            "bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227";
++
++    private Cp62ExactJarBytecodeUnit() {}
++
++    public static void main(String[] args) throws Exception {
++        require(args.length == 2, "usage: <projectzomboid-42.20.jar> <42.20.3.jar>");
++        System.setProperty("net.bytebuddy.experimental", "true");
++        System.setProperty("zomdroid.optlab.pz.build.family", "42");
++        System.setProperty("zomdroid.optlab.only.build42", "1");
++        FeatureCompatibility.configureFromProperties();
++        verify(new File(args[0]), "42.20", JAR_4220);
++        verify(new File(args[1]), "42.20.3", JAR_42203);
++        System.out.println("CP6_2_EXACT_JAR_BYTECODE PASS versions=42.20,42.20.3");
++    }
++
++    private static void verify(File jar, String version, String expectedJarHash) throws Exception {
++        require(jar.isFile(), version + " jar missing");
++        require(expectedJarHash.equals(sha256(java.nio.file.Files.readAllBytes(jar.toPath()))),
++                version + " whole-jar SHA-256 mismatch");
++
++        try (JarFile jarFile = new JarFile(jar, false);
++             ClassFileLocator jarLocator = ClassFileLocator.ForJarFile.of(jar)) {
++            ClassFileLocator locator = new ClassFileLocator.Compound(jarLocator,
++                    ClassFileLocator.ForClassLoader.ofSystemLoader());
++            TypePool pool = TypePool.Default.of(locator);
++
++            byte[] defaultOriginal = bytes(jarFile, "zombie/core/DefaultShader.class");
++            require(countCall(defaultOriginal, "setChunkDepth", "(F)V",
++                    "zombie/core/opengl/ShaderProgram", "setValue",
++                    "(Ljava/lang/String;F)V") == 1,
++                    version + " DefaultShader vanilla shape");
++            byte[] defaultPatched = new ByteBuddy().with(TypeValidation.DISABLED)
++                    .redefine(pool.describe("zombie.core.DefaultShader").resolve(), locator)
++                    .visit(Advice.to(Main.ChunkDepthAdvice.class).on(
++                            named("setChunkDepth").and(takesArguments(float.class))
++                                    .and(returns(void.class))))
++                    .visit(Advice.to(Main.DefaultShaderCompileAdvice.class).on(
++                            named("onCompileSuccess").and(takesArguments(1))
++                                    .and(returns(void.class))))
++                    .make().getBytes();
++            require(countCall(defaultPatched, "setChunkDepth", "(F)V",
++                    "com/zomdroid/agent/optimization/RenderOptimizationRuntime",
++                    "handleChunkDepth", "(Ljava/lang/Object;F)Z") == 1,
++                    version + " ChunkDepth Advice not injected exactly once");
++            require(countCall(defaultPatched, "onCompileSuccess",
++                    "(Lzombie/core/opengl/ShaderProgram;)V",
++                    "com/zomdroid/agent/optimization/RenderOptimizationRuntime",
++                    "afterDefaultShaderCompile", "()V") == 1,
++                    version + " compile invalidation hook not injected exactly once");
++
++            byte[] ringOriginal = bytes(jarFile,
++                    "zombie/core/SpriteRenderer$RingBuffer.class");
++            require(countCall(ringOriginal, "render", "()V",
++                    "gnu/trove/map/hash/TObjectIntHashMap", "clear", "()V") == 1,
++                    version + " RingBuffer.render vanilla clear shape");
++
++            FeatureCompatibility.Decision decision = FeatureCompatibility.evaluate(
++                    "RTHREAD_RING_RENDER_CLEAR", true, 1,
++                    new FeatureCompatibility.Requirement("ring", "exact", "exact"));
++            AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper wrapper =
++                    productionRingVisitor(decision);
++            TypeDescription ringType = pool.describe(
++                    "zombie.core.SpriteRenderer$RingBuffer").resolve();
++            byte[] ringPatched = new ByteBuddy().with(TypeValidation.DISABLED)
++                    .redefine(ringType, locator)
++                    .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(
++                            named("render").and(takesArguments(0)).and(returns(void.class)),
++                            wrapper))
++                    .make().getBytes();
++            require(countCall(ringPatched, "render", "()V",
++                    "com/zomdroid/agent/optimization/RenderOptimizationRuntime",
++                    "clearModelDrawCountsIfNotEmpty",
++                    "(Lgnu/trove/map/hash/TObjectIntHashMap;)V") == 1,
++                    version + " Ring render helper not injected exactly once");
++            require(countCall(ringPatched, "render", "()V",
++                    "gnu/trove/map/hash/TObjectIntHashMap", "clear", "()V") == 0,
++                    version + " original Ring render clear still present");
++
++            require(defaultOriginal[6] == defaultPatched[6]
++                            && defaultOriginal[7] == defaultPatched[7]
++                            && ringOriginal[6] == ringPatched[6]
++                            && ringOriginal[7] == ringPatched[7],
++                    version + " class-file major version changed");
++            System.out.println("CP6_2_EXACT_JAR " + version
++                    + " PASS defaultShaderBytes=" + defaultPatched.length
++                    + " ringBufferBytes=" + ringPatched.length);
++        }
++    }
++
++    @SuppressWarnings("unchecked")
++    private static AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper
++            productionRingVisitor(FeatureCompatibility.Decision decision) throws Exception {
++        Class<?> type = Class.forName("com.zomdroid.agent.Main$RingRenderClearVisitor");
++        Constructor<?> constructor = type.getDeclaredConstructor(
++                FeatureCompatibility.Decision.class);
++        constructor.setAccessible(true);
++        return (AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper)
++                constructor.newInstance(decision);
++    }
++
++    private static int countCall(byte[] bytes, String methodName, String methodDescriptor,
++                                 String owner, String name, String descriptor) {
++        int[] count = {0};
++        OpenedClassReader.of(bytes).accept(new ClassVisitor(Opcodes.ASM9) {
++            @Override public MethodVisitor visitMethod(int access, String currentName,
++                                                       String currentDescriptor, String signature,
++                                                       String[] exceptions) {
++                if (!methodName.equals(currentName)
++                        || !methodDescriptor.equals(currentDescriptor)) return null;
++                return new MethodVisitor(Opcodes.ASM9) {
++                    @Override public void visitMethodInsn(int opcode, String currentOwner,
++                                                          String currentName,
++                                                          String currentDescriptor,
++                                                          boolean isInterface) {
++                        if (owner.equals(currentOwner) && name.equals(currentName)
++                                && descriptor.equals(currentDescriptor)) count[0]++;
++                    }
++                };
++            }
++        }, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
++        return count[0];
++    }
++
++    private static byte[] bytes(JarFile jar, String name) throws Exception {
++        JarEntry entry = jar.getJarEntry(name);
++        require(entry != null, name + " missing");
++        try (java.io.InputStream input = jar.getInputStream(entry)) {
++            return input.readAllBytes();
++        }
++    }
++
++    private static String sha256(byte[] bytes) throws Exception {
++        byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
++        StringBuilder output = new StringBuilder(64);
++        for (byte value : hash) output.append(String.format("%02x", value & 0xff));
++        return output.toString();
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new AssertionError(message);
++    }
++}
+diff --git a/tools/OptLabPreferencesIndependenceUnit.java b/tools/OptLabPreferencesIndependenceUnit.java
+index 7f59103..4956369 100644
+--- a/tools/OptLabPreferencesIndependenceUnit.java
++++ b/tools/OptLabPreferencesIndependenceUnit.java
+@@ -15,16 +15,19 @@ public final class OptLabPreferencesIndependenceUnit {
+         prefs.setProfile(OptLabPreferences.Profile.RUNTIME_SAFE);
+         prefs.setStreamWake(true);
+         prefs.setChunkStableProfile();
++        prefs.setRenderCp62SafeProfile(true);
+         require(prefs.isMasterEnabled(), "general profile enabled");
+         require(prefs.isQuietRuntime(), "general runtime active");
+         require(prefs.isStreamWake(), "Build 42 active");
+         require(prefs.chunkOptimizationEnabledCount() == 3, "stable Chunk profile active");
++        require(prefs.renderOptimizationEnabledCount() == 3, "CP6.2 Render profile active");
+
+         prefs.setMasterEnabled(false);
+         require(!prefs.isMasterEnabled(), "general master disabled");
+         require(!prefs.isQuietRuntime(), "general runtime disabled");
+         require(prefs.isStreamWake(), "Build 42 survives general OFF");
+         require(prefs.isChunkNeighbourMain(), "Chunk survives general OFF");
++        require(prefs.isRenderChunkDepthLookup(), "Render survives general OFF");
+         require(prefs.isAnyAgentOptimizationEnabled(), "agent follows independent Build 42");
+
+         prefs.setProfile(OptLabPreferences.Profile.FBO_ALL);
+@@ -33,6 +36,15 @@ public final class OptLabPreferencesIndependenceUnit {
+         require(!prefs.isStreamWake(), "FBO preset isolates stream");
+         require(prefs.chunkOptimizationEnabledCount() == 3,
+                 "Stream/FBO presets preserve Chunk branch");
++        require(prefs.renderOptimizationEnabledCount() == 3,
++                "Stream/FBO presets preserve Render branch");
++
++        prefs.setRenderChunkDepthUpload(false);
++        require(!prefs.isRenderChunkDepthUpload() && !prefs.isRenderChunkDepthLookup(),
++                "disabling upload atomically disables dependent lookup");
++        prefs.setRenderChunkDepthLookup(true);
++        require(prefs.isRenderChunkDepthUpload() && prefs.isRenderChunkDepthLookup(),
++                "enabling lookup atomically enables required upload");
+
+         prefs.setChunkCp2cDirtyClear(true);
+         prefs.setChunkAllProduction(true);
+@@ -46,10 +58,10 @@ public final class OptLabPreferencesIndependenceUnit {
+         require(prefs.isFboDirtyDedup(), "general profile preserves Build 42");
+         require(prefs.getProfile() == OptLabPreferences.Profile.RUNTIME_SAFE,
+                 "general profile identity preserved");
+-        require(OptLabPreferences.SCHEMA == 6, "schema 6");
++        require(OptLabPreferences.SCHEMA == 7, "schema 7");
+         require(OptLabPreferences.isKnownPzJarSha256(
+                 OptLabPreferences.EXPECTED_PZ_42203_JAR_SHA256), "42.20.3 known");
+-        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=6");
++        System.out.println("OPTLAB_PREFERENCES_INDEPENDENCE_UNIT PASS schema=7");
+     }
+
+     private static final class FakeContext extends Context {
+diff --git a/tools/OptLabRegistryUnit.java b/tools/OptLabRegistryUnit.java
+index c42a2f8..6a22564 100644
+--- a/tools/OptLabRegistryUnit.java
++++ b/tools/OptLabRegistryUnit.java
+@@ -30,6 +30,11 @@ public final class OptLabRegistryUnit {
+         require(active.get(OptLabFeatureRegistry.Feature.CHUNK_CP2C_DIRTY_CLEAR).feature.category
+                         == OptLabFeatureRegistry.Category.EXPERIMENTAL,
+                 "CP2C remains experimental");
++        require(active.get(OptLabFeatureRegistry.Feature.RTHREAD_CHUNK_DEPTH_LOOKUP).requested,
++                "CP6.2 lookup requested independently");
++        require(active.get(OptLabFeatureRegistry.Feature.RTHREAD_RING_RENDER_CLEAR).compatibility
++                        == OptLabFeatureRegistry.Compatibility.VERIFIED,
++                "CP6.2 ring clear verified for a known B42 jar");
+
+         OptLabFeatureRegistry.Snapshot disabled = OptLabFeatureRegistry.evaluate(
+                 b42, new OptLabPreferences(true),
+diff --git a/tools/OptLabRuntimeUnit.java b/tools/OptLabRuntimeUnit.java
+index 4b44b6c..edf30f8 100644
+--- a/tools/OptLabRuntimeUnit.java
++++ b/tools/OptLabRuntimeUnit.java
+@@ -189,6 +189,12 @@ public final class OptLabRuntimeUnit {
+         }
+         require(program.lookups == 64, "lookup OFF must preserve vanilla lookup frequency");
+         require(GL20.uniform1fCalls == 1, "CP6.1 must still suppress redundant upload");
++        program.uniform = new ShaderProgram.Uniform(5);
++        RenderOptimizationRuntime.afterDefaultShaderCompile();
++        require(RenderOptimizationRuntime.handleChunkDepth(shader, 0.25f),
++                "upload-only route must survive successful recompile");
++        require(program.lookups == 65 && GL20.uniform1fCalls == 2,
++                "upload-only route must force safe lookup/upload after recompile");
+
+         GL20.uniform1fCalls = 0;
+         GL20.throwNext = true;
+diff --git a/tools/native-module-stubs/com/zomdroid/OptLabPreferences.java b/tools/native-module-stubs/com/zomdroid/OptLabPreferences.java
+index 81eb231..be81c29 100644
+--- a/tools/native-module-stubs/com/zomdroid/OptLabPreferences.java
++++ b/tools/native-module-stubs/com/zomdroid/OptLabPreferences.java
+@@ -44,5 +44,8 @@ public final class OptLabPreferences {
+     public boolean isChunkLuaMapObjects() { return chunk; }
+     public boolean isChunkWorldgenBiome() { return chunk; }
+     public boolean isChunkCp2cDirtyClear() { return chunk; }
++    public boolean isRenderChunkDepthUpload() { return chunk; }
++    public boolean isRenderChunkDepthLookup() { return chunk; }
++    public boolean isRenderRingEmptyClear() { return chunk; }
+     public boolean isOnlyBuild42() { return onlyBuild42; }
+ }
+diff --git a/tools/test-cp62-apk-wiring.sh b/tools/test-cp62-apk-wiring.sh
+new file mode 100755
+index 0000000..c38408e
+--- /dev/null
++++ b/tools/test-cp62-apk-wiring.sh
+@@ -0,0 +1,63 @@
++#!/usr/bin/env bash
++set -euo pipefail
++export TZ=UTC
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++
++python3 - "$PROJECT_DIR" <<'PY'
++from pathlib import Path
++import sys
++
++root=Path(sys.argv[1])
++launcher=(root/'app/src/main/java/com/zomdroid/GameLauncher.java').read_text()
++prefs=(root/'app/src/main/java/com/zomdroid/OptLabPreferences.java').read_text()
++registry=(root/'app/src/main/java/com/zomdroid/OptLabFeatureRegistry.java').read_text()
++agent=(root/'optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/Main.java').read_text()
++runtime=(root/'optlab_deps/zomdroid-dependencies-4da905a55889778a2a7a38f268e36b8bc595a8a5/zomdroid-agent/src/main/java/com/zomdroid/agent/optimization/RenderOptimizationRuntime.java').read_text()
++
++props={
++    'zomdroid.optlab.render.chunk.depth.upload':'isRenderChunkDepthUpload',
++    'zomdroid.optlab.render.chunk.depth.lookup':'isRenderChunkDepthLookup',
++    'zomdroid.optlab.render.ring.empty.clear':'isRenderRingEmptyClear',
++}
++for prop,getter in props.items():
++    assert prop in launcher and getter in launcher, f'launcher missing {prop}'
++    assert prop in agent, f'agent missing {prop}'
++for feature in ('RTHREAD_CHUNK_DEPTH_UPLOAD','RTHREAD_CHUNK_DEPTH_LOOKUP',
++                'RTHREAD_RING_RENDER_CLEAR'):
++    assert feature in registry and feature in agent, f'registry/agent missing {feature}'
++assert 'public static final int SCHEMA = 7' in prefs, 'preference schema not bumped'
++assert 'isAnyRenderOptimizationEnabled()' in prefs, 'agent launch gate ignores Render'
++assert 'if (!value) editor.putBoolean(K_RENDER_CHUNK_DEPTH_LOOKUP, false)' in prefs, \
++    'upload/lookup dependency not atomic'
++assert 'ring_bulk_pack=0_experimental_not_integrated' in runtime, \
++    'bulk-pack diagnostic status missing'
++assert 'rthreadProfileFast' not in agent and 'rthreadProfileFast' not in runtime, \
++    'rejected CP6.0 profiler fastpath reintroduced'
++assert 'rthreadRingPackFast' not in agent and 'MGLPZRingFast' not in agent, \
++    'unproven Ring bulk pack accidentally integrated'
++assert 'version=10 schema=9 loaded' in agent, 'agent marker mismatch'
++
++for workflow in (root/'.github/workflows').glob('*.yml'):
++    if workflow.name == 'jassimp-direct.yml':
++        continue
++    text=workflow.read_text()
++    assert 'build-optlab-agent.sh' in text, f'{workflow.name} skips agent rebuild'
++    assert 'test-optlab-agent-source.sh' in text, f'{workflow.name} skips agent test'
++print('CP6_2_APK_WIRING_SOURCE PASS properties=3 features=3 workflows=3')
++PY
++
++WORK_DIR="$(mktemp -d)"
++trap 'rm -rf -- "$WORK_DIR"' EXIT
++tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
++  -C "$WORK_DIR"
++unzip -tq "$WORK_DIR/zomdroid-agent.jar"
++unzip -Z1 "$WORK_DIR/zomdroid-agent.jar" \
++  | grep -qx 'com/zomdroid/agent/optimization/RenderOptimizationRuntime.class'
++unzip -p "$WORK_DIR/zomdroid-agent.jar" com/zomdroid/agent/Main.class \
++  | grep -aFq '[ZD-OPT-LAB-AGENT] version=10 schema=9 loaded'
++if tar -tf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" | grep -q 'MGLPZ-Performance'; then
++  echo 'external CP6.2 proof agent leaked into APK bundle' >&2
++  exit 1
++fi
++echo 'CP6_2_APK_BUNDLE PASS unified_agent=1 external_agent=0 marker=10/9'
+diff --git a/tools/test-cp62-exact-jars.sh b/tools/test-cp62-exact-jars.sh
+new file mode 100755
+index 0000000..2bcc3b2
+--- /dev/null
++++ b/tools/test-cp62-exact-jars.sh
+@@ -0,0 +1,27 @@
++#!/usr/bin/env bash
++set -euo pipefail
++export TZ=UTC
++
++PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
++JAR_4220="${1:-${PZ_4220_JAR:-}}"
++JAR_42203="${2:-${PZ_42203_JAR:-}}"
++if [[ -z "$JAR_4220" || -z "$JAR_42203" ]]; then
++  echo "usage: $0 <projectzomboid-42.20.jar> <projectzomboid-42.20.3.jar>" >&2
++  exit 2
++fi
++
++WORK_DIR="$(mktemp -d)"
++trap 'rm -rf -- "$WORK_DIR"' EXIT
++mkdir -p "$WORK_DIR/bundle" "$WORK_DIR/classes"
++tar --no-same-owner -xf "$PROJECT_DIR/app/src/main/assets/bundles/jars.tar" \
++  -C "$WORK_DIR/bundle"
++
++java -m jdk.compiler/com.sun.tools.javac.Main \
++  --release 17 \
++  -cp "$WORK_DIR/bundle/zomdroid-agent.jar" \
++  -d "$WORK_DIR/classes" \
++  "$PROJECT_DIR/tools/Cp62ExactJarBytecodeUnit.java"
++
++java -Dnet.bytebuddy.experimental=true \
++  -cp "$WORK_DIR/classes:$WORK_DIR/bundle/zomdroid-agent.jar" \
++  Cp62ExactJarBytecodeUnit "$JAR_4220" "$JAR_42203"
+diff --git a/tools/test-native-modules-ui-source.sh b/tools/test-native-modules-ui-source.sh
+index 2b98ac1..244663e 100755
+--- a/tools/test-native-modules-ui-source.sh
++++ b/tools/test-native-modules-ui-source.sh
+@@ -12,7 +12,9 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
+   -d "$WORK_DIR/classes" \
+   "${STUBS[@]}" \
+   "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java" \
+-  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java"
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java" \
++  "$PROJECT_DIR/app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java"
+
+ python3 - "$PROJECT_DIR" <<'PY'
+ from pathlib import Path
+@@ -25,6 +27,7 @@ general=(root/'app/src/main/java/com/zomdroid/fragments/OptLabDialog.java').read
+ build42=(root/'app/src/main/java/com/zomdroid/fragments/Build42OptLabDialog.java').read_text()
+ native=(root/'app/src/main/java/com/zomdroid/fragments/NativeModulesDialog.java').read_text()
+ chunk=(root/'app/src/main/java/com/zomdroid/fragments/ChunkOptimizationDialog.java').read_text()
++render=(root/'app/src/main/java/com/zomdroid/fragments/RenderOptimizationDialog.java').read_text()
+ profiles=re.search(r'GENERAL_PROFILES\s*=\s*\{(.*?)\};', general, re.S)
+ assert profiles, 'GENERAL_PROFILES missing'
+ for name in ('STREAM_ALL','FBO_ALL','FULL_CANDIDATE'):
+@@ -34,6 +37,7 @@ assert 'NativeModulesDialog.show' in general, 'Native Modules separate button mi
+ assert 'Build42OptLabDialog.show' in general, 'Build42 separate button missing'
+ assert 'ChunkOptimizationDialog.show' in general, 'Chunk Optimization branch missing'
+ assert 'ChunkOptimizationDialog.show' in build42, 'Chunk branch missing from Build42 dialog'
++assert 'RenderOptimizationDialog.show' in build42, 'Render branch missing from Build42 dialog'
+ assert 'com.google.android.material.tabs.TabLayout' in general, 'theme-aware TabLayout missing'
+ for name in ('opt_lab_tab_overview', 'opt_lab_tab_runtime', 'opt_lab_tab_display',
+              'opt_lab_tab_build42', 'opt_lab_tab_native', 'opt_lab_tab_experimental'):
+@@ -49,6 +53,12 @@ for setter in ('setChunkForage', 'setChunkNeighbourWorker', 'setChunkNeighbourMa
+     assert setter in chunk, f'{setter} not wired in Chunk dialog'
+ assert 'setChunkCp2cDirtyClear' in general, 'CP2C must stay in Experimental tab'
+ assert 'setChunkCp2cDirtyClear' not in chunk, 'CP2C leaked into production Chunk presets'
++for setter in ('setRenderChunkDepthUpload', 'setRenderChunkDepthLookup',
++               'setRenderRingEmptyClear', 'setRenderCp62SafeProfile'):
++    assert setter in render, f'{setter} not wired in Render dialog'
++assert 'ring_bulk_status' in render, 'unproven Ring bulk packing status missing'
++assert 'setTextColor' not in render and 'Color.' not in render, \
++    'Render dialog must inherit light/dark theme colors'
+ for setter in ('setLighting64Enabled','setPzClipperEnabled','setPathfindingEnabled',
+                'setPopManEnabled'):
+     assert setter in native, f'{setter} not wired'
+@@ -61,9 +71,11 @@ assert 'EXPERIMENTAL' in values['native_modules_popman']
+ assert 'nu modifică celelalte module' in values['opt_lab_independent_note']
+ assert '42.20 și 42.20.3' in values['opt_lab_chunk_intro']
+ assert 'EXPERIMENTAL' in values['opt_lab_chunk_cp2c']
++assert '42.20 și 42.20.3' in values['opt_lab_render_intro']
++assert 'neintegrat și implicit OFF' in values['opt_lab_render_ring_bulk_status']
+ for theme in ('values/themes.xml', 'values-night/themes.xml'):
+     ET.parse(root/'app/src/main/res'/theme)
+-print('NATIVE_MODULES_UI_SOURCE PASS tabs=6 separate_dialogs=3 '
++print('NATIVE_MODULES_UI_SOURCE PASS tabs=6 separate_dialogs=4 '
+       'native_toggles=4 chunk_toggles=8 build42_independent=1 '
+-      'theme_inherited=1 experimental_labels=3')
++      'render_toggles=3 theme_inherited=1 experimental_labels=3')
+ PY
+diff --git a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+index 0f67233..d6bc3b2 100644
+--- a/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
++++ b/tools/ui-stubs/com/zomdroid/OptLabPreferences.java
+@@ -3,8 +3,10 @@ package com.zomdroid;
+ import android.content.Context;
+
+ public final class OptLabPreferences {
++    public enum Profile { STREAM_ALL, FBO_ALL, FULL_CANDIDATE }
+     public static OptLabPreferences from(Context context) { return new OptLabPreferences(); }
+     public String chunkOptimizationSummary() { return "0/8 active"; }
++    public String renderOptimizationSummary() { return "0/3 active"; }
+     public boolean isChunkForage() { return false; }
+     public boolean isChunkNeighbourWorker() { return false; }
+     public boolean isChunkNeighbourMain() { return false; }
+@@ -23,4 +25,28 @@ public final class OptLabPreferences {
+     public void setChunkWorldgenBiome(boolean value) {}
+     public void setChunkStableProfile() {}
+     public void setChunkAllProduction(boolean value) {}
++    public boolean isRenderChunkDepthUpload() { return false; }
++    public boolean isRenderChunkDepthLookup() { return false; }
++    public boolean isRenderRingEmptyClear() { return false; }
++    public void setRenderChunkDepthUpload(boolean value) {}
++    public void setRenderChunkDepthLookup(boolean value) {}
++    public void setRenderRingEmptyClear(boolean value) {}
++    public void setRenderCp62SafeProfile(boolean value) {}
++    public boolean isOnlyBuild42() { return true; }
++    public boolean isMainloopPacing() { return false; }
++    public boolean isStreamWake() { return false; }
++    public boolean isStreamQueueFast() { return false; }
++    public boolean isStreamVelocityEta() { return false; }
++    public boolean isFboDirtyDedup() { return false; }
++    public boolean isFboFrameBudget() { return false; }
++    public boolean isStreamFboCoordinator() { return false; }
++    public void setOnlyBuild42(boolean value) {}
++    public void setMainloopPacing(boolean value) {}
++    public void setStreamWake(boolean value) {}
++    public void setStreamQueueFast(boolean value) {}
++    public void setStreamVelocityEta(boolean value) {}
++    public void setFboDirtyDedup(boolean value) {}
++    public void setFboFrameBudget(boolean value) {}
++    public void setStreamFboCoordinator(boolean value) {}
++    public void setProfile(Profile profile) {}
+ }
+diff --git a/tools/ui-stubs/com/zomdroid/R.java b/tools/ui-stubs/com/zomdroid/R.java
+index 87422b4..53bdd56 100644
+--- a/tools/ui-stubs/com/zomdroid/R.java
++++ b/tools/ui-stubs/com/zomdroid/R.java
+@@ -27,5 +27,35 @@ public final class R {
+         public static final int opt_lab_chunk_worldgen = 23;
+         public static final int opt_lab_chunk_restart = 24;
+         public static final int opt_lab_chunk_title = 25;
++        public static final int opt_lab_render_intro = 26;
++        public static final int opt_lab_render_profiles = 27;
++        public static final int opt_lab_render_cp62_safe = 28;
++        public static final int opt_lab_render_all_off = 29;
++        public static final int opt_lab_render_chunk_depth = 30;
++        public static final int opt_lab_render_chunk_depth_upload = 31;
++        public static final int opt_lab_render_chunk_depth_lookup = 32;
++        public static final int opt_lab_render_ring = 33;
++        public static final int opt_lab_render_ring_empty_clear = 34;
++        public static final int opt_lab_render_ring_bulk_status = 35;
++        public static final int opt_lab_render_restart = 36;
++        public static final int opt_lab_render_title = 37;
++        public static final int opt_lab_build42_intro = 38;
++        public static final int opt_lab_only_build42 = 39;
++        public static final int opt_lab_build42_presets = 40;
++        public static final int opt_lab_runtime_b42_section = 41;
++        public static final int opt_lab_pacing = 42;
++        public static final int opt_lab_stream_section = 43;
++        public static final int opt_lab_stream_wake = 44;
++        public static final int opt_lab_stream_queue = 45;
++        public static final int opt_lab_stream_eta = 46;
++        public static final int opt_lab_fbo_section = 47;
++        public static final int opt_lab_fbo_dedup = 48;
++        public static final int opt_lab_fbo_budget = 49;
++        public static final int opt_lab_stream_fbo_coordinator = 50;
++        public static final int opt_lab_chunk_open = 51;
++        public static final int opt_lab_render_section = 52;
++        public static final int opt_lab_render_open = 53;
++        public static final int opt_lab_build42_restart_warning = 54;
++        public static final int opt_lab_build42_title = 55;
+     }
+ }
