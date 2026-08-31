@@ -82,6 +82,7 @@ java -m jdk.compiler/com.sun.tools.javac.Main \
   "$PROJECT_DIR/tools/FeatureCompatibilityUnit.java" \
   "$PROJECT_DIR/tools/Cp6134BuildDirectParityUnit.java" \
   "$PROJECT_DIR/tools/HotPathOptimizationRuntimeUnit.java" \
+  "$PROJECT_DIR/tools/NeighbourFidelityUnit.java" \
   "$PROJECT_DIR/tools/OptLabRuntimeUnit.java" \
   "$PROJECT_DIR/tools/OptLabPremainPathfindingOnlyUnit.java" \
   "$PROJECT_DIR/tools/OptLabPremainPopManOnlyUnit.java"
@@ -91,6 +92,8 @@ java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" \
   HotPathOptimizationRuntimeUnit
 java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" \
   zombie.core.Cp6134BuildDirectParityUnit
+java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" \
+  NeighbourFidelityUnit
 java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/chunk-stub-classes" OptLabRuntimeUnit
 java -cp "$WORK_DIR/tests:$WORK_DIR/classes:$WORK_DIR/bundle/zomdroid-agent.jar" \
   OptLabPremainPathfindingOnlyUnit

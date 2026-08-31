@@ -412,12 +412,10 @@ public final class ChunkOptimizationRuntime {
         IsoGridSquare square = (IsoGridSquare)squareObj;
 
         if (neighbourEnabled(c.scope)) {
+            // CP4.1 invariant: invalidate only pairs touching this square through its version.
+            // Unrelated proven pairs must remain reusable, and the in-flight pair must survive
+            // until afterRecalc2/3 records the versions produced by the vanilla calculation.
             c.versions.bump(square);
-            // CalculateCollide/CalculateVisionBlocked may consult squares beyond the two explicit
-            // endpoints. Clearing all proven pairs on any real property mutation is conservative
-            // and prevents a third-square change from creating a stale hit.
-            c.pairs.clear();
-            c.clearPending();
             NEIGHBOUR_VERSION_BUMPS.incrementAndGet();
         }
 

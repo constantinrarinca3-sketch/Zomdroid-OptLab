@@ -88,9 +88,9 @@ android {
         applicationId = "com.zomdroid.mglpz2"
         minSdk = 30
         targetSdk = 35
-        versionCode = 14756
-        versionName = "1.4.7v5-optlab-r15-07-settings-fix-side"
-        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R15-07"
+        versionCode = 14759
+        versionName = "1.4.7v5-optlab-r15-09-neighbour-cp41-fix-side"
+        manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R15-09"
 
         // JavaSteam + protobuf + kotlin stack push past the 64K method limit.
         multiDexEnabled = true
@@ -115,14 +115,14 @@ android {
         create("sideBySide") {
             dimension = "installMode"
             applicationId = "com.zomdroid.mglpz2"
-            versionCode = 14756
-            versionName = "1.4.7v5-optlab-r15-07-settings-fix-side"
-            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R15-07"
+            versionCode = 14759
+            versionName = "1.4.7v5-optlab-r15-09-neighbour-cp41-fix-side"
+            manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R15-09"
         }
         create("replaceR1") {
             dimension = "installMode"
             applicationId = "com.zomdroid.mglpz1"
-            versionCode = 14756
+            versionCode = 14759
             versionName = "1.4.7v5-optlab-r15-07-settings-fix-replace"
             manifestPlaceholders["optLabAppLabel"] = "ZomDroid OPT LAB R15-07 Replace"
         }
